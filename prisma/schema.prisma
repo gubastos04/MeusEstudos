@@ -1,0 +1,604 @@
+// Plataforma de estudos praticos.
+//
+// Decisoes de modelagem (ver CLAUDE.md > Decisoes tecnicas):
+// 1. O conteudo educacional mora em /content (JSON versionado) e e a fonte da verdade.
+//    As tabelas de conteudo abaixo (Module, Lesson, Exercise, Assessment, Question,
+//    Demand, Project, Challenge, GlossaryTerm) sao um ESPELHO gerado por
+//    `npm run content:sync`. Existem para permitir filtros, busca e integridade
+//    referencial. A aplicacao nunca as edita em runtime.
+// 2. Nenhum enum nativo e nenhum tipo Json: os valores ficam em String para que o
+//    MESMO schema funcione em SQLite (dev) e PostgreSQL (producao).
+//    Listas e objetos sao serializados como JSON em String (ver src/lib/json.ts).
+// 3. Todo dado de usuario referencia userId com onDelete: Cascade, para que a
+//    exclusao de conta apague tudo de uma vez.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // `npm run db:provider postgresql` troca esta linha para o deploy.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Conta e identidade
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+  deletedAt    DateTime?
+
+  profile       UserProfile?
+  aiConfig      UserAIConfig?
+  githubProfile GitHubProfile?
+
+  sessions       Session[]
+  passwordResets PasswordReset[]
+  progress       Progress[]
+  activities   Activity[]
+  events       Event[]
+  exerciseRuns ExerciseAttempt[]
+  assessments  AssessmentAttempt[]
+  answers      Answer[]
+  demandWork   DemandSubmission[]
+  projectWork  ProjectProgress[]
+  notes        Note[]
+  errors       ErrorRecord[]
+  aiRequests   AIRequest[]
+  aiUsage      AIUsage[]
+
+  @@index([deletedAt])
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique // SHA-256 do token do cookie; o token cru nunca e salvo
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  userAgent  String?
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Pedido de redefinicao de senha.
+// O token cru so existe no link enviado por email; aqui fica apenas o SHA-256.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Avaliacao inicial curta (onboarding). Ver src/lib/onboarding.ts
+  hasProgrammedBefore String? // nunca | pouco | ja_programei | trabalho_na_area
+  knownLanguages      String    @default("[]") // JSON string[]
+  usedGit             String? // nunca | pouco | sim
+  usedDatabase        String? // nunca | pouco | sim
+  typicalMinutes      Int       @default(20) // 10 | 20 | 45
+  goal                String? // primeiro_emprego | recomecar | melhorar | curiosidade
+  trackId             String? // caminho inicial sugerido; o usuario pode trocar
+  onboardedAt         DateTime?
+
+  // Preferencias
+  theme        String  @default("system") // system | light | dark
+  reduceMotion Boolean @default(false)
+  codeFontSize Int     @default(14)
+  linkedinUrl  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GitHubProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  username   String
+  profileUrl String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserAIConfig {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Chave do usuario criptografada com AES-256-GCM usando APP_SECRET.
+  // Nunca e devolvida por nenhuma API; apenas keyHint (4 ultimos caracteres).
+  encryptedApiKey String?
+  keyHint         String?
+  model           String  @default("claude-sonnet-5")
+  dailyLimit      Int     @default(40)
+  enabled         Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Espelho do conteudo (gerado a partir de /content)
+// ---------------------------------------------------------------------------
+
+model Module {
+  id        String   @id // ex: "python"
+  semester  Int
+  title     String
+  summary   String
+  order     Int      @default(0)
+  tags      String   @default("[]") // JSON string[]
+  minutes   Int      @default(0)
+  itemCount Int      @default(0)
+  syncedAt  DateTime @default(now())
+
+  lessons     Lesson[]
+  assessments Assessment[]
+
+  @@index([semester, order])
+}
+
+model Lesson {
+  id          String   @id // ex: "python-funcoes-01"
+  moduleId    String
+  title       String
+  summary     String   @default("")
+  kind        String // lesson | exercise | checkpoint
+  order       Int      @default(0)
+  minutes     Int      @default(10)
+  tags        String   @default("[]")
+  hasExercise Boolean  @default(false)
+  syncedAt    DateTime @default(now())
+
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  exercises Exercise[]
+
+  @@index([moduleId, order])
+}
+
+model Exercise {
+  id       String   @id
+  lessonId String?
+  moduleId String?
+  title    String
+  kind     String // code | structural | quiz | reflection
+  language String   @default("text")
+  minutes  Int      @default(5)
+  syncedAt DateTime @default(now())
+
+  lesson   Lesson?           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  attempts ExerciseAttempt[]
+
+  @@index([lessonId])
+}
+
+model Assessment {
+  id        String   @id
+  moduleId  String
+  title     String
+  summary   String   @default("")
+  format    String // alternativa | pratica
+  minutes   Int      @default(10)
+  itemCount Int      @default(0)
+  topics    String   @default("[]")
+  syncedAt  DateTime @default(now())
+
+  module    Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  AssessmentAttempt[]
+
+  @@index([moduleId])
+}
+
+model Question {
+  id           String   @id
+  assessmentId String
+  order        Int      @default(0)
+  kind         String // conceitual | codigo | debugging | situacao | pratica
+  syncedAt     DateTime @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers    Answer[]
+
+  @@index([assessmentId, order])
+}
+
+model Demand {
+  id             String   @id
+  title          String
+  type           String // bug | feature | refatoracao | performance | seguranca | banco | api | frontend | backend | integracao | testes | documentacao | devops | manutencao | investigacao | code-review
+  difficulty     String // iniciante | intermediario | avancado
+  minutes        Int      @default(30)
+  summary        String   @default("")
+  stack          String   @default("[]")
+  moduleIds      String   @default("[]")
+  contextQuality String   @default("completo") // completo | incompleto (exige investigacao)
+  syncedAt       DateTime @default(now())
+
+  // Demandas geradas por IA pertencem a um usuario e nao vivem em /content:
+  // o JSON completo fica em `payload`. Demandas do curriculo tem ownerId nulo.
+  generated Boolean @default(false)
+  ownerId   String?
+  payload   String?
+
+  submissions DemandSubmission[]
+
+  @@index([type])
+  @@index([difficulty])
+  @@index([ownerId])
+}
+
+model Project {
+  id         String   @id
+  title      String
+  summary    String   @default("")
+  difficulty String   @default("intermediario")
+  stack      String   @default("[]")
+  stepCount  Int      @default(0)
+  minutes    Int      @default(0)
+  syncedAt   DateTime @default(now())
+
+  progress ProjectProgress[]
+}
+
+model Challenge {
+  id         String   @id
+  title      String
+  category   String // logica | debugging | backend | frontend | banco | api | seguranca | git | arquitetura | performance
+  difficulty String
+  minutes    Int      @default(15)
+  summary    String   @default("")
+  stack      String   @default("[]")
+  syncedAt   DateTime @default(now())
+
+  @@index([category])
+}
+
+model GlossaryTerm {
+  id       String   @id
+  term     String
+  short    String
+  tags     String   @default("[]")
+  syncedAt DateTime @default(now())
+
+  @@index([term])
+}
+
+// ---------------------------------------------------------------------------
+// Progresso e atividade
+// ---------------------------------------------------------------------------
+
+model Progress {
+  id     String @id @default(cuid())
+  userId String
+
+  // nodeType: lesson | exercise | assessment | demand | project | project-step | challenge
+  nodeType String
+  nodeId   String
+  moduleId String?
+
+  status       String    @default("in_progress") // in_progress | completed
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  lastSeenAt   DateTime  @default(now())
+  secondsSpent Int       @default(0)
+  // Bloco onde o usuario parou dentro do conteudo. Permite retomada exata.
+  resumeBlock  Int       @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nodeType, nodeId])
+  @@index([userId, lastSeenAt])
+  @@index([userId, moduleId])
+  @@index([userId, status])
+}
+
+// Um registro por usuario por dia. Base da metrica "dias ativos nos ultimos 7".
+// Nao existe streak e nao existe contador de dias perdidos.
+model Activity {
+  id     String @id @default(cuid())
+  userId String
+  day    String // YYYY-MM-DD no fuso configurado (America/Sao_Paulo por padrao)
+
+  minutes            Int @default(0)
+  lessonsCompleted   Int @default(0)
+  exercisesAttempted Int @default(0)
+  demandsWorked      Int @default(0)
+  assessmentsTaken   Int @default(0)
+  errorsLogged       Int @default(0)
+  notesWritten       Int @default(0)
+  aiCalls            Int @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([userId, day])
+}
+
+// Analytics minimo: apenas o necessario para melhorar o produto.
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // content_started | content_completed | content_abandoned | exercise_attempted | demand_started | demand_completed | error_logged | ai_used | assessment_finished
+  nodeType  String?
+  nodeId    String?
+  meta      String? // JSON string, sem dado sensivel
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Pratica
+// ---------------------------------------------------------------------------
+
+model ExerciseAttempt {
+  id         String @id @default(cuid())
+  userId     String
+  exerciseId String
+  lessonId   String?
+
+  code         String   @default("")
+  language     String   @default("text")
+  passed       Boolean  @default(false)
+  totalCases   Int      @default(0)
+  passedCases  Int      @default(0)
+  report       String   @default("[]") // JSON com o resultado por caso
+  hintsUsed    Int      @default(0)
+  solutionSeen Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise? @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, exerciseId, createdAt])
+}
+
+model AssessmentAttempt {
+  id           String @id @default(cuid())
+  userId       String
+  assessmentId String
+
+  attemptNumber Int
+  format        String
+  status        String    @default("in_progress") // in_progress | finished
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  totalItems    Int       @default(0)
+  correctItems  Int       @default(0)
+  // Topicos demonstrados / a revisar, calculados no fim da tentativa.
+  strongTopics  String    @default("[]")
+  reviewTopics  String    @default("[]")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment Assessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers    Answer[]
+
+  @@unique([userId, assessmentId, attemptNumber])
+  @@index([userId, assessmentId])
+}
+
+model Answer {
+  id         String @id @default(cuid())
+  attemptId  String
+  userId     String
+  questionId String
+
+  // Alternativa: indice escolhido. Pratica: codigo enviado.
+  choiceIndex Int?
+  code        String?
+  correct     Boolean  @default(false)
+  passedCases Int      @default(0)
+  totalCases  Int      @default(0)
+  report      String   @default("[]")
+  hintsUsed   Int      @default(0)
+  answeredAt  DateTime @default(now())
+
+  attempt  AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question?         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([userId, questionId])
+}
+
+model DemandSubmission {
+  id       String @id @default(cuid())
+  userId   String
+  demandId String
+
+  status String @default("analisando") // analisando | implementando | revisando | concluida | abandonada
+  // O registro tecnico da demanda, escrito pelo usuario.
+  understanding String   @default("")
+  plan          String   @default("")
+  solution      String   @default("")
+  testNotes     String   @default("")
+  repoUrl       String?
+  branchName    String?
+  prTitle       String?
+  prBody        String?
+  // Criterios de aceite marcados pelo proprio usuario (honestidade > automacao).
+  acceptance    String   @default("[]") // JSON boolean[]
+  selfReview    String   @default("")
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  updatedAt     DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  demand Demand? @relation(fields: [demandId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, demandId])
+  @@index([userId, status])
+}
+
+model ProjectProgress {
+  id        String @id @default(cuid())
+  userId    String
+  projectId String
+
+  currentStep Int    @default(1)
+  doneSteps   String @default("[]") // JSON string[] com ids das etapas concluidas
+  checklist   String @default("{}") // JSON Record<string, boolean> do checklist de publicacao
+  repoUrl     String?
+  deployUrl   String?
+  notes       String @default("")
+  // Campos de portfolio preenchidos pelo usuario (nada e inventado pela plataforma).
+  problem      String    @default("")
+  decisions    String    @default("")
+  difficulties String    @default("")
+  learnings    String    @default("")
+  publishedAt  DateTime?
+  startedAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Conhecimento pessoal
+// ---------------------------------------------------------------------------
+
+model Note {
+  id     String @id @default(cuid())
+  userId String
+
+  title    String
+  body     String  @default("")
+  code     String  @default("")
+  language String  @default("text")
+  tags     String  @default("[]")
+  // Vinculo opcional com o que estava sendo estudado.
+  moduleId String?
+  nodeType String?
+  nodeId   String?
+  pinned   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([userId, pinned])
+}
+
+model ErrorRecord {
+  id     String @id @default(cuid())
+  userId String
+
+  title      String
+  context    String  @default("")
+  cause      String  @default("")
+  solution   String  @default("")
+  learning   String  @default("")
+  code       String  @default("")
+  language   String  @default("text")
+  technology String  @default("")
+  tags       String  @default("[]")
+  resolved   Boolean @default(false)
+  // Revisao: quando este erro foi revisitado pela ultima vez.
+  reviewedAt  DateTime?
+  reviewCount Int       @default(0)
+
+  moduleId String?
+  nodeType String?
+  nodeId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, resolved])
+}
+
+// ---------------------------------------------------------------------------
+// IA (opcional, desligada sem chave)
+// ---------------------------------------------------------------------------
+
+model AIRequest {
+  id     String @id @default(cuid())
+  userId String
+
+  feature      String // corretor | explicar | pergunta | gerar-demanda | debugger | code-review
+  model        String
+  status       String // ok | erro | limite | timeout | sem-chave
+  inputTokens  Int     @default(0)
+  outputTokens Int     @default(0)
+  latencyMs    Int     @default(0)
+  errorCode    String?
+  // Contexto util para o produto, sem guardar o prompt completo.
+  moduleId     String?
+  nodeType     String?
+  nodeId       String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AIUsage {
+  id     String @id @default(cuid())
+  userId String
+  day    String // YYYY-MM-DD
+
+  calls        Int @default(0)
+  inputTokens  Int @default(0)
+  outputTokens Int @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+}
+
+// ---------------------------------------------------------------------------
+// Infra
+// ---------------------------------------------------------------------------
+
+// Rate limiting persistente (auth e IA). Memoria de processo nao serve em
+// serverless, onde cada instancia teria seu proprio contador.
+model RateLimit {
+  id        String   @id // ex: "login:ip:203.0.113.4"
+  count     Int      @default(0)
+  windowEnd DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([windowEnd])
+}

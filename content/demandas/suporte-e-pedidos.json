@@ -1,0 +1,343 @@
+{
+  "demands": [
+    {
+      "id": "dem-filtro-pedidos",
+      "title": "Adicionar filtro de pedidos por status e período",
+      "type": "feature",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 50,
+      "contextQuality": "completo",
+      "priority": "media",
+      "requester": "Time de suporte",
+      "summary": "A tela de pedidos não tem filtro e o suporte perde tempo procurando pedidos antigos.",
+      "context": "O time de suporte atende por telefone. Quando o cliente liga citando um pedido de meses atrás, a pessoa do suporte precisa rolar a lista até encontrar. Hoje a tela carrega os últimos 200 pedidos, sem filtro nenhum. Com o crescimento do último trimestre, a base passou de 60 mil pedidos e o atendimento está demorando. A coordenação do suporte mediu: em média 4 minutos só para localizar o pedido.",
+      "request": "Adicionar filtro por status e por período na tela de pedidos.",
+      "stack": ["python", "sql", "api"],
+      "moduleIds": ["python", "banco-dados", "comunicacao-aplicacoes"],
+      "system": {
+        "description": "API em Python com endpoint de listagem. A tela consome esse endpoint e monta a tabela. Hoje o endpoint ignora qualquer parâmetro de consulta.",
+        "files": [
+          {
+            "path": "api/rotas/pedidos.py",
+            "note": "Endpoint atual, sem filtro e sem limite configurável.",
+            "language": "python",
+            "code": "@app.get(\"/pedidos\")\ndef listar_pedidos():\n    return repositorio.listar_recentes(limite=200)"
+          },
+          {
+            "path": "api/repositorios/pedidos.py",
+            "note": "Camada de acesso ao banco.",
+            "language": "python",
+            "code": "def listar_recentes(limite: int):\n    return banco.consultar(\n        \"SELECT id, cliente_id, status, valor, criado_em \"\n        \"FROM pedido ORDER BY criado_em DESC LIMIT %s\",\n        (limite,),\n    )"
+          },
+          {
+            "path": "banco/schema.sql",
+            "note": "Estrutura da tabela. Repare nos índices existentes.",
+            "language": "sql",
+            "code": "CREATE TABLE pedido (\n  id         SERIAL PRIMARY KEY,\n  cliente_id INT NOT NULL REFERENCES cliente(id),\n  status     TEXT NOT NULL,\n  valor      NUMERIC(12,2) NOT NULL,\n  criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\nCREATE INDEX idx_pedido_cliente ON pedido (cliente_id);"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Filtro por status com os valores existentes: pending, paid, shipped, done, canceled",
+        "Filtro por período com data inicial e final, ambas opcionais e inclusivas",
+        "Os dois filtros funcionam combinados",
+        "Sem filtro, a tela continua mostrando os pedidos mais recentes"
+      ],
+      "acceptance": [
+        "A filtragem acontece no banco, não na aplicação nem no navegador",
+        "Status inválido devolve 422 indicando o campo, e não uma lista vazia",
+        "Período aceita só início, só fim, ou os dois",
+        "A resposta é paginada, com no máximo 50 registros por página",
+        "A consulta filtrada responde em menos de 1 segundo com 60 mil pedidos",
+        "Nenhum resultado devolve lista vazia com 200, e a tela mostra mensagem explicando"
+      ],
+      "constraints": [
+        "Não alterar o contrato dos campos já devolvidos: a tela atual precisa continuar funcionando",
+        "Não usar biblioteca nova: o projeto já tem o suficiente",
+        "Toda consulta com valor de entrada precisa ser parametrizada"
+      ],
+      "hints": [
+        "Repare que o índice existente é por cliente_id. A consulta nova filtra por outra coisa.",
+        "Datas como texto no formato AAAA-MM-DD comparam corretamente em ordem cronológica, mas cuidado com a hora no limite superior.",
+        "Filtro opcional em SQL costuma ser montado condicionalmente: comece com a consulta base e acrescente as condições que foram informadas."
+      ],
+      "reviewChecklist": [
+        "A consulta está parametrizada em todos os valores de entrada",
+        "Existe índice que atende o novo filtro e a ordenação",
+        "Status inválido é recusado com status HTTP adequado",
+        "Existe limite máximo de registros por página",
+        "Os testes cobrem: sem filtro, só status, só período, os dois juntos, e entrada inválida",
+        "A tela trata o caso de nenhum resultado sem mostrar erro"
+      ]
+    },
+    {
+      "id": "dem-relatorio-lento",
+      "title": "Relatório de vendas está demorando muito",
+      "type": "investigacao",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 70,
+      "contextQuality": "incompleto",
+      "priority": "alta",
+      "requester": "Gerência comercial",
+      "summary": "Reclamação genérica de lentidão no relatório. Antes de corrigir, é preciso descobrir onde o tempo é gasto.",
+      "context": "Chegou um chamado da gerência comercial: \"o relatório de vendas está demorando muito, às vezes nem abre\". Não há mais detalhes. O relatório existe há dois anos e ninguém mexeu nele recentemente. A base cresceu bastante desde o lançamento. Você tem acesso aos logs da aplicação, ao plano de execução das consultas e ao código.",
+      "request": "Resolver a lentidão do relatório de vendas.",
+      "stack": ["python", "sql", "performance"],
+      "moduleIds": ["banco-dados", "algoritmos-complexidade", "sistemas-operacionais"],
+      "system": {
+        "description": "O relatório monta uma tabela de vendas por vendedor, com totais por período. O endpoint recebe o período e devolve as linhas prontas.",
+        "files": [
+          {
+            "path": "api/relatorios/vendas.py",
+            "note": "Código do relatório, sem alterações há 8 meses.",
+            "language": "python",
+            "code": "def montar_relatorio(desde, ate):\n    vendas = repositorio.listar_vendas(desde, ate)\n\n    linhas = []\n    for venda in vendas:\n        vendedor = repositorio.buscar_vendedor(venda[\"vendedor_id\"])\n        cliente = repositorio.buscar_cliente(venda[\"cliente_id\"])\n        linhas.append({\n            \"vendedor\": vendedor[\"nome\"],\n            \"cliente\": cliente[\"nome\"],\n            \"valor\": venda[\"valor\"],\n            \"data\": venda[\"criado_em\"],\n        })\n\n    return linhas"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "O relatório abre em tempo aceitável para o período usado no dia a dia",
+        "O resultado continua correto: mesmos totais de antes"
+      ],
+      "acceptance": [
+        "Você mediu onde o tempo era gasto antes de alterar qualquer coisa",
+        "A causa está identificada e escrita, com evidência",
+        "A correção ataca a causa medida, não um palpite",
+        "Há medição depois, comparável com a de antes",
+        "O resultado do relatório continua idêntico ao anterior para o mesmo período"
+      ],
+      "constraints": [
+        "Não adicionar cache nesta demanda: a gerência precisa do dado atualizado",
+        "Não mudar o formato da resposta"
+      ],
+      "investigation": {
+        "intro": "O que você tem em mãos. Nada aqui diz qual é o problema: são evidências para interpretar.",
+        "logs": [
+          "2026-03-10T09:12:44Z INFO  req=a1f2 rota=/relatorios/vendas periodo=30d duracao=41210ms",
+          "2026-03-10T09:13:31Z INFO  req=a1f2 consultas_executadas=8402",
+          "2026-03-10T09:20:02Z ERROR req=b7c1 rota=/relatorios/vendas periodo=90d duracao=60000ms timeout",
+          "2026-03-10T11:02:10Z INFO  req=c3d9 rota=/relatorios/vendas periodo=7d duracao=9840ms",
+          "2026-03-10T11:02:10Z INFO  req=c3d9 consultas_executadas=1961"
+        ],
+        "queries": [
+          {
+            "label": "Plano da consulta principal (listar_vendas)",
+            "sql": "EXPLAIN ANALYZE SELECT id, vendedor_id, cliente_id, valor, criado_em FROM venda WHERE criado_em >= '2026-02-08' AND criado_em < '2026-03-10';\n\nIndex Scan using idx_venda_criado on venda (actual time=0.028..38.114 rows=4200 loops=1)\nPlanning Time: 0.2 ms\nExecution Time: 41.3 ms"
+          },
+          {
+            "label": "Plano da consulta de vendedor (buscar_vendedor)",
+            "sql": "EXPLAIN ANALYZE SELECT id, nome FROM vendedor WHERE id = 42;\n\nIndex Scan using vendedor_pkey on vendedor (actual time=0.011..0.013 rows=1 loops=1)\nExecution Time: 0.04 ms"
+          }
+        ],
+        "metrics": [
+          { "label": "Vendas no período de 30 dias", "value": "4.200" },
+          { "label": "Consultas executadas na requisição de 30 dias", "value": "8.402" },
+          { "label": "Tempo da consulta principal", "value": "41 ms" },
+          { "label": "Tempo total da requisição", "value": "41.210 ms" },
+          { "label": "Total de vendedores cadastrados", "value": "38" },
+          { "label": "Total de clientes cadastrados", "value": "12.400" }
+        ],
+        "notes": [
+          "A consulta principal e as consultas auxiliares são individualmente rápidas.",
+          "O número de consultas cresce junto com o número de vendas do período.",
+          "Nenhuma alteração foi feita no código nos últimos 8 meses; o volume de dados é que mudou."
+        ]
+      },
+      "hints": [
+        "Compare dois números das métricas: vendas no período e consultas executadas. A relação entre eles diz muita coisa.",
+        "As consultas são rápidas individualmente. O problema pode não ser a velocidade de cada uma.",
+        "Vendedores são 38 e clientes 12.400, mas o período tem 4.200 vendas. Quantos registros distintos realmente precisam ser buscados?"
+      ],
+      "reviewChecklist": [
+        "A causa está descrita com o número que a comprova",
+        "A correção reduz o número de consultas, e isso está medido",
+        "O relatório devolve exatamente os mesmos dados de antes",
+        "Existe teste que falharia se o problema voltasse",
+        "A medição antes e depois está registrada na descrição do PR"
+      ]
+    },
+    {
+      "id": "dem-vaza-pedido-outro-cliente",
+      "title": "Cliente relatou que viu o pedido de outra pessoa",
+      "type": "seguranca",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "completo",
+      "priority": "urgente",
+      "requester": "Atendimento / Jurídico",
+      "summary": "Falha de autorização: trocar o id na URL mostra pedido de outro cliente.",
+      "context": "Um cliente enviou um print mostrando os dados de um pedido que não é dele, incluindo nome e endereço de outra pessoa. Ele disse que \"mudou o número na barra de endereço por curiosidade\". O atendimento escalou imediatamente. O jurídico foi informado por envolver dado pessoal de terceiro.",
+      "request": "Corrigir com urgência e verificar se o mesmo problema existe em outros pontos.",
+      "stack": ["python", "api", "seguranca"],
+      "moduleIds": ["seguranca-informacao", "python-aplicado", "software-seguro"],
+      "system": {
+        "description": "API com autenticação por sessão. O usuário autenticado fica disponível em `usuario`.",
+        "files": [
+          {
+            "path": "api/rotas/pedidos.py",
+            "language": "python",
+            "code": "@app.get(\"/pedidos/{pedido_id}\")\ndef obter_pedido(pedido_id: int, usuario = Depends(sessao_atual)):\n    pedido = repositorio.buscar(pedido_id)\n    if pedido is None:\n        raise HTTPException(404)\n    return pedido\n\n\n@app.get(\"/pedidos/{pedido_id}/itens\")\ndef listar_itens(pedido_id: int, usuario = Depends(sessao_atual)):\n    return repositorio.listar_itens(pedido_id)\n\n\n@app.post(\"/pedidos/{pedido_id}/cancelar\")\ndef cancelar(pedido_id: int, usuario = Depends(sessao_atual)):\n    return servico.cancelar(pedido_id)"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Um usuário só acessa pedidos vinculados à própria conta",
+        "Usuário com perfil de suporte continua acessando qualquer pedido",
+        "A resposta para pedido de outra pessoa não revela que o pedido existe"
+      ],
+      "acceptance": [
+        "Os três endpoints verificam a propriedade do pedido, não apenas o de detalhe",
+        "A resposta para recurso de outro usuário é 404, e não 403",
+        "Existe teste automatizado por endpoint: usuário A não acessa recurso do usuário B",
+        "A verificação está em um único lugar reutilizável, e não copiada três vezes",
+        "Foi feita uma varredura em busca de outros endpoints com o mesmo padrão, e o resultado está registrado"
+      ],
+      "constraints": [
+        "Não alterar o comportamento para o perfil de suporte",
+        "A correção precisa ser pequena o suficiente para revisão rápida: é urgente"
+      ],
+      "hints": [
+        "Repare que dois dos três endpoints nem sequer usam a variável `usuario`.",
+        "Pense no motivo de responder 404 em vez de 403 para recurso de outra pessoa.",
+        "Se a verificação for copiada em cada rota, o próximo endpoint criado vai esquecer dela."
+      ],
+      "reviewChecklist": [
+        "Todos os endpoints que recebem pedido_id foram verificados",
+        "Existe teste de isolamento entre usuários para cada um",
+        "A resposta não permite descobrir se um pedido existe",
+        "A verificação está centralizada",
+        "Foi verificado se outros recursos (nota fiscal, endereço, pagamento) têm o mesmo problema"
+      ]
+    },
+    {
+      "id": "dem-importacao-silenciosa",
+      "title": "Importação de planilha está perdendo linhas",
+      "type": "bug",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "incompleto",
+      "priority": "alta",
+      "requester": "Time de cadastro",
+      "summary": "O time importa planilhas de produtos e alguns itens não aparecem no sistema, sem nenhuma mensagem.",
+      "context": "O time de cadastro importa planilhas de fornecedores toda semana. Nas últimas semanas, produtos que estavam na planilha não apareceram no sistema. A tela mostra \"Importação concluída\" normalmente. Ninguém sabe quantos itens se perderam nem quais. Em uma planilha de 1.240 linhas, contaram 1.187 produtos no sistema depois da importação.",
+      "request": "Descobrir por que os produtos somem e fazer a importação parar de perder dado em silêncio.",
+      "stack": ["python", "dados"],
+      "moduleIds": ["python", "big-data-python"],
+      "system": {
+        "description": "Rotina de importação que lê a planilha convertida em CSV e grava os produtos.",
+        "files": [
+          {
+            "path": "importacao/produtos.py",
+            "language": "python",
+            "code": "def importar(caminho):\n    total = 0\n    with open(caminho, encoding=\"utf-8\") as arquivo:\n        for linha in csv.DictReader(arquivo):\n            try:\n                produto = montar_produto(linha)\n                repositorio.salvar(produto)\n                total += 1\n            except Exception:\n                continue\n    return {\"importados\": total}"
+          },
+          {
+            "path": "importacao/produtos.py",
+            "note": "Conversão de cada linha.",
+            "language": "python",
+            "code": "def montar_produto(linha):\n    return {\n        \"sku\": linha[\"sku\"].strip(),\n        \"nome\": linha[\"nome\"].strip(),\n        \"preco\": float(linha[\"preco\"]),\n        \"estoque\": int(linha[\"estoque\"]),\n    }"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Nenhuma linha desaparece sem registro",
+        "Ao final, o time sabe quantas linhas entraram, quantas foram rejeitadas e por quê",
+        "Uma linha com problema não impede a importação das demais"
+      ],
+      "acceptance": [
+        "O resultado da importação inclui total lido, importados e rejeitados",
+        "Cada rejeição tem o número da linha e o motivo",
+        "A soma de importados e rejeitados é igual ao total de linhas do arquivo",
+        "A tela mostra o relatório ao final, com possibilidade de ver a lista de rejeições",
+        "Existem testes para pelo menos três motivos diferentes de rejeição"
+      ],
+      "constraints": [
+        "Não interromper a importação inteira por causa de uma linha ruim",
+        "Não alterar o formato da planilha: os fornecedores não vão mudar"
+      ],
+      "investigation": {
+        "intro": "Amostra do arquivo que perdeu 53 linhas. Os valores estão como vieram do fornecedor.",
+        "logs": [
+          "sku,nome,preco,estoque",
+          "A100,Caneta azul,2.50,120",
+          "A101,Caderno 96fl,\"18,90\",45",
+          "A102,Borracha,1.20,",
+          "A103,Lápis HB,0.90,300",
+          ",Item sem código,5.00,10",
+          "A105,Régua 30cm,R$ 4.50,25",
+          "A106,Grampeador,32.00,7.5"
+        ],
+        "notes": [
+          "A planilha vem de fornecedores diferentes, cada um com seu formato.",
+          "O time de cadastro confirma que todas as linhas do arquivo deveriam virar produto.",
+          "Ninguém sabe dizer quais linhas faltaram nas importações anteriores."
+        ]
+      },
+      "hints": [
+        "Olhe linha por linha na amostra e pergunte: o que `montar_produto` faz com este valor?",
+        "São pelo menos quatro motivos diferentes de falha na amostra.",
+        "O `except Exception: continue` é o motivo de ninguém saber o que aconteceu. Mas ele não é a causa de as linhas falharem."
+      ],
+      "reviewChecklist": [
+        "A soma de importados e rejeitados bate com o total de linhas",
+        "Cada rejeição tem linha e motivo legível para quem cadastra",
+        "Os formatos encontrados na amostra estão tratados ou rejeitados com motivo claro",
+        "Nenhum `except` genérico sem registro permaneceu",
+        "Existe teste com um arquivo de amostra contendo linhas boas e ruins"
+      ]
+    },
+    {
+      "id": "dem-code-review-carrinho",
+      "title": "Revisar o PR do cálculo de carrinho",
+      "type": "code-review",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 35,
+      "contextQuality": "completo",
+      "priority": "media",
+      "requester": "Pessoa desenvolvedora do time",
+      "summary": "Fazer o code review de um PR pequeno que altera o cálculo do total do carrinho.",
+      "context": "Uma pessoa do time abriu um PR com a nova regra de desconto no carrinho. O PR está pequeno e parece simples. É a sua vez de revisar. A regra combinada com o produto foi: desconto de 10% acima de R$ 200, e frete grátis acima de R$ 300.",
+      "request": "Revisar o PR: aprovar, pedir alterações ou perguntar o que estiver faltando.",
+      "stack": ["javascript", "code-review"],
+      "moduleIds": ["engenharia-software", "pensamento-computacional"],
+      "system": {
+        "description": "Diff do pull request em revisão.",
+        "files": [
+          {
+            "path": "src/carrinho/total.js",
+            "language": "javascript",
+            "code": "export function calcularTotal(itens, cupom) {\n  let total = 0\n\n  for (let i = 0; i <= itens.length; i++) {\n    total += itens[i].preco * itens[i].quantidade\n  }\n\n  if (total > 200) {\n    total = total - total * 0.1\n  }\n\n  if (cupom) {\n    total = total - cupom.valor\n  }\n\n  const frete = total > 300 ? 0 : 25\n\n  return total + frete\n}"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "O total reflete a regra combinada com o produto",
+        "O código não quebra com carrinho vazio",
+        "O comportamento com cupom é previsível"
+      ],
+      "acceptance": [
+        "Você listou os problemas encontrados, separando defeito de preferência",
+        "Cada apontamento diz a consequência, não apenas o que está errado",
+        "Você identificou pelo menos um caso de entrada que produz erro em execução",
+        "Você identificou pelo menos uma ambiguidade de regra que precisa ser perguntada antes de aprovar",
+        "Seus comentários sugerem caminho sem reescrever o código da outra pessoa"
+      ],
+      "constraints": [
+        "Não reescreva o PR: escreva a revisão",
+        "Trate quem escreveu como colega, não como aluno"
+      ],
+      "hints": [
+        "Olhe com atenção a condição de parada do laço.",
+        "A ordem das operações importa: desconto e cupom aplicados em qual base? E o frete olha o valor antes ou depois do cupom?",
+        "O que acontece se o cupom for maior que o total?"
+      ],
+      "reviewChecklist": [
+        "Apontou o erro que causa exceção em execução",
+        "Apontou o problema de valor negativo",
+        "Levantou a ambiguidade da ordem de aplicação entre desconto, cupom e frete",
+        "Mencionou a ausência de testes para as regras novas",
+        "Os comentários explicam a consequência de cada ponto"
+      ]
+    }
+  ]
+}

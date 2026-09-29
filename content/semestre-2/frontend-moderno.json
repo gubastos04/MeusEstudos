@@ -1,0 +1,659 @@
+{
+  "id": "frontend-moderno",
+  "semester": 2,
+  "order": 6,
+  "title": "Frontend moderno: TypeScript, React e Next.js",
+  "summary": "O que as vagas pedem depois de HTML, CSS e JavaScript: tipos que pegam erro antes de rodar, componentes com estado e a divisão entre servidor e navegador.",
+  "outcome": "Você consegue ler e escrever código TypeScript, entender um componente React com estado e props, e dizer o que roda no servidor e o que roda no navegador numa aplicação Next.js.",
+  "tags": ["frontend", "typescript", "react"],
+  "stack": ["typescript", "javascript", "react", "nextjs"],
+  "items": [
+    {
+      "id": "front-typescript-tipos-01",
+      "type": "lesson",
+      "title": "TypeScript: o erro aparece antes de rodar",
+      "estimatedMinutes": 10,
+      "tags": ["typescript"],
+      "why": "A maior parte dos erros de JavaScript em produção é campo que não existe, valor nulo e tipo trocado. Todos os três o tipo pega enquanto você digita.",
+      "goal": "Escrever funções com tipos e entender o que o TypeScript garante e o que ele não garante.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "TypeScript é JavaScript com anotações de tipo. Ele não roda: um compilador remove as anotações e o que executa é JavaScript comum."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "interface Item {\n  preco: number\n  quantidade: number\n}\n\nfunction total(itens: Item[]): number {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0)\n}\n\ntotal([{ preco: 10, quantidade: 2 }])        // ok\ntotal([{ preco: 10 }])                       // erro: falta quantidade\ntotal([{ preco: '10', quantidade: 2 }])      // erro: preco não é number"
+        },
+        {
+          "kind": "text",
+          "text": "Os dois últimos erros aparecem no editor, antes de salvar. Em JavaScript puro, o primeiro viraria `NaN` e o segundo, um resultado errado em silêncio."
+        },
+        {
+          "kind": "text",
+          "text": "O recurso que mais evita bug é o tipo que admite ausência:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "function buscar(id: number): Item | null {\n  return repositorio.buscar(id)\n}\n\nconst item = buscar(7)\nitem.preco          // erro: item pode ser null\n\nif (item !== null) {\n  item.preco        // ok: aqui dentro o tipo já é Item\n}"
+        },
+        {
+          "kind": "text",
+          "text": "O compilador acompanha o fluxo: depois do `if`, ele sabe que `item` não é nulo. É o que se chama de estreitamento de tipo, e é o que substitui a verificação esquecida."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "O tipo não existe em execução",
+          "text": "Dado que vem de fora — `fetch`, formulário, `JSON.parse` — não é verificado por ninguém. Declarar `const dados: Pedido = await resposta.json()` é uma promessa sua, não uma garantia. Para dado externo, valide de verdade."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "// mentira confortável: se a API mudar, o erro aparece longe daqui\nconst pedido = (await resposta.json()) as Pedido\n\n// verdade: a validação acontece em execução e falha no lugar certo\nconst pedido = pedidoSchema.parse(await resposta.json())"
+        },
+        {
+          "kind": "text",
+          "text": "E o oposto do tipo: `any` desliga a checagem. Ele se espalha — tudo que sai de um valor `any` também vira `any`, e a proteção some sem aviso."
+        },
+        {
+          "kind": "quiz",
+          "question": "O que o TypeScript garante sobre uma resposta de API tipada como `Pedido`?",
+          "choices": [
+            "Que a resposta tem exatamente esse formato",
+            "Nada em execução: o tipo é uma afirmação sua, apagada na compilação; validar o formato real exige código que roda",
+            "Que campos ausentes viram undefined automaticamente",
+            "Que a requisição falha se o formato não bater"
+          ],
+          "answerIndex": 1,
+          "explanation": "O tipo protege o código que você escreve contra você mesmo. A fronteira com o mundo — API, formulário, arquivo — precisa de validação em execução."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma função JavaScript sua e adicione tipos nos parâmetros e no retorno. Veja se o editor aponta alguma chamada existente.",
+        "expected": "Em função que trata dado de formulário, quase sempre aparece pelo menos um caso de valor possivelmente ausente."
+      },
+      "ifStuck": [
+        "Comece pelos parâmetros; o retorno o editor costuma inferir sozinho.",
+        "Se o tipo ficar difícil de escrever, normalmente é sinal de que a função faz coisas demais."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar `as` para calar o compilador.",
+          "why": "`as` não converte nada: ele apenas manda o compilador confiar em você. O erro volta em execução.",
+          "fix": "Se o valor pode não ter aquele formato, verifique com código em vez de afirmar com `as`."
+        }
+      ],
+      "exercise": {
+        "id": "ex-front-tipos-01",
+        "title": "Função tipada que trata ausência",
+        "kind": "code",
+        "language": "typescript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `resumirPedido` em TypeScript. Declare uma interface `ItemDoPedido` com `preco: number` e `quantidade: number`. A função recebe `itens: ItemDoPedido[]` e um `cupom: number | null`, e devolve `{ subtotal: number; desconto: number; total: number }`. O cupom é um valor em reais; quando for null, o desconto é 0. O total nunca fica negativo.",
+        "starter": "interface ItemDoPedido {\n  preco: number\n  quantidade: number\n}\n\nfunction resumirPedido(itens: ItemDoPedido[], cupom: number | null) {\n  // escreva aqui\n}\n",
+        "expectedResult": "Um objeto com subtotal, desconto e total — com total nunca abaixo de zero.",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "resumirPedido([], null)",
+            "expected": { "subtotal": 0, "desconto": 0, "total": 0 }
+          },
+          {
+            "name": "sem cupom",
+            "expression": "resumirPedido([{preco: 10, quantidade: 2}], null)",
+            "expected": { "subtotal": 20, "desconto": 0, "total": 20 }
+          },
+          {
+            "name": "com cupom",
+            "expression": "resumirPedido([{preco: 10, quantidade: 2}], 5)",
+            "expected": { "subtotal": 20, "desconto": 5, "total": 15 }
+          },
+          {
+            "name": "cupom maior que o subtotal nao deixa negativo",
+            "expression": "resumirPedido([{preco: 10, quantidade: 1}], 50)",
+            "expected": { "subtotal": 10, "desconto": 10, "total": 0 }
+          },
+          {
+            "name": "varios itens",
+            "expression": "resumirPedido([{preco: 10, quantidade: 2}, {preco: 5.5, quantidade: 2}], null).subtotal",
+            "expected": 31
+          },
+          {
+            "name": "cupom zero",
+            "expression": "resumirPedido([{preco: 10, quantidade: 1}], 0).total",
+            "expected": 10
+          }
+        ],
+        "hints": [
+          "O subtotal é a soma de preco × quantidade de cada item.",
+          "Cupom null vira desconto 0; a verificação explícita é o que o tipo `number | null` obriga a fazer.",
+          "O desconto nunca passa do subtotal: use Math.min."
+        ],
+        "solution": "interface ItemDoPedido {\n  preco: number\n  quantidade: number\n}\n\nfunction resumirPedido(itens: ItemDoPedido[], cupom: number | null) {\n  const subtotal = itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0)\n\n  // O tipo `number | null` obriga a tratar a ausencia aqui, e nao depois.\n  const desconto = cupom === null ? 0 : Math.min(cupom, subtotal)\n\n  return { subtotal, desconto, total: subtotal - desconto }\n}\n",
+        "solutionNotes": "Limitar o desconto ao subtotal resolve dois problemas de uma vez: o total não fica negativo e o valor do desconto informado continua verdadeiro no recibo."
+      },
+      "glossary": ["json", "api", "dependencia", "Teste unitário"]
+    },
+    {
+      "id": "front-react-estado-01",
+      "type": "lesson",
+      "title": "React: props descem, estado fica",
+      "estimatedMinutes": 10,
+      "tags": ["react"],
+      "why": "Quase todo bug de tela em React é estado no lugar errado: ou duplicado em dois componentes, ou guardando algo que dava para calcular.",
+      "goal": "Decidir o que vira estado, o que vira props e o que não precisa de nenhum dos dois.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Um componente é uma função que recebe dados e devolve o que aparece na tela."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "function Ticket({ titulo, prioridade }: { titulo: string; prioridade: string }) {\n  return (\n    <li>\n      <strong>{titulo}</strong> — {prioridade}\n    </li>\n  )\n}"
+        },
+        {
+          "kind": "text",
+          "text": "`props` são os dados que vêm de fora. O componente não os altera: quem manda é quem passou."
+        },
+        {
+          "kind": "text",
+          "text": "`estado` é o que o componente lembra entre uma interação e outra. Ao mudar, o React redesenha a tela:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "function Filtro() {\n  const [status, setStatus] = useState('todos')\n\n  return (\n    <select value={status} onChange={(evento) => setStatus(evento.target.value)}>\n      <option value=\"todos\">Todos</option>\n      <option value=\"aberto\">Abertos</option>\n    </select>\n  )\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Não guarde o que dá para calcular",
+          "text": "Guardar `tickets` e também `quantidadeDeAbertos` cria duas fontes da verdade que saem de sincronia. A quantidade é um cálculo sobre a lista, feito na hora de desenhar."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "// duas fontes da verdade: uma hora divergem\nconst [tickets, setTickets] = useState([])\nconst [abertos, setAbertos] = useState(0)\n\n// uma fonte: o resto é cálculo\nconst [tickets, setTickets] = useState([])\nconst abertos = tickets.filter((t) => t.status === 'aberto').length"
+        },
+        {
+          "kind": "text",
+          "text": "Quando dois componentes precisam do mesmo dado, ele sobe para o pai comum e desce como props. Duplicar o estado nos dois é o caminho para as telas discordarem entre si."
+        },
+        {
+          "kind": "text",
+          "text": "Quando a mudança de estado depende do valor anterior, use a forma com função. Sem isso, duas atualizações seguidas leem o mesmo valor antigo:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "setContador(contador + 1)          // duas chamadas seguidas somam 1, não 2\nsetContador((atual) => atual + 1)  // cada uma parte do valor mais recente"
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela mostra a lista de tickets e um contador de abertos. Às vezes o contador não bate com a lista. Qual é a causa mais provável?",
+          "choices": [
+            "O componente não está sendo redesenhado",
+            "O contador está guardado em estado separado da lista, e as duas fontes saíram de sincronia",
+            "Falta uma chave nos itens da lista",
+            "O filtro está aplicado só na lista"
+          ],
+          "answerIndex": 1,
+          "explanation": "Número que \"às vezes não bate\" é a assinatura de estado duplicado: há um caminho de atualização que mexe numa fonte e esquece a outra. Calcular a partir da lista elimina o caminho."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Olhe um componente com useState que você tenha. Para cada estado, pergunte: dá para calcular a partir de outro? Vem de fora como prop?",
+        "expected": "Todo estado que dá para calcular pode sair — e com ele sai uma classe inteira de bug."
+      },
+      "ifStuck": [
+        "Se o valor pode ser derivado de outro estado ou de uma prop, ele não é estado.",
+        "Se dois componentes precisam do mesmo dado, ele pertence ao pai comum."
+      ],
+      "commonErrors": [
+        {
+          "error": "Copiar uma prop para o estado no início.",
+          "why": "O estado congela o valor inicial: quando a prop muda, a tela continua mostrando o antigo.",
+          "fix": "Use a prop diretamente. Só copie para o estado quando a intenção for mesmo ignorar mudanças posteriores."
+        }
+      ],
+      "exercise": {
+        "id": "ex-front-reducer-01",
+        "title": "Regra de atualização de estado",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `reduzir(estado, acao)`, a função que atualiza o estado de uma lista de seleção. O estado tem `{ selecionados: string[], modo: 'nenhum' | 'alguns' | 'todos' }`. Ações: { tipo: 'alternar', id }, { tipo: 'limpar' }, { tipo: 'selecionarTodos', ids }. O `modo` é sempre derivado de `selecionados` e do total informado em `acao.ids` (para 'selecionarTodos') — nas demais ações use `acao.total`. A função não pode alterar o estado recebido.",
+        "starter": "function reduzir(estado, acao) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "alternar adiciona",
+            "expression": "reduzir({selecionados: [], modo: 'nenhum'}, {tipo: 'alternar', id: 'a', total: 3}).selecionados",
+            "expected": ["a"]
+          },
+          {
+            "name": "alternar remove o que ja estava",
+            "expression": "reduzir({selecionados: ['a'], modo: 'alguns'}, {tipo: 'alternar', id: 'a', total: 3}).selecionados",
+            "expected": []
+          },
+          {
+            "name": "modo alguns",
+            "expression": "reduzir({selecionados: [], modo: 'nenhum'}, {tipo: 'alternar', id: 'a', total: 3}).modo",
+            "expected": "alguns"
+          },
+          {
+            "name": "modo todos quando completa",
+            "expression": "reduzir({selecionados: ['a', 'b'], modo: 'alguns'}, {tipo: 'alternar', id: 'c', total: 3}).modo",
+            "expected": "todos"
+          },
+          {
+            "name": "limpar",
+            "expression": "reduzir({selecionados: ['a', 'b'], modo: 'alguns'}, {tipo: 'limpar', total: 3})",
+            "expected": { "selecionados": [], "modo": "nenhum" }
+          },
+          {
+            "name": "selecionar todos",
+            "expression": "reduzir({selecionados: [], modo: 'nenhum'}, {tipo: 'selecionarTodos', ids: ['a', 'b']})",
+            "expected": { "selecionados": ["a", "b"], "modo": "todos" }
+          },
+          {
+            "name": "nao altera o estado recebido",
+            "expression": "(() => { const antes = {selecionados: ['a'], modo: 'alguns'}; reduzir(antes, {tipo: 'alternar', id: 'b', total: 3}); return antes.selecionados.length })()",
+            "expected": 1
+          },
+          {
+            "name": "acao desconhecida devolve o mesmo estado",
+            "expression": "(() => { const antes = {selecionados: ['a'], modo: 'alguns'}; return reduzir(antes, {tipo: 'coisa'}) === antes })()",
+            "expected": true
+          }
+        ],
+        "hints": [
+          "O modo é sempre calculado no fim, a partir do tamanho de selecionados: nunca guardado por fora.",
+          "Alternar é: se já está, remova; se não está, adicione — sempre criando uma lista nova.",
+          "Ação desconhecida devolve o próprio estado recebido, sem copiar."
+        ],
+        "solution": "function calcularModo(selecionados, total) {\n  if (selecionados.length === 0) return 'nenhum'\n  return selecionados.length >= total ? 'todos' : 'alguns'\n}\n\nfunction reduzir(estado, acao) {\n  switch (acao.tipo) {\n    case 'alternar': {\n      const jaEstava = estado.selecionados.includes(acao.id)\n      const selecionados = jaEstava\n        ? estado.selecionados.filter((id) => id !== acao.id)\n        : [...estado.selecionados, acao.id]\n      return { selecionados, modo: calcularModo(selecionados, acao.total) }\n    }\n\n    case 'limpar':\n      return { selecionados: [], modo: 'nenhum' }\n\n    case 'selecionarTodos':\n      return { selecionados: [...acao.ids], modo: calcularModo(acao.ids, acao.ids.length) }\n\n    default:\n      // Acao desconhecida nao gera estado novo: evita redesenho a toa.\n      return estado\n  }\n}\n",
+        "solutionNotes": "Repare que o `modo` nunca é passado na ação: ele é calculado. É a mesma ideia de não guardar o que dá para derivar — só que dentro da função de atualização."
+      },
+      "glossary": ["framework", "Teste unitário", "Refatoração"]
+    },
+    {
+      "id": "front-react-dados-01",
+      "type": "lesson",
+      "title": "React: buscar dados sem repetir requisição",
+      "estimatedMinutes": 10,
+      "tags": ["react", "api"],
+      "why": "Buscar dados dentro de efeito é onde nascem os três problemas clássicos: requisição repetida, resposta antiga sobrescrevendo a nova, e atualização depois de a tela sair.",
+      "goal": "Escrever uma busca que cancela o que ficou obsoleto e não dispara em laço.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O padrão base: buscar quando o filtro muda."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "useEffect(() => {\n  const controle = new AbortController()\n\n  async function buscar() {\n    const resposta = await fetch(`/api/tickets?status=${status}`, { signal: controle.signal })\n    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`)\n    setTickets(await resposta.json())\n  }\n\n  buscar().catch((erro) => {\n    if (erro.name !== 'AbortError') setErro(erro)\n  })\n\n  return () => controle.abort()\n}, [status])"
+        },
+        {
+          "kind": "text",
+          "text": "Duas partes fazem o trabalho pesado. A lista `[status]` diz quando repetir a busca. E o retorno do efeito cancela a requisição anterior quando o filtro muda de novo."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Resposta antiga chegando depois da nova",
+          "text": "Sem cancelamento, trocar o filtro rápido dispara duas requisições. Se a primeira demorar mais, ela chega por último e sobrescreve o resultado correto. A tela mostra o resultado do filtro anterior, e parece bug aleatório."
+        },
+        {
+          "kind": "text",
+          "text": "O segundo problema é a lista de dependências com valor que muda a cada desenho:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "// laço infinito: o objeto é novo a cada desenho, então o efeito roda sempre\nuseEffect(() => { buscar(filtros) }, [filtros])   // filtros = { status: 'aberto' }\n\n// estável: os valores primitivos só mudam quando mudam de verdade\nuseEffect(() => { buscar({ status }) }, [status])"
+        },
+        {
+          "kind": "text",
+          "text": "Objeto e função literais são recriados a cada desenho: para o React, são sempre diferentes. Dependência deve ser valor primitivo sempre que possível."
+        },
+        {
+          "kind": "text",
+          "text": "Na prática, times usam uma biblioteca de dados para isso. Vale saber o que ela resolve por baixo, porque é isso que você vai depurar:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "guarda a resposta por chave e reaproveita entre telas",
+            "descarta a resposta obsoleta",
+            "junta requisições iguais disparadas ao mesmo tempo",
+            "sabe quando o dado está velho e precisa ser buscado de novo"
+          ]
+        },
+        {
+          "kind": "quiz",
+          "question": "Ao digitar rápido num campo de busca, a lista às vezes mostra o resultado de um termo anterior. Qual é a causa?",
+          "choices": [
+            "O servidor está devolvendo dado errado",
+            "Requisições concorrentes: a mais antiga chegou depois e sobrescreveu o estado, porque nada cancela a anterior",
+            "Falta um debounce no campo",
+            "O componente está sendo desmontado"
+          ],
+          "answerIndex": 1,
+          "explanation": "É condição de corrida entre respostas. Debounce reduz o número de requisições e ajuda, mas não elimina o caso: a solução é cancelar a anterior ou ignorar a resposta que não corresponde ao termo atual."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa tela com busca, digite rápido e observe a aba de rede. Veja quantas requisições saem e em que ordem as respostas chegam.",
+        "expected": "Se as respostas chegam fora de ordem e nada cancela, o bug é reproduzível."
+      },
+      "ifStuck": [
+        "Se o efeito roda em laço, olhe a lista de dependências procurando objeto, array ou função.",
+        "Se a resposta errada aparece, o problema é a falta de cancelamento, não o servidor."
+      ],
+      "commonErrors": [
+        {
+          "error": "Lista de dependências vazia para calar o aviso.",
+          "why": "O efeito passa a usar valores congelados do primeiro desenho e para de reagir a mudanças.",
+          "fix": "Declare as dependências de verdade e, se o efeito reroda demais, estabilize os valores em vez de escondê-los."
+        }
+      ],
+      "exercise": {
+        "id": "ex-front-resposta-obsoleta-01",
+        "title": "Descartar resposta obsoleta",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `criarBuscador()`, que devolve `{ aceitar(termo), registrar(termo, resultado) }`. `aceitar` marca um termo como o mais recente. `registrar` devolve o resultado apenas se o termo for o mais recente aceito; caso contrário devolve null (resposta obsoleta). Antes de qualquer `aceitar`, `registrar` devolve null.",
+        "starter": "function criarBuscador() {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "sem aceitar nada, descarta",
+            "expression": "criarBuscador().registrar('a', [1])",
+            "expected": null
+          },
+          {
+            "name": "resposta do termo atual passa",
+            "expression": "(() => { const b = criarBuscador(); b.aceitar('ana'); return b.registrar('ana', ['x']) })()",
+            "expected": ["x"]
+          },
+          {
+            "name": "resposta antiga e descartada",
+            "expression": "(() => { const b = criarBuscador(); b.aceitar('an'); b.aceitar('ana'); return b.registrar('an', ['velho']) })()",
+            "expected": null
+          },
+          {
+            "name": "a mais recente continua valendo depois da antiga chegar",
+            "expression": "(() => { const b = criarBuscador(); b.aceitar('an'); b.aceitar('ana'); b.registrar('an', ['velho']); return b.registrar('ana', ['novo']) })()",
+            "expected": ["novo"]
+          },
+          {
+            "name": "mesmo termo aceito de novo continua valido",
+            "expression": "(() => { const b = criarBuscador(); b.aceitar('ana'); b.aceitar('ana'); return b.registrar('ana', ['ok']) })()",
+            "expected": ["ok"]
+          },
+          {
+            "name": "termo vazio tambem e um termo",
+            "expression": "(() => { const b = criarBuscador(); b.aceitar(''); return b.registrar('', ['tudo']) })()",
+            "expected": ["tudo"]
+          }
+        ],
+        "hints": [
+          "Guarde o último termo aceito numa variável dentro da função.",
+          "Cuidado com o estado inicial: antes de qualquer aceitar, nenhum termo pode ser considerado atual.",
+          "Termo vazio é válido — use um marcador diferente de '' para o estado inicial."
+        ],
+        "solution": "function criarBuscador() {\n  // Simbolo proprio: '' e um termo valido e nao pode ser o estado inicial.\n  const NENHUM = Symbol('nenhum')\n  let atual = NENHUM\n\n  return {\n    aceitar(termo) {\n      atual = termo\n    },\n    registrar(termo, resultado) {\n      return termo === atual ? resultado : null\n    },\n  }\n}\n",
+        "solutionNotes": "É a versão em função do que o `AbortController` faz no efeito: a resposta que não corresponde ao pedido atual é descartada em vez de sobrescrever a tela."
+      },
+      "glossary": ["requisicao", "resposta", "api", "Cache", "Latência"]
+    },
+    {
+      "id": "front-nextjs-servidor-cliente-01",
+      "type": "lesson",
+      "title": "Next.js: o que roda no servidor e o que roda no navegador",
+      "estimatedMinutes": 10,
+      "tags": ["nextjs", "react", "seguranca"],
+      "why": "Essa fronteira decide o que é segredo e o que é público. Colocar código do lado errado vaza chave de API ou quebra a tela com um erro difícil de entender.",
+      "goal": "Decidir onde cada componente roda e reconhecer o que nunca pode ir para o navegador.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "No App Router, o padrão é o componente rodar **no servidor**. Ele pode ser assíncrono e acessar banco direto:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "// roda no servidor: o navegador recebe só o HTML resultante\nexport default async function PaginaTickets() {\n  const tickets = await db.ticket.findMany({ take: 20 })\n\n  return (\n    <ul>\n      {tickets.map((ticket) => (\n        <li key={ticket.id}>{ticket.titulo}</li>\n      ))}\n    </ul>\n  )\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Nenhuma consulta, nenhuma credencial e nenhum registro extra chegam ao navegador — só o resultado."
+        },
+        {
+          "kind": "text",
+          "text": "Para haver interação, o componente precisa declarar que roda no navegador:"
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "'use client'\n\nexport function Filtro({ aoMudar }: { aoMudar: (valor: string) => void }) {\n  const [valor, setValor] = useState('')\n  return <input value={valor} onChange={(e) => { setValor(e.target.value); aoMudar(e.target.value) }} />\n}"
+        },
+        {
+          "kind": "table",
+          "headers": ["Precisa de", "Onde roda"],
+          "rows": [
+            ["banco, segredo, sistema de arquivos", "servidor"],
+            ["useState, useEffect, onClick", "navegador"],
+            ["window, localStorage", "navegador"],
+            ["só mostrar dados", "servidor"]
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Tudo que um componente de cliente recebe é público",
+          "text": "As props de um componente com `'use client'` viajam para o navegador para a tela ser reativada ali. Passar o objeto inteiro do usuário, com hash de senha dentro, entrega isso a quem abrir o código-fonte da página."
+        },
+        {
+          "kind": "code",
+          "language": "typescript",
+          "code": "// o objeto inteiro vai para o navegador\n<PainelDoUsuario usuario={usuario} />\n\n// só o necessário atravessa a fronteira\n<PainelDoUsuario nome={usuario.name} ehAdmin={usuario.papel === 'admin'} />"
+        },
+        {
+          "kind": "text",
+          "text": "Vale a mesma regra de sempre: `ehAdmin` no navegador serve para esconder um botão. A decisão de permitir continua sendo do servidor."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa mostrar uma lista vinda do banco com um campo de busca que filtra ao digitar. Como dividir?",
+          "choices": [
+            "Tudo num componente de cliente, buscando os dados por fetch",
+            "Componente de servidor busca os dados e passa para um componente de cliente pequeno, que cuida só da interação",
+            "Tudo num componente de servidor, com onChange no input",
+            "Dois componentes de servidor, um para a lista e outro para a busca"
+          ],
+          "answerIndex": 1,
+          "explanation": "O servidor faz o acesso ao banco sem expor nada; o cliente fica com a parte menor possível, que é a interação. Componente de servidor não tem onChange, e transformar tudo em cliente joga a busca de dados para o navegador sem necessidade."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa página que você fez, liste os componentes e marque cada um com servidor ou navegador. Para os de navegador, veja quais props eles recebem.",
+        "expected": "Toda prop que atravessa a fronteira é visível para quem abrir o código-fonte da página."
+      },
+      "ifStuck": [
+        "Se o componente usa useState, useEffect ou um manipulador de evento, ele é de cliente.",
+        "Se ele só recebe dados e devolve marcação, deixe no servidor."
+      ],
+      "commonErrors": [
+        {
+          "error": "\"useState is not defined\" ou \"Event handlers cannot be passed to Client Component props\".",
+          "why": "O componente está rodando no servidor e tenta usar recurso do navegador.",
+          "fix": "Adicione `'use client'` no topo do arquivo — e mantenha esse componente o menor possível."
+        }
+      ],
+      "exercise": {
+        "id": "ex-front-fronteira-01",
+        "title": "Dividir servidor e cliente",
+        "kind": "structural",
+        "language": "typescript",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva dois componentes num só trecho. Primeiro, `ListaDeTickets`: componente de servidor, assíncrono, que busca no banco e renderiza. Depois, `FiltroDeStatus`: componente de cliente com estado, marcado com 'use client'. O componente de servidor não pode passar o objeto do usuário inteiro para o cliente.",
+        "starter": "// ListaDeTickets: servidor\n\n\n// FiltroDeStatus: cliente\n",
+        "checks": [
+          {
+            "name": "marca o componente de cliente",
+            "type": "contains",
+            "value": "'use client'",
+            "hint": "Componente com estado precisa declarar que roda no navegador."
+          },
+          {
+            "name": "componente de servidor e assincrono",
+            "type": "regex",
+            "value": "async function ListaDeTickets",
+            "hint": "Componente de servidor pode ser async e buscar dados direto."
+          },
+          {
+            "name": "busca dados no servidor",
+            "type": "regex",
+            "value": "await\\s+(db|prisma|repositorio)",
+            "hint": "O acesso ao banco acontece no componente de servidor."
+          },
+          {
+            "name": "componente de cliente tem estado",
+            "type": "contains",
+            "value": "useState",
+            "hint": "É o que torna o componente interativo."
+          },
+          {
+            "name": "nao passa o usuario inteiro",
+            "type": "regex",
+            "value": "^(?![\\s\\S]*usuario=\\{usuario\\})[\\s\\S]*$",
+            "hint": "Prop de componente de cliente viaja para o navegador: passe só os campos necessários."
+          }
+        ],
+        "hints": [
+          "O 'use client' vai na primeira linha do arquivo do componente de cliente.",
+          "No servidor: `export default async function ListaDeTickets() { const tickets = await db... }`",
+          "No cliente: `const [status, setStatus] = useState('todos')`."
+        ],
+        "solution": "// ListaDeTickets: servidor\nexport default async function ListaDeTickets({ usuario }: { usuario: Usuario }) {\n  const tickets = await db.ticket.findMany({ where: { autorId: usuario.id }, take: 20 })\n\n  return (\n    <section>\n      {/* Só o que o filtro precisa atravessa a fronteira. */}\n      <FiltroDeStatus inicial=\"todos\" podeVerTodos={usuario.papel === 'suporte'} />\n\n      <ul>\n        {tickets.map((ticket) => (\n          <li key={ticket.id}>{ticket.titulo}</li>\n        ))}\n      </ul>\n    </section>\n  )\n}\n\n// FiltroDeStatus: cliente\n'use client'\n\nexport function FiltroDeStatus({ inicial, podeVerTodos }: { inicial: string; podeVerTodos: boolean }) {\n  const [status, setStatus] = useState(inicial)\n\n  return (\n    <select value={status} onChange={(evento) => setStatus(evento.target.value)}>\n      <option value=\"meus\">Meus tickets</option>\n      {podeVerTodos ? <option value=\"todos\">Todos</option> : null}\n    </select>\n  )\n}\n",
+        "solutionNotes": "Esta verificação lê o código e confere padrões: ela não executa nada. Num projeto de verdade, os dois componentes ficam em arquivos separados, porque `'use client'` vale para o arquivo inteiro."
+      },
+      "glossary": ["framework", "rota", "autorizacao", "sessao", "XSS"]
+    },
+    {
+      "id": "front-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["frontend"],
+      "summary": "Você tem a base do frontend que as vagas pedem: tipos, componentes com estado e a divisão entre servidor e navegador.",
+      "learned": [
+        "O tipo protege o seu código, mas não existe em execução: dado externo precisa de validação de verdade",
+        "`as` não converte nada; ele manda o compilador confiar em você",
+        "Props descem, estado fica — e o que dá para calcular não é estado",
+        "Estado duplicado é a causa do número que \"às vezes não bate\"",
+        "Busca em efeito precisa cancelar a anterior, ou a resposta antiga sobrescreve a nova",
+        "Dependência de efeito deve ser valor primitivo",
+        "Prop de componente de cliente viaja para o navegador: passe só o necessário"
+      ],
+      "nextUp": "Comunicação entre aplicações, para o outro lado do fetch."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-front-moderno",
+      "title": "Frontend moderno",
+      "format": "alternativa",
+      "summary": "Cinco situações de tela: tipos, estado, busca de dados e a fronteira entre servidor e navegador.",
+      "estimatedMinutes": 8,
+      "topics": ["typescript", "react", "estado", "nextjs"],
+      "afterItemId": "front-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-front-any-01",
+          "kind": "codigo",
+          "prompt": "Qual é o problema desta linha?",
+          "code": {
+            "language": "typescript",
+            "code": "const pedido = (await resposta.json()) as Pedido"
+          },
+          "choices": [
+            "Falta await antes de resposta",
+            "`as` não verifica nada em execução: se a API devolver outro formato, o erro aparece longe daqui",
+            "Deveria usar JSON.parse",
+            "Nada: é a forma recomendada"
+          ],
+          "answerIndex": 1,
+          "explanation": "O tipo é apagado na compilação. `as` é uma afirmação sua, não uma checagem. Dado que vem de fora precisa de validação que roda.",
+          "topics": ["typescript"]
+        },
+        {
+          "id": "q-front-estado-derivado-02",
+          "kind": "situacao",
+          "prompt": "Um componente guarda `produtos` e também `total` em estados separados. O total às vezes fica desatualizado. Qual é a correção?",
+          "choices": [
+            "Atualizar o total dentro de um efeito que observa produtos",
+            "Calcular o total a partir de produtos na hora de desenhar, eliminando o segundo estado",
+            "Guardar o total num contexto compartilhado",
+            "Forçar o redesenho do componente"
+          ],
+          "answerIndex": 1,
+          "explanation": "Valor derivado não deve ser estado. Sincronizar por efeito mantém as duas fontes e apenas adia a divergência para um caminho de atualização esquecido.",
+          "topics": ["react", "estado"]
+        },
+        {
+          "id": "q-front-efeito-laco-03",
+          "kind": "debugging",
+          "prompt": "Este efeito dispara requisições sem parar. Por quê?",
+          "code": {
+            "language": "typescript",
+            "code": "const filtros = { status: 'aberto' }\n\nuseEffect(() => {\n  buscar(filtros)\n}, [filtros])"
+          },
+          "choices": [
+            "A função buscar não é assíncrona",
+            "`filtros` é um objeto novo a cada desenho, então a dependência sempre parece diferente e o efeito roda de novo",
+            "Falta retornar uma função de limpeza",
+            "A lista de dependências deveria estar vazia"
+          ],
+          "answerIndex": 1,
+          "explanation": "Objeto literal é recriado a cada desenho. Depender de `status`, que é primitivo, quebra o laço. Lista vazia calaria o aviso e criaria outro bug: o efeito pararia de reagir a mudanças.",
+          "topics": ["react"]
+        },
+        {
+          "id": "q-front-fronteira-04",
+          "kind": "situacao",
+          "prompt": "Um componente de servidor passa `<Painel usuario={usuario} />` para um componente marcado com 'use client'. O objeto tem email, papel e hash da senha. Qual é a consequência?",
+          "choices": [
+            "Nenhuma: o componente de cliente só usa o nome",
+            "O objeto inteiro é enviado ao navegador para a tela ser reativada ali, incluindo o hash da senha",
+            "O React remove os campos não usados automaticamente",
+            "O componente de cliente não consegue receber objetos"
+          ],
+          "answerIndex": 1,
+          "explanation": "As props de um componente de cliente são serializadas e vão junto com a página. O que atravessa a fronteira é público: passe apenas os campos necessários.",
+          "topics": ["nextjs"]
+        },
+        {
+          "id": "q-front-corrida-05",
+          "kind": "debugging",
+          "prompt": "Numa busca que dispara a cada tecla, a lista às vezes mostra o resultado de um termo anterior. Qual correção resolve a causa?",
+          "choices": [
+            "Aumentar o tempo de debounce até o problema sumir",
+            "Cancelar a requisição anterior, ou descartar a resposta que não corresponde ao termo atual",
+            "Guardar os resultados em cache no navegador",
+            "Fazer a busca no servidor"
+          ],
+          "answerIndex": 1,
+          "explanation": "É condição de corrida entre respostas. Debounce reduz a frequência e torna o caso mais raro, mas não o elimina: duas requisições ainda podem estar em voo.",
+          "topics": ["react"]
+        }
+      ]
+    }
+  ]
+}

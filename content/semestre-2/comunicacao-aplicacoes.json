@@ -1,0 +1,774 @@
+{
+  "id": "comunicacao-aplicacoes",
+  "semester": 2,
+  "order": 5,
+  "title": "Comunicação entre aplicações",
+  "summary": "HTTP na prática, REST sem dogma, status codes que dizem a verdade, webhooks e integração que sobrevive a falha.",
+  "outcome": "Você projeta um endpoint com contrato claro, escolhe o status correto, consome uma API tratando falha e sabe por que integração precisa tolerar entrega repetida.",
+  "tags": [
+    "api",
+    "http",
+    "integracao"
+  ],
+  "stack": [
+    "javascript",
+    "python",
+    "json"
+  ],
+  "items": [
+    {
+      "id": "com-http-contrato-01",
+      "type": "lesson",
+      "title": "O contrato de um endpoint",
+      "estimatedMinutes": 10,
+      "tags": [
+        "api",
+        "http"
+      ],
+      "why": "Quem consome sua API não vai ler o seu código. Vai depender do contrato. Contrato mal definido gera integração frágil e chamado eterno.",
+      "goal": "Descrever um endpoint completo: método, caminho, entrada, saída e erros.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "REST organiza a API em torno de recursos. O caminho diz o quê; o método diz a ação."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "GET    /pedidos              lista\nGET    /pedidos/57           busca um\nPOST   /pedidos              cria\nPATCH  /pedidos/57           altera parte\nDELETE /pedidos/57           remove\n\nEvite: POST /criarPedido, GET /pedidoDelete?id=57"
+        },
+        {
+          "kind": "text",
+          "text": "Um contrato completo responde cinco perguntas:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "GET /pedidos\n\nEntrada (query):\n  status  opcional  pending | done | canceled\n  desde   opcional  AAAA-MM-DD\n  ate     opcional  AAAA-MM-DD\n  pagina  opcional  inteiro >= 1, padrão 1\n  limite  opcional  inteiro 1..100, padrão 20\n\nSaída 200:\n  { \"itens\": [...], \"pagina\": 1, \"limite\": 20, \"total\": 143 }\n\nErros:\n  401  sem sessão válida\n  422  filtro inválido (campo indicado na resposta)\n  500  falha do servidor"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Paginação desde o primeiro dia",
+          "text": "Adicionar paginação depois muda o formato da resposta e quebra quem já integrou. Devolver lista pura em endpoint de listagem é dívida garantida."
+        },
+        {
+          "kind": "text",
+          "text": "Sobre erros: devolva a informação que permite corrigir, sem expor detalhe interno."
+        },
+        {
+          "kind": "code",
+          "language": "json",
+          "code": "{\n  \"erro\": \"filtro inválido\",\n  \"campo\": \"desde\",\n  \"detalhe\": \"formato esperado AAAA-MM-DD\"\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Nunca devolva stack trace nem mensagem de erro do banco: além de inútil para quem consome, revela estrutura interna."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual endpoint segue melhor o estilo REST para cancelar um pedido?",
+          "choices": [
+            "GET /cancelarPedido?id=57",
+            "POST /pedidos/57/cancelamento",
+            "POST /cancelar",
+            "DELETE /pedidos/57"
+          ],
+          "answerIndex": 1,
+          "explanation": "GET não deve alterar dado. DELETE removeria o pedido, e cancelar é diferente de apagar: o pedido continua existindo com outro status."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva o contrato completo de um endpoint de criação de ticket: entrada, saída de sucesso, e todos os erros possíveis com o status de cada um.",
+        "expected": "Pelo menos quatro situações de erro previstas, cada uma com status e formato de resposta."
+      },
+      "ifStuck": [
+        "Pense no que pode chegar errado: campo faltando, valor inválido, sem permissão, recurso relacionado inexistente, conflito."
+      ],
+      "commonErrors": [
+        {
+          "error": "Devolver 200 com {\"sucesso\": false}.",
+          "why": "Quem consome precisa ler o corpo para saber que falhou, e o monitoramento não acusa nada.",
+          "fix": "Use o status HTTP como primeiro sinal."
+        }
+      ],
+      "exercise": {
+        "id": "ex-com-status-01",
+        "title": "Escolher o status correto",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `statusPara(situacao)`, devolvendo o código HTTP adequado para cada situação: 'criado' → 201, 'ok' → 200, 'sem-sessao' → 401, 'sem-permissao' → 403, 'nao-existe' → 404, 'conflito' → 409, 'dado-invalido' → 422, 'limite-excedido' → 429, qualquer outra → 500.",
+        "starter": "function statusPara(situacao) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "criado",
+            "expression": "statusPara('criado')",
+            "expected": 201
+          },
+          {
+            "name": "sem sessao",
+            "expression": "statusPara('sem-sessao')",
+            "expected": 401
+          },
+          {
+            "name": "autenticado sem permissao",
+            "expression": "statusPara('sem-permissao')",
+            "expected": 403
+          },
+          {
+            "name": "dado invalido",
+            "expression": "statusPara('dado-invalido')",
+            "expected": 422
+          },
+          {
+            "name": "limite excedido",
+            "expression": "statusPara('limite-excedido')",
+            "expected": 429
+          },
+          {
+            "name": "situacao desconhecida cai em 500",
+            "expression": "statusPara('qualquer-outra-coisa')",
+            "expected": 500
+          }
+        ],
+        "hints": [
+          "Um objeto de mapeamento resolve com menos código que uma cadeia de ifs.",
+          "Use o operador ?? para o padrão 500."
+        ],
+        "solution": "const STATUS = {\n  criado: 201,\n  ok: 200,\n  'sem-sessao': 401,\n  'sem-permissao': 403,\n  'nao-existe': 404,\n  conflito: 409,\n  'dado-invalido': 422,\n  'limite-excedido': 429,\n}\n\nfunction statusPara(situacao) {\n  return STATUS[situacao] ?? 500\n}\n",
+        "solutionNotes": "A diferença entre 401 e 403 é frequente em entrevista e em bug real: 401 é \"não sei quem você é\", 403 é \"sei quem você é e não pode\"."
+      },
+      "glossary": [
+        "rest",
+        "status-code",
+        "endpoint",
+        "paginacao",
+        "api"
+      ]
+    },
+    {
+      "id": "com-integracao-falha-01",
+      "type": "lesson",
+      "title": "Integração que tolera falha",
+      "estimatedMinutes": 10,
+      "tags": [
+        "api",
+        "integracao"
+      ],
+      "why": "Toda integração falha em algum momento. O que diferencia um sistema confiável é o que acontece depois da falha.",
+      "goal": "Aplicar timeout, retentativa com limite e idempotência numa chamada externa.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Três defesas, em ordem de importância:"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Timeout: sem ele, uma chamada pendurada consome sua aplicação",
+            "Retentativa com limite e intervalo crescente, só para falha transitória",
+            "Idempotência: repetir a operação não pode duplicar o efeito"
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "async function chamarComTimeout(url, opcoes, ms = 5000) {\n  const controle = new AbortController()\n  const relogio = setTimeout(() => controle.abort(), ms)\n  try {\n    return await fetch(url, { ...opcoes, signal: controle.signal })\n  } finally {\n    clearTimeout(relogio)\n  }\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Retentativa sem limite é como derrubar o serviço de propósito",
+          "text": "Quando o serviço externo está sobrecarregado, retentativa imediata e infinita piora a situação dos dois lados. Use no máximo três tentativas, com intervalo crescente."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "async function comRetentativa(operacao, tentativas = 3) {\n  for (let numero = 1; numero <= tentativas; numero += 1) {\n    try {\n      return await operacao()\n    } catch (erro) {\n      const ultima = numero === tentativas\n      if (ultima || !transitorio(erro)) throw erro\n      await esperar(numero * 1000)   // 1s, 2s\n    }\n  }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Só repita o que é transitório: timeout, 429, 5xx. Repetir um 400 vai falhar as três vezes, porque o pedido está errado."
+        },
+        {
+          "kind": "text",
+          "text": "Idempotência: a terceira defesa e a mais esquecida. Se você manda cobrar e a resposta não chega, você não sabe se cobrou. Repetir pode cobrar duas vezes."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// a chave é gerada uma vez, por operação, e reenviada nas retentativas\nawait fetch('https://pagamentos.exemplo/cobrancas', {\n  method: 'POST',\n  headers: { 'Idempotency-Key': `pedido-${pedidoId}` },\n  body: JSON.stringify({ valor })\n})"
+        },
+        {
+          "kind": "text",
+          "text": "O mesmo vale ao receber: webhook pode chegar duas vezes. Guarde o identificador do evento e ignore repetição."
+        },
+        {
+          "kind": "quiz",
+          "question": "Sua aplicação envia uma cobrança, o timeout dispara e você não sabe se foi processada. Qual abordagem evita cobrança duplicada na retentativa?",
+          "choices": [
+            "Aguardar 10 minutos antes de tentar de novo",
+            "Enviar a mesma chave de idempotência, para que o provedor reconheça a operação repetida",
+            "Consultar o extrato e decidir manualmente",
+            "Nunca repetir cobrança"
+          ],
+          "answerIndex": 1,
+          "explanation": "A chave de idempotência transfere a responsabilidade para quem tem a informação: o provedor sabe se já processou aquela operação.",
+          "topics": [
+            "integração"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue qualquer chamada externa do seu código e adicione timeout. Depois teste com uma URL que demora (por exemplo, um endpoint inexistente numa porta fechada).",
+        "expected": "A chamada falha em tempo previsível, com mensagem clara."
+      },
+      "ifStuck": [
+        "Em fetch, o timeout vem de AbortController; em requests (Python), do parâmetro timeout."
+      ],
+      "commonErrors": [
+        {
+          "error": "requests.get(url) sem timeout.",
+          "why": "O padrão é esperar indefinidamente. Um serviço lento prende suas threads até a aplicação parar de responder.",
+          "fix": "Sempre passe timeout, mesmo em script pequeno."
+        }
+      ],
+      "exercise": {
+        "id": "ex-com-idempotencia-01",
+        "title": "Ignorar evento repetido",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `processarEventos(eventos)`, que recebe eventos de webhook com `id` e `tipo` e devolve { processados, ignorados }. Eventos com id repetido são ignorados (só o primeiro conta). Evento sem id é sempre processado, porque não há como saber se é repetição.",
+        "starter": "function processarEventos(eventos) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "processarEventos([])",
+            "expected": {
+              "processados": 0,
+              "ignorados": 0
+            }
+          },
+          {
+            "name": "ignora repetido",
+            "expression": "processarEventos([{id:'e1',tipo:'pago'},{id:'e1',tipo:'pago'}])",
+            "expected": {
+              "processados": 1,
+              "ignorados": 1
+            }
+          },
+          {
+            "name": "ids diferentes processam todos",
+            "expression": "processarEventos([{id:'e1'},{id:'e2'},{id:'e3'}])",
+            "expected": {
+              "processados": 3,
+              "ignorados": 0
+            }
+          },
+          {
+            "name": "evento sem id e processado",
+            "expression": "processarEventos([{tipo:'pago'},{tipo:'pago'}])",
+            "expected": {
+              "processados": 2,
+              "ignorados": 0
+            }
+          },
+          {
+            "name": "repeticao nao adjacente tambem e ignorada",
+            "expression": "processarEventos([{id:'a'},{id:'b'},{id:'a'}])",
+            "expected": {
+              "processados": 2,
+              "ignorados": 1
+            }
+          }
+        ],
+        "hints": [
+          "Um Set com os ids já vistos resolve.",
+          "Cuidado para não tratar evento sem id como repetição: undefined seria \"visto\" na segunda vez.",
+          "Verifique a existência do id antes de consultar o Set."
+        ],
+        "solution": "function processarEventos(eventos) {\n  const vistos = new Set()\n  let processados = 0\n  let ignorados = 0\n\n  for (const evento of eventos) {\n    const id = evento?.id\n    if (id === undefined || id === null) {\n      processados += 1\n      continue\n    }\n    if (vistos.has(id)) {\n      ignorados += 1\n      continue\n    }\n    vistos.add(id)\n    processados += 1\n  }\n\n  return { processados, ignorados }\n}\n",
+        "solutionNotes": "Em produção o Set é uma tabela: o id do evento vira chave única, e a inserção duplicada falha, o que já é a verificação."
+      },
+      "glossary": [
+        "webhook",
+        "fila",
+        "Latência",
+        "api",
+        "Log"
+      ]
+    },
+    {
+      "id": "com-versionamento-api-01",
+      "type": "lesson",
+      "title": "Mudar a API sem quebrar quem já integrou",
+      "estimatedMinutes": 10,
+      "tags": [
+        "api",
+        "http"
+      ],
+      "why": "Depois que alguém integra, o contrato deixa de ser seu. Mudar um campo de lugar derruba o sistema do outro time num horário que você não escolhe.",
+      "goal": "Separar mudança compatível de mudança que quebra, e saber o que fazer com cada uma.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A pergunta que decide tudo: **um cliente escrito ontem continua funcionando depois desta mudança?**"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Mudança",
+            "Quebra?",
+            "O que fazer"
+          ],
+          "rows": [
+            [
+              "adicionar campo na resposta",
+              "não",
+              "pode entrar agora"
+            ],
+            [
+              "adicionar filtro opcional",
+              "não",
+              "pode entrar agora"
+            ],
+            [
+              "renomear campo",
+              "sim",
+              "adicionar o novo e manter o antigo"
+            ],
+            [
+              "remover campo",
+              "sim",
+              "avisar, esperar, depois remover"
+            ],
+            [
+              "tornar campo obrigatório",
+              "sim",
+              "nova versão"
+            ],
+            [
+              "mudar tipo de um campo",
+              "sim",
+              "nova versão"
+            ]
+          ],
+          "caption": "Adicionar costuma ser seguro. Renomear e remover, nunca."
+        },
+        {
+          "kind": "text",
+          "text": "Renomear é o caso mais comum e o mais fácil de resolver: mande os dois por um tempo."
+        },
+        {
+          "kind": "code",
+          "language": "json",
+          "code": "{\n  \"id\": 57,\n  \"valor_total\": 129.9,\n  \"total\": 129.9\n}",
+          "caption": "`valor_total` é o novo; `total` fica até os clientes migrarem."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Campo duplicado tem prazo",
+          "text": "Sem data para sair, ele vira permanente e a resposta cresce para sempre. Registre quando remover e avise quem consome."
+        },
+        {
+          "kind": "text",
+          "text": "Quando a mudança quebra mesmo, versione. A forma mais simples é no caminho, porque aparece no log e em qualquer ferramenta:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "GET /v1/pedidos      contrato antigo, congelado\nGET /v2/pedidos      contrato novo\n\nAs duas rotas vivem juntas por um tempo combinado."
+        },
+        {
+          "kind": "text",
+          "text": "Versionar tem custo: são dois caminhos de código para manter e testar. Por isso vale evitar chegar nesse ponto — pense no contrato antes de publicar."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa trocar `status` de texto (`\"pending\"`) para um objeto (`{ \"codigo\": \"pending\", \"rotulo\": \"Pendente\" }`). O que fazer?",
+          "choices": [
+            "Trocar direto: o formato novo é melhor",
+            "Adicionar um campo novo, como `status_detalhado`, e manter `status` como está até combinar a remoção",
+            "Trocar e avisar por email depois do deploy",
+            "Manter os dois formatos no mesmo campo e deixar o cliente descobrir qual chegou"
+          ],
+          "answerIndex": 1,
+          "explanation": "Mudar o tipo de um campo existente quebra qualquer cliente que o leia. Campo novo ao lado do antigo permite migrar sem janela de indisponibilidade. A última opção é a pior: obriga cada cliente a adivinhar o formato a cada resposta."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma resposta de API que você já escreveu e liste três mudanças que você gostaria de fazer. Para cada uma, marque se quebra ou não quebra quem já integrou.",
+        "expected": "Pelo menos uma das três quebra — e agora você sabe qual."
+      },
+      "ifStuck": [
+        "Imagine um cliente que lê exatamente um campo da resposta. Sua mudança faz esse cliente parar de funcionar?",
+        "Adicionar quase nunca quebra. Renomear, remover e mudar tipo quase sempre quebram."
+      ],
+      "commonErrors": [
+        {
+          "error": "Tornar opcional um campo que sempre existia.",
+          "why": "Quem consome escreveu o código contando com o campo, e passa a receber nulo sem aviso.",
+          "fix": "Trate como mudança que quebra: mantenha o valor ou versione."
+        }
+      ],
+      "exercise": {
+        "id": "ex-com-compatibilidade-01",
+        "title": "Classificar a mudança",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `quebraCompatibilidade(antes, depois)`. Cada parâmetro é um objeto descrevendo a resposta da API, com nomes de campo e tipos (ex.: { total: 'number', status: 'string' }). Devolva a lista ordenada dos motivos: 'campo removido: X', 'tipo alterado: X' — nessa ordem de verificação. Campo novo não entra na lista.",
+        "starter": "function quebraCompatibilidade(antes, depois) {\n  // escreva aqui\n}\n",
+        "expectedResult": "Lista vazia quando a mudança é segura; uma linha por problema quando não é.",
+        "tests": [
+          {
+            "name": "sem mudanca",
+            "expression": "quebraCompatibilidade({total: 'number'}, {total: 'number'})",
+            "expected": []
+          },
+          {
+            "name": "campo novo nao quebra",
+            "expression": "quebraCompatibilidade({total: 'number'}, {total: 'number', desconto: 'number'})",
+            "expected": []
+          },
+          {
+            "name": "campo removido quebra",
+            "expression": "quebraCompatibilidade({total: 'number', status: 'string'}, {total: 'number'})",
+            "expected": [
+              "campo removido: status"
+            ]
+          },
+          {
+            "name": "tipo alterado quebra",
+            "expression": "quebraCompatibilidade({status: 'string'}, {status: 'object'})",
+            "expected": [
+              "tipo alterado: status"
+            ]
+          },
+          {
+            "name": "remocao vem antes de alteracao de tipo",
+            "expression": "quebraCompatibilidade({a: 'string', b: 'number'}, {b: 'string'})",
+            "expected": [
+              "campo removido: a",
+              "tipo alterado: b"
+            ]
+          },
+          {
+            "name": "resposta vazia dos dois lados",
+            "expression": "quebraCompatibilidade({}, {})",
+            "expected": []
+          }
+        ],
+        "hints": [
+          "Percorra os campos de `antes`: é neles que estão os dois problemas.",
+          "Campo que não existe em `depois` foi removido.",
+          "Junte primeiro todas as remoções e só depois as alterações de tipo."
+        ],
+        "solution": "function quebraCompatibilidade(antes, depois) {\n  const removidos = []\n  const alterados = []\n\n  for (const [campo, tipo] of Object.entries(antes)) {\n    if (!(campo in depois)) {\n      removidos.push(`campo removido: ${campo}`)\n      continue\n    }\n    if (depois[campo] !== tipo) {\n      alterados.push(`tipo alterado: ${campo}`)\n    }\n  }\n\n  return [...removidos, ...alterados]\n}\n",
+        "solutionNotes": "Esta verificação cabe num teste do seu próprio projeto: guarde o formato publicado e compare a cada alteração. É assim que times evitam descobrir a quebra pelo chamado do cliente."
+      },
+      "glossary": [
+        "api",
+        "endpoint",
+        "versionamento",
+        "json",
+        "rest"
+      ]
+    },
+    {
+      "id": "com-autenticacao-entre-sistemas-01",
+      "type": "lesson",
+      "title": "Autenticação entre sistemas",
+      "estimatedMinutes": 10,
+      "tags": [
+        "api",
+        "seguranca"
+      ],
+      "why": "Integração entre dois sistemas não tem usuário digitando senha. O que autentica é um segredo — e segredo sem rotação é incidente adiado.",
+      "goal": "Escolher entre chave de API e token, e preparar a troca do segredo sem parar a integração.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Duas formas aparecem em quase toda integração:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Forma",
+            "Como funciona",
+            "Quando usar"
+          ],
+          "rows": [
+            [
+              "Chave de API",
+              "segredo fixo num cabeçalho",
+              "integração simples, um cliente conhecido"
+            ],
+            [
+              "Token de curta duração",
+              "credencial troca por token que expira",
+              "muitos clientes, permissões diferentes"
+            ]
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "bash",
+          "code": "# chave de API\ncurl https://api.exemplo.com/pedidos \\\n  -H \"x-api-key: $CHAVE\"\n\n# token de curta duração\ncurl https://api.exemplo.com/pedidos \\\n  -H \"Authorization: Bearer $TOKEN\""
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Chave na URL é chave vazada",
+          "text": "Query string aparece no log do servidor, no histórico do navegador e no Referer enviado a terceiros. Segredo vai no cabeçalho, nunca no caminho."
+        },
+        {
+          "kind": "text",
+          "text": "A parte que quase ninguém prepara é a **rotação**. A pergunta é simples e a resposta costuma ser constrangedora: se essa chave vazar hoje, quanto tempo leva para trocá-la sem derrubar a integração?"
+        },
+        {
+          "kind": "text",
+          "text": "Rotação sem parada exige aceitar duas chaves ao mesmo tempo, por um período:"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Gere a chave nova e passe a aceitar as duas",
+            "Atualize o cliente para usar a nova",
+            "Confirme no log que a antiga parou de aparecer",
+            "Revogue a antiga"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Isso só funciona se o servidor comparar a chave recebida contra uma lista, e não contra um valor único no código."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# uma chave no código: rotação exige deploy e derruba a integração no meio\nif chave == os.environ[\"API_KEY\"]:\n    ...\n\n# lista de chaves ativas: rotação vira operação de dado\nif repositorio.chave_ativa(hash_da_chave(chave)):\n    ..."
+        },
+        {
+          "kind": "text",
+          "text": "Repare no `hash_da_chave`: o banco guarda o hash, como em senha. Um vazamento da tabela não entrega as chaves dos clientes."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma chave de API de um parceiro vazou num repositório público. Qual é a primeira ação?",
+          "choices": [
+            "Pedir para o parceiro apagar o repositório",
+            "Gerar uma chave nova para o parceiro, aceitar as duas por um período curto e revogar a antiga",
+            "Esperar o parceiro avisar que migrou",
+            "Bloquear o IP do parceiro"
+          ],
+          "answerIndex": 1,
+          "explanation": "Apagar o repositório não desfaz os clones. Revogar de imediato derruba a integração do parceiro em produção. Aceitar as duas por um período curto troca a chave sem parar ninguém — e é por isso que a rotação precisa estar pronta antes do incidente."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Para uma integração que você conhece, responda por escrito: onde está o segredo hoje, quem tem acesso a ele, e quais passos seriam necessários para trocá-lo sem parar o serviço.",
+        "expected": "Se o terceiro passo for \"fazer deploy e torcer\", você encontrou o que precisa mudar."
+      },
+      "ifStuck": [
+        "Comece pelo caminho do segredo: de onde ele sai, por onde passa, onde é comparado.",
+        "Se a comparação é contra um valor único vindo de variável de ambiente, a rotação exige deploy."
+      ],
+      "commonErrors": [
+        {
+          "error": "Comparar a chave com `==` sobre o valor em claro.",
+          "why": "Além de guardar o segredo em claro, a comparação de texto pode vazar informação pelo tempo de resposta.",
+          "fix": "Guarde o hash e compare com função de tempo constante."
+        }
+      ],
+      "exercise": {
+        "id": "ex-com-rotacao-chave-01",
+        "title": "Aceitar duas chaves durante a rotação",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `chaveValida(recebida, ativas, agora)`. `ativas` é a lista de chaves do sistema, cada uma com `valor`, `expiraEm` (texto ISO ou null) e `revogada` (booleano). Devolva true quando a chave recebida existe, não está revogada e não expirou. Chave ausente ou vazia devolve false.",
+        "starter": "function chaveValida(recebida, ativas, agora) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "chave ativa sem prazo",
+            "expression": "chaveValida('k1', [{valor:'k1', expiraEm:null, revogada:false}], '2026-05-10T00:00:00Z')",
+            "expected": true
+          },
+          {
+            "name": "chave revogada nao vale",
+            "expression": "chaveValida('k1', [{valor:'k1', expiraEm:null, revogada:true}], '2026-05-10T00:00:00Z')",
+            "expected": false
+          },
+          {
+            "name": "chave expirada nao vale",
+            "expression": "chaveValida('k1', [{valor:'k1', expiraEm:'2026-05-01T00:00:00Z', revogada:false}], '2026-05-10T00:00:00Z')",
+            "expected": false
+          },
+          {
+            "name": "durante a rotacao as duas valem",
+            "expression": "[chaveValida('antiga', [{valor:'antiga', expiraEm:'2026-06-01T00:00:00Z', revogada:false},{valor:'nova', expiraEm:null, revogada:false}], '2026-05-10T00:00:00Z'), chaveValida('nova', [{valor:'antiga', expiraEm:'2026-06-01T00:00:00Z', revogada:false},{valor:'nova', expiraEm:null, revogada:false}], '2026-05-10T00:00:00Z')]",
+            "expected": [
+              true,
+              true
+            ]
+          },
+          {
+            "name": "chave desconhecida",
+            "expression": "chaveValida('outra', [{valor:'k1', expiraEm:null, revogada:false}], '2026-05-10T00:00:00Z')",
+            "expected": false
+          },
+          {
+            "name": "chave vazia",
+            "expression": "chaveValida('', [{valor:'', expiraEm:null, revogada:false}], '2026-05-10T00:00:00Z')",
+            "expected": false
+          },
+          {
+            "name": "lista vazia",
+            "expression": "chaveValida('k1', [], '2026-05-10T00:00:00Z')",
+            "expected": false
+          }
+        ],
+        "hints": [
+          "Trate a chave vazia antes de procurar na lista.",
+          "Datas no formato ISO podem ser comparadas como texto, mas `new Date(...)` deixa a intenção mais clara.",
+          "São três condições: existe, não revogada, não expirada."
+        ],
+        "solution": "function chaveValida(recebida, ativas, agora) {\n  if (!recebida) return false\n\n  const encontrada = ativas.find((chave) => chave.valor === recebida)\n  if (!encontrada) return false\n  if (encontrada.revogada) return false\n  if (!encontrada.expiraEm) return true\n\n  return new Date(encontrada.expiraEm).getTime() > new Date(agora).getTime()\n}\n",
+        "solutionNotes": "Em produção, `ativas` vem do banco e guarda o hash da chave, não o valor. A comparação também deve ser de tempo constante — o que, em Node, é `crypto.timingSafeEqual`."
+      },
+      "glossary": [
+        "api",
+        "autenticacao",
+        "Hash",
+        "variavel-de-ambiente",
+        "Log",
+        "https"
+      ]
+    },
+    {
+      "id": "com-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "api"
+      ],
+      "summary": "Você consegue projetar e consumir API com contrato explícito e comportamento previsível quando algo falha.",
+      "learned": [
+        "Recurso no caminho, ação no método",
+        "Contrato define entrada, saída e todos os erros",
+        "Paginação desde o começo",
+        "Status HTTP é o primeiro sinal: nunca 200 com erro no corpo",
+        "Timeout sempre; retentativa com limite e só para falha transitória",
+        "Idempotência ao enviar e ao receber"
+      ],
+      "nextUp": "Terceiro semestre: banco de dados, sistemas operacionais, Python aplicado e engenharia de software."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-com-api",
+      "title": "APIs e integração",
+      "format": "alternativa",
+      "summary": "Cinco decisões de projeto e depuração de API.",
+      "estimatedMinutes": 8,
+      "topics": [
+        "rest",
+        "status",
+        "integração"
+      ],
+      "afterItemId": "com-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-com-401-01",
+          "kind": "conceitual",
+          "prompt": "Qual é a diferença entre 401 e 403?",
+          "choices": [
+            "São sinônimos",
+            "401 é falta de autenticação; 403 é autenticado, mas sem permissão para o recurso",
+            "401 é erro do servidor; 403 é erro do cliente",
+            "403 é usado apenas para arquivos estáticos"
+          ],
+          "answerIndex": 1,
+          "explanation": "401 pede credencial. 403 diz que a credencial existe e não basta. Trocar os dois confunde quem integra e atrapalha o tratamento no frontend.",
+          "topics": [
+            "status"
+          ]
+        },
+        {
+          "id": "q-com-200-02",
+          "kind": "debugging",
+          "prompt": "Uma API devolve 200 com {\"sucesso\": false, \"erro\": \"saldo insuficiente\"}. Qual problema isso causa?",
+          "choices": [
+            "Nenhum, desde que documentado",
+            "Monitoramento e clientes tratam como sucesso; a falha só aparece para quem lê o corpo, e passa despercebida em métricas",
+            "O corpo fica maior",
+            "O navegador bloqueia a resposta"
+          ],
+          "answerIndex": 1,
+          "explanation": "Status é a interface mais barata de verificar. Erro de regra de negócio cabe num 4xx (422 ou 409), com detalhe no corpo.",
+          "topics": [
+            "status"
+          ]
+        },
+        {
+          "id": "q-com-timeout-03",
+          "kind": "situacao",
+          "prompt": "Sua aplicação parou de responder. Uma API externa que ela consome está lenta. Qual configuração teria limitado o dano?",
+          "choices": [
+            "Cache das respostas",
+            "Timeout nas chamadas externas",
+            "Mais instâncias da aplicação",
+            "Retentativa automática"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem timeout, cada requisição pendurada ocupa um recurso até esgotar tudo. Retentativa sem timeout piora o problema.",
+          "topics": [
+            "integração"
+          ]
+        },
+        {
+          "id": "q-com-webhook-04",
+          "kind": "situacao",
+          "prompt": "Seu sistema recebe webhooks de pagamento e alguns clientes foram creditados duas vezes. Qual é a causa provável?",
+          "choices": [
+            "O provedor está com defeito",
+            "O mesmo evento foi entregue mais de uma vez e o sistema não verifica se já processou aquele id",
+            "Falta HTTPS no endpoint",
+            "O corpo da requisição está mal formado"
+          ],
+          "answerIndex": 1,
+          "explanation": "Entrega repetida é comportamento normal e documentado de webhook. Quem recebe precisa ser idempotente.",
+          "topics": [
+            "integração"
+          ]
+        },
+        {
+          "id": "q-com-rest-05",
+          "kind": "codigo",
+          "prompt": "Qual desenho de endpoint está adequado para listar os comentários de um ticket?",
+          "code": {
+            "language": "text",
+            "code": "Opções abaixo."
+          },
+          "choices": [
+            "GET /listarComentarios?ticket=57",
+            "GET /tickets/57/comentarios",
+            "POST /comentarios/buscar",
+            "GET /comentarios?acao=listar&ticket=57"
+          ],
+          "answerIndex": 1,
+          "explanation": "O caminho expressa a relação entre recursos e o método já diz a ação. Verbo no caminho e POST para leitura tornam a API imprevisível.",
+          "topics": [
+            "rest"
+          ]
+        }
+      ]
+    }
+  ]
+}

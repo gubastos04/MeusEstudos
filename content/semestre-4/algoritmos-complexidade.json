@@ -1,0 +1,734 @@
+{
+  "id": "algoritmos-complexidade",
+  "semester": 4,
+  "order": 1,
+  "title": "Algoritmos e complexidade",
+  "summary": "Big O aplicado à leitura de código: reconhecer o custo do que está escrito e melhorar o que importa.",
+  "outcome": "Você estima o custo de um trecho olhando os laços, identifica o gargalo real e escolhe a melhoria com maior efeito.",
+  "tags": [
+    "algoritmos",
+    "performance"
+  ],
+  "stack": [
+    "javascript",
+    "python"
+  ],
+  "items": [
+    {
+      "id": "alg-big-o-leitura-01",
+      "type": "lesson",
+      "title": "Ler o custo de um trecho de código",
+      "estimatedMinutes": 10,
+      "tags": [
+        "algoritmos"
+      ],
+      "why": "Não é sobre notação. É sobre olhar um código em review e saber se ele sobrevive a cem mil registros.",
+      "goal": "Classificar o custo de um trecho pela estrutura dos laços e acessos.",
+      "blocks": [
+        {
+          "kind": "table",
+          "headers": [
+            "Padrão no código",
+            "Custo",
+            "100 mil itens"
+          ],
+          "rows": [
+            [
+              "acesso direto (dicionário, índice)",
+              "O(1)",
+              "instantâneo"
+            ],
+            [
+              "um laço sobre a entrada",
+              "O(n)",
+              "rápido"
+            ],
+            [
+              "ordenação",
+              "O(n log n)",
+              "aceitável"
+            ],
+            [
+              "laço dentro de laço sobre a mesma entrada",
+              "O(n²)",
+              "10 bilhões de passos"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O que procurar na leitura: quantos laços percorrem a entrada, se um está dentro do outro, e se há busca linear dentro de um laço."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// O(n²) escondido: includes percorre a lista a cada iteração\nconst duplicados = []\nfor (const item of itens) {\n  if (vistos.includes(item)) duplicados.push(item)\n  vistos.push(item)\n}\n\n// O(n): Set tem verificação direta\nconst vistos = new Set()\nconst duplicados = []\nfor (const item of itens) {\n  if (vistos.has(item)) duplicados.push(item)\n  vistos.add(item)\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O custo escondido nas funções prontas",
+          "text": "`includes`, `indexOf`, `find` e `in lista` percorrem a coleção. Dentro de um laço, cada um deles multiplica o custo total."
+        },
+        {
+          "kind": "text",
+          "text": "Complexidade não é tudo. Para n pequeno e fixo, O(n²) é irrelevante. A pergunta é sempre: **quanto esse n pode crescer?**"
+        },
+        {
+          "kind": "text",
+          "text": "E na prática, a constante que domina quase todo sistema web não é o cálculo: é a ida ao banco ou à rede. Um O(n) com uma consulta por item é pior que um O(n²) em memória."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# O(n) em número de operações, N consultas ao banco: o pior dos dois mundos\nfor pedido in pedidos:\n    cliente = banco.buscar_cliente(pedido.cliente_id)"
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual trecho é mais preocupante para 50 mil registros?",
+          "choices": [
+            "Dois laços sequenciais, cada um percorrendo a lista uma vez",
+            "Um laço com uma consulta ao banco em cada iteração",
+            "Uma ordenação da lista",
+            "Um laço que soma valores"
+          ],
+          "answerIndex": 1,
+          "explanation": "50 mil consultas ao banco, mesmo a 1ms cada, são 50 segundos. Os outros três são operações em memória, milhares de vezes mais baratas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma função sua que processa lista e conte: quantos laços percorrem a entrada? Existe busca linear dentro de laço? Existe acesso a banco ou rede dentro de laço?",
+        "expected": "Você consegue nomear o custo e dizer se ele importa para o volume real do sistema."
+      },
+      "ifStuck": [
+        "Comece marcando cada `for`, cada `includes`/`find` e cada chamada de banco. O padrão aparece."
+      ],
+      "commonErrors": [
+        {
+          "error": "Otimizar cálculo quando o gargalo é o banco.",
+          "why": "A intuição vai para o código visível, não para a espera.",
+          "fix": "Meça antes. Conte as consultas executadas por requisição."
+        }
+      ],
+      "exercise": {
+        "id": "ex-alg-otimizar-01",
+        "title": "Tirar o laço de dentro do laço",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `juntarPedidosComClientes(pedidos, clientes)`. Cada pedido tem `clienteId`; cada cliente tem `id` e `nome`. Devolva a lista de pedidos com o campo `clienteNome` preenchido (ou null quando o cliente não existir). A solução não pode fazer busca linear dentro do laço.",
+        "starter": "function juntarPedidosComClientes(pedidos, clientes) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "listas vazias",
+            "expression": "juntarPedidosComClientes([], [])",
+            "expected": []
+          },
+          {
+            "name": "associa o nome",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'a'}], [{id:'a',nome:'Ana'}])[0].clienteNome",
+            "expected": "Ana"
+          },
+          {
+            "name": "cliente inexistente fica null",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'z'}], [{id:'a',nome:'Ana'}])[0].clienteNome",
+            "expected": null
+          },
+          {
+            "name": "mantem a ordem e a quantidade",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'a'},{id:2,clienteId:'b'}], [{id:'b',nome:'Bia'},{id:'a',nome:'Ana'}]).map(p => p.id)",
+            "expected": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "funciona com volume sem ficar quadratico",
+            "expression": "juntarPedidosComClientes(Array.from({length: 20000}, (_, i) => ({id: i, clienteId: 'c' + (i % 5000)})), Array.from({length: 5000}, (_, i) => ({id: 'c' + i, nome: 'N' + i}))).filter(p => p.clienteNome === null).length",
+            "expected": 0
+          }
+        ],
+        "hints": [
+          "Monte um índice dos clientes por id antes de percorrer os pedidos.",
+          "Um Map ou um objeto simples resolve.",
+          "Se você usar clientes.find() dentro do laço, o último teste vai demorar demais."
+        ],
+        "solution": "function juntarPedidosComClientes(pedidos, clientes) {\n  const porId = new Map(clientes.map((cliente) => [cliente.id, cliente]))\n\n  return pedidos.map((pedido) => ({\n    ...pedido,\n    clienteNome: porId.get(pedido.clienteId)?.nome ?? null,\n  }))\n}\n",
+        "solutionNotes": "Com find dentro do map, o último teste faria até 100 milhões de comparações. Com Map, são 25 mil operações."
+      },
+      "glossary": [
+        "Big O",
+        "Complexidade",
+        "Latência",
+        "Performance",
+        "Query"
+      ]
+    },
+    {
+      "id": "alg-otimizar-com-medida-01",
+      "type": "lesson",
+      "title": "Otimizar com medida, não com palpite",
+      "estimatedMinutes": 9,
+      "tags": [
+        "performance"
+      ],
+      "why": "A intuição sobre desempenho erra com frequência. Medir custa minutos e evita dias de trabalho no lugar errado.",
+      "goal": "Medir onde o tempo é gasto antes de mudar qualquer coisa.",
+      "blocks": [
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Reproduza a lentidão com volume parecido com o real",
+            "Meça as etapas: consulta, processamento, serialização, rede",
+            "Corrija o maior gargalo, só ele",
+            "Meça de novo e confirme o ganho"
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "import time\n\ninicio = time.perf_counter()\npedidos = repo.listar(filtro)\ndepois_consulta = time.perf_counter()\nresultado = montar_resposta(pedidos)\nfim = time.perf_counter()\n\nprint(f\"consulta: {(depois_consulta - inicio) * 1000:.0f}ms\")\nprint(f\"montagem: {(fim - depois_consulta) * 1000:.0f}ms\")"
+        },
+        {
+          "kind": "text",
+          "text": "Medição grosseira assim já responde a pergunta mais importante: o tempo está no banco ou no código?"
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Conte as consultas",
+          "text": "Numa aplicação web, a métrica mais reveladora é quantas consultas cada requisição executa. Passar de 1 para 200 explica quase toda lentidão de tela."
+        },
+        {
+          "kind": "text",
+          "text": "Ordem de preferência das otimizações, da mais eficaz para a menos:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Medida",
+            "Ganho típico",
+            "Custo de manutenção"
+          ],
+          "rows": [
+            [
+              "não buscar o que não é usado",
+              "alto",
+              "nenhum"
+            ],
+            [
+              "índice adequado",
+              "alto",
+              "baixo"
+            ],
+            [
+              "agrupar N consultas em uma",
+              "alto",
+              "baixo"
+            ],
+            [
+              "paginar",
+              "alto",
+              "médio"
+            ],
+            [
+              "cache",
+              "variável",
+              "alto: invalidação"
+            ]
+          ],
+          "caption": "Cache aparece por último de propósito: resolve rápido e cria um problema novo, o de invalidação."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela leva 6 segundos. A medição mostra: consulta 120ms, montagem da resposta 80ms, e 240 requisições HTTP feitas pelo frontend. Onde atacar?",
+          "choices": [
+            "Otimizar a consulta do banco",
+            "Reduzir o número de requisições do frontend, agrupando os dados em menos chamadas",
+            "Adicionar cache no banco",
+            "Aumentar o número de instâncias do servidor"
+          ],
+          "answerIndex": 1,
+          "explanation": "O servidor responde em 200ms. O tempo está nas 240 idas e voltas. Otimizar a consulta ganharia milissegundos num problema de segundos.",
+          "topics": [
+            "performance"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Na tela mais lenta que você conhece, abra a aba de rede e conte as requisições. Depois veja quanto tempo cada uma leva e quantas esperam pela anterior.",
+        "expected": "Você sabe dizer se o problema é quantidade de requisições, lentidão de cada uma, ou cascata."
+      },
+      "ifStuck": [
+        "Ordene as requisições por duração e veja se uma domina, ou se o problema é a soma de muitas pequenas."
+      ],
+      "commonErrors": [
+        {
+          "error": "Adicionar cache antes de entender a lentidão.",
+          "why": "Esconde o problema e adiciona o risco de mostrar dado velho.",
+          "fix": "Cache depois de eliminar o desperdício. Primeiro não faça o trabalho desnecessário."
+        }
+      ],
+      "glossary": [
+        "Cache",
+        "Latência",
+        "indice",
+        "paginacao",
+        "Performance"
+      ]
+    },
+    {
+      "id": "alg-escolher-estrutura-de-busca-01",
+      "type": "lesson",
+      "title": "Hash ou ordenado: que tipo de busca você precisa",
+      "estimatedMinutes": 10,
+      "tags": [
+        "algoritmos",
+        "estrutura-dados"
+      ],
+      "why": "As duas estruturas que sustentam quase todo sistema são a tabela hash e a árvore ordenada. Escolher errado só aparece quando a pergunta muda de \"qual é esse\" para \"quais estão entre\".",
+      "goal": "Escolher entre busca por chave exata e busca por faixa, e reconhecer isso no índice do banco.",
+      "blocks": [
+        {
+          "kind": "table",
+          "headers": [
+            "Pergunta",
+            "Estrutura",
+            "Custo"
+          ],
+          "rows": [
+            [
+              "esse id existe?",
+              "hash",
+              "O(1)"
+            ],
+            [
+              "qual o valor dessa chave?",
+              "hash",
+              "O(1)"
+            ],
+            [
+              "quais estão entre A e B?",
+              "ordenada",
+              "O(log n) + resultado"
+            ],
+            [
+              "quais os 10 maiores?",
+              "ordenada",
+              "O(log n) + 10"
+            ],
+            [
+              "em ordem alfabética",
+              "ordenada",
+              "já está"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A tabela hash é mais rápida para chave exata e **não guarda ordem nenhuma**. Pedir \"os próximos 20 depois deste\" a uma hash obriga a percorrer tudo."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const porId = new Map(pedidos.map((p) => [p.id, p]))\n\nporId.get(4821)          // imediato\n\n// \"pedidos entre 4800 e 4900\": a Map não ajuda,\n// é percorrer os 4 milhões de itens verificando um a um."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "É exatamente a escolha do índice no banco",
+          "text": "O índice comum (B-tree) é a estrutura ordenada: serve para igualdade, faixa, ordenação e prefixo. O índice hash serve só para igualdade — por isso o padrão é B-tree, que cobre mais casos pelo mesmo preço."
+        },
+        {
+          "kind": "text",
+          "text": "Daí vem uma regra prática que explica muita consulta lenta:"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- usa índice: prefixo tem começo definido\nWHERE nome LIKE 'silva%'\n\n-- não usa: sem começo, não há por onde entrar na árvore\nWHERE nome LIKE '%silva%'"
+        },
+        {
+          "kind": "text",
+          "text": "E um detalhe que aparece em código antes de aparecer no banco: hash depende de a chave ser comparável por valor. Em JavaScript, objeto como chave de `Map` compara por identidade, não por conteúdo."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const mapa = new Map()\nmapa.set({ id: 1 }, 'a')\nmapa.get({ id: 1 })   // undefined: é outro objeto\n\n// chave precisa ser valor primitivo\nmapa.set('1', 'a')\nmapa.get('1')         // 'a'"
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela mostra \"os 20 pedidos mais recentes deste cliente\". Qual índice atende melhor?",
+          "choices": [
+            "Hash em cliente_id",
+            "B-tree em (cliente_id, criado_em DESC)",
+            "Hash em criado_em",
+            "Nenhum: essa consulta sempre lê a tabela inteira"
+          ],
+          "answerIndex": 1,
+          "explanation": "A consulta tem igualdade (cliente) e ordenação (data). O índice hash resolveria só a primeira parte e deixaria a ordenação para depois. O B-tree composto localiza o cliente e já entrega em ordem, então o LIMIT 20 interrompe a leitura no começo."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste as três consultas mais usadas do seu sistema. Para cada uma, marque se é busca exata, faixa ou ordenação.",
+        "expected": "Consulta com faixa ou ordenação precisa de estrutura ordenada — em memória e no banco."
+      },
+      "ifStuck": [
+        "Se a pergunta tem \"entre\", \"maior que\", \"últimos\" ou \"em ordem\", é estrutura ordenada.",
+        "Se a pergunta é \"esse existe?\" ou \"qual o valor de?\", é hash."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar objeto como chave de Map esperando comparação por conteúdo.",
+          "why": "Map compara chaves por identidade; dois objetos iguais são chaves diferentes.",
+          "fix": "Monte uma chave primitiva a partir do conteúdo, como `${tipo}:${id}`."
+        }
+      ],
+      "exercise": {
+        "id": "ex-alg-indice-por-faixa-01",
+        "title": "Buscar por faixa sem percorrer tudo",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `buscarFaixa(ordenados, de, ate)`. `ordenados` é uma lista de números em ordem crescente. Devolva os valores entre `de` e `ate`, inclusive nas duas pontas. Encontre o ponto de partida com busca binária: a solução não pode percorrer a lista inteira quando o resultado é pequeno.",
+        "starter": "function buscarFaixa(ordenados, de, ate) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "buscarFaixa([], 1, 10)",
+            "expected": []
+          },
+          {
+            "name": "faixa no meio",
+            "expression": "buscarFaixa([1, 3, 5, 7, 9, 11], 4, 9)",
+            "expected": [
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "name": "limites inclusivos",
+            "expression": "buscarFaixa([1, 3, 5, 7], 3, 5)",
+            "expected": [
+              3,
+              5
+            ]
+          },
+          {
+            "name": "faixa antes do primeiro",
+            "expression": "buscarFaixa([10, 20], 1, 5)",
+            "expected": []
+          },
+          {
+            "name": "faixa depois do ultimo",
+            "expression": "buscarFaixa([10, 20], 30, 40)",
+            "expected": []
+          },
+          {
+            "name": "faixa cobre tudo",
+            "expression": "buscarFaixa([1, 2, 3], 0, 99)",
+            "expected": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "name": "funciona com muitos itens",
+            "expression": "buscarFaixa(Array.from({length: 100000}, (_, i) => i), 49998, 50001)",
+            "expected": [
+              49998,
+              49999,
+              50000,
+              50001
+            ]
+          },
+          {
+            "name": "de maior que ate devolve vazio",
+            "expression": "buscarFaixa([1, 2, 3], 3, 1)",
+            "expected": []
+          }
+        ],
+        "hints": [
+          "A busca binária encontra o primeiro índice cujo valor é maior ou igual a `de`.",
+          "A partir desse ponto, basta avançar enquanto o valor for menor ou igual a `ate`.",
+          "Mantenha dois limites (início e fim) e vá cortando o intervalo pela metade."
+        ],
+        "solution": "function buscarFaixa(ordenados, de, ate) {\n  if (de > ate) return []\n\n  // Busca binaria: primeiro indice com valor >= de.\n  let inicio = 0\n  let fim = ordenados.length\n\n  while (inicio < fim) {\n    const meio = Math.floor((inicio + fim) / 2)\n    if (ordenados[meio] < de) inicio = meio + 1\n    else fim = meio\n  }\n\n  const saida = []\n  for (let i = inicio; i < ordenados.length && ordenados[i] <= ate; i += 1) {\n    saida.push(ordenados[i])\n  }\n\n  return saida\n}\n",
+        "solutionNotes": "É o que o banco faz com um índice: navega até o começo da faixa e lê em sequência a partir dali. Por isso `LIMIT` numa consulta indexada é barato — a leitura para assim que junta o suficiente."
+      },
+      "glossary": [
+        "indice",
+        "Big O",
+        "Complexidade",
+        "Query",
+        "sql"
+      ]
+    },
+    {
+      "id": "alg-quando-nao-otimizar-01",
+      "type": "lesson",
+      "title": "Quando otimizar não vale a pena",
+      "estimatedMinutes": 8,
+      "tags": [
+        "performance",
+        "qualidade"
+      ],
+      "why": "Código otimizado é mais difícil de ler e de mudar. Pagar esse preço onde não havia problema é prejuízo — e acontece o tempo todo.",
+      "goal": "Decidir se vale otimizar a partir de três perguntas, antes de tocar no código.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Três perguntas, nessa ordem. Se qualquer uma falhar, não otimize."
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Isso está medido, ou é impressão?",
+            "É esse trecho que domina o tempo, ou é outro?",
+            "O ganho compensa o código ficar mais difícil de entender?"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A segunda pergunta é a que mais derruba otimização: melhorar em 90% algo que consome 2% do tempo total economiza 1,8%."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Requisição de 3.200 ms:\n  consulta ao banco      3.000 ms   (94%)\n  montagem da resposta     180 ms   (5%)\n  serialização              20 ms   (1%)\n\nOtimizar a serialização pela metade economiza 10 ms.\nNinguém percebe."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Volume pequeno e fixo não precisa de estrutura esperta",
+          "text": "Um laço dentro de outro sobre uma lista de 12 estados brasileiros é O(n²) e roda em microssegundos. Trocar por um Map aqui adiciona uma linha e não melhora nada que alguém consiga medir."
+        },
+        {
+          "kind": "text",
+          "text": "O que muda a conta é o crescimento. A pergunta certa não é \"quantos itens tem hoje\", é **\"esse número pode crescer, e até onde?\"**"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Situação",
+            "Otimizar?"
+          ],
+          "rows": [
+            [
+              "lista fixa de 12 itens",
+              "não"
+            ],
+            [
+              "lista que cresce com os usuários",
+              "sim, desde o começo"
+            ],
+            [
+              "roda uma vez por mês",
+              "raramente"
+            ],
+            [
+              "roda a cada requisição",
+              "sim, se estiver medido"
+            ],
+            [
+              "consulta dentro de laço",
+              "sempre"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Há um caso em que vale escrever a versão eficiente sem medir nada: quando ela **não é mais complicada**. Usar `Set` em vez de `Array` para verificar pertencimento custa o mesmo trabalho de escrita e evita o problema antes de ele existir."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você encontrou um laço aninhado sobre uma lista de 8 formas de pagamento, carregada uma vez na inicialização. Vale trocar por uma estrutura indexada?",
+          "choices": [
+            "Sim: laço aninhado é sempre problema",
+            "Não: o número é pequeno, fixo e roda uma vez; a troca adiciona complexidade sem ganho mensurável",
+            "Sim, mas só se o sistema tiver muitos usuários",
+            "Não, porque otimização é sempre prematura"
+          ],
+          "answerIndex": 1,
+          "explanation": "Pequeno, fixo e executado uma vez: as três condições que dispensam otimização. A última alternativa erra pelo outro lado — consulta dentro de laço, por exemplo, deve ser evitada desde o primeiro dia."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um trecho que você já pensou em otimizar. Responda às três perguntas por escrito, com números onde houver.",
+        "expected": "Na maioria dos casos você vai parar na primeira pergunta — e isso é resposta."
+      },
+      "ifStuck": [
+        "Se não há medição, a resposta da primeira pergunta é \"é impressão\".",
+        "Meça antes com um cronômetro simples em volta do trecho. Não precisa de ferramenta sofisticada."
+      ],
+      "commonErrors": [
+        {
+          "error": "Trocar legibilidade por desempenho sem medir o antes.",
+          "why": "Sem a medição inicial não há como saber se o ganho existiu, e o código piorou de qualquer forma.",
+          "fix": "Meça, mude, meça de novo. Se o ganho não aparecer, desfaça."
+        }
+      ],
+      "exercise": {
+        "id": "ex-alg-vale-otimizar-01",
+        "title": "Decidir se vale otimizar",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `valeOtimizar({ medido, fatiaDoTempo, podeCrescer, aumentaComplexidade })`. Devolva 'nao: sem medicao' quando não houver medição; 'nao: nao domina o tempo' quando a fatia for menor que 0.2 e o volume não puder crescer; 'sim' quando a fatia for 0.2 ou mais, ou quando o volume puder crescer; e, entre os casos de 'sim', devolva 'sim: ganho facil' quando a mudança não aumentar a complexidade.",
+        "starter": "function valeOtimizar(caso) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "sem medicao",
+            "expression": "valeOtimizar({medido: false, fatiaDoTempo: 0.9, podeCrescer: true, aumentaComplexidade: false})",
+            "expected": "nao: sem medicao"
+          },
+          {
+            "name": "fatia pequena e volume fixo",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.01, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "nao: nao domina o tempo"
+          },
+          {
+            "name": "domina o tempo",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.9, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "sim"
+          },
+          {
+            "name": "volume pode crescer",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.05, podeCrescer: true, aumentaComplexidade: true})",
+            "expected": "sim"
+          },
+          {
+            "name": "ganho facil quando nao complica",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.9, podeCrescer: false, aumentaComplexidade: false})",
+            "expected": "sim: ganho facil"
+          },
+          {
+            "name": "limite exato da fatia conta como domina",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.2, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "sim"
+          }
+        ],
+        "hints": [
+          "A ordem das verificações é a ordem das três perguntas da aula.",
+          "A fatia de 0.2 conta como dominar o tempo: a comparação é >=.",
+          "A distinção entre 'sim' e 'sim: ganho facil' vem só de aumentaComplexidade."
+        ],
+        "solution": "function valeOtimizar({ medido, fatiaDoTempo, podeCrescer, aumentaComplexidade }) {\n  if (!medido) return 'nao: sem medicao'\n\n  const domina = fatiaDoTempo >= 0.2\n  if (!domina && !podeCrescer) return 'nao: nao domina o tempo'\n\n  return aumentaComplexidade ? 'sim' : 'sim: ganho facil'\n}\n",
+        "solutionNotes": "A regra do volume que pode crescer passa na frente da medição de hoje de propósito: consulta dentro de laço mede bem com 20 registros e derruba a tela com 20 mil."
+      },
+      "glossary": [
+        "Performance",
+        "Complexidade",
+        "Refatoração",
+        "Latência"
+      ]
+    },
+    {
+      "id": "alg-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "algoritmos"
+      ],
+      "summary": "Você lê o custo de um trecho e sabe medir antes de otimizar.",
+      "learned": [
+        "Laço dentro de laço, e busca linear dentro de laço, são os padrões a procurar",
+        "includes, find e in lista percorrem a coleção",
+        "Consulta dentro de laço é pior que qualquer custo em memória",
+        "Otimização começa por medida, não por intuição",
+        "Cache é a última opção, porque cria o problema de invalidação"
+      ],
+      "nextUp": "Java e orientação a objetos."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-alg-custo",
+      "title": "Custo e otimização",
+      "format": "alternativa",
+      "summary": "Quatro decisões de performance com medida.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "complexidade",
+        "performance"
+      ],
+      "afterItemId": "alg-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-alg-includes-01",
+          "kind": "codigo",
+          "prompt": "Qual é o custo aproximado deste trecho em função do tamanho de `itens`?",
+          "code": {
+            "language": "javascript",
+            "code": "const vistos = []\nfor (const item of itens) {\n  if (!vistos.includes(item)) vistos.push(item)\n}"
+          },
+          "choices": [
+            "O(1)",
+            "O(n)",
+            "O(n log n)",
+            "O(n²)"
+          ],
+          "answerIndex": 3,
+          "explanation": "includes percorre a lista a cada iteração. Com Set e has, o custo cai para O(n).",
+          "topics": [
+            "complexidade"
+          ]
+        },
+        {
+          "id": "q-alg-medida-02",
+          "kind": "situacao",
+          "prompt": "Uma rotina leva 40 segundos. A medição mostra 38s em consultas ao banco e 2s em processamento. Onde investir?",
+          "choices": [
+            "Reescrever o processamento numa linguagem mais rápida",
+            "Reduzir a quantidade de consultas e revisar índices",
+            "Paralelizar o processamento",
+            "Aumentar a memória do servidor"
+          ],
+          "answerIndex": 1,
+          "explanation": "95% do tempo está no banco. Otimizar os 2s restantes, no melhor caso, economiza 2 segundos de 40.",
+          "topics": [
+            "performance"
+          ]
+        },
+        {
+          "id": "q-alg-cache-03",
+          "kind": "conceitual",
+          "prompt": "Por que cache é considerada a última opção de otimização?",
+          "choices": [
+            "Porque é difícil de implementar",
+            "Porque adiciona o problema de invalidação: dado velho servido como atual é pior que tela lenta",
+            "Porque consome muita memória",
+            "Porque não funciona em aplicações web"
+          ],
+          "answerIndex": 1,
+          "explanation": "As outras medidas eliminam trabalho desnecessário sem criar risco novo. Cache troca lentidão por possibilidade de inconsistência.",
+          "topics": [
+            "performance"
+          ]
+        },
+        {
+          "id": "q-alg-n1-04",
+          "kind": "debugging",
+          "prompt": "Uma listagem de 500 itens executa 501 consultas ao banco. Como se chama esse padrão e qual é a correção?",
+          "choices": [
+            "Deadlock; usar transação",
+            "Problema N+1; buscar os relacionados em uma única consulta e indexar em memória",
+            "Race condition; usar trava",
+            "Memory leak; liberar objetos"
+          ],
+          "answerIndex": 1,
+          "explanation": "Uma consulta para a lista e uma por item. A correção é buscar todos os relacionados de uma vez e associar por id.",
+          "topics": [
+            "performance"
+          ]
+        }
+      ]
+    }
+  ]
+}

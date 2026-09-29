@@ -1,0 +1,371 @@
+{
+  "id": "arquitetura-computadores",
+  "semester": 1,
+  "order": 4,
+  "title": "Arquitetura de computadores",
+  "summary": "Só o que muda a forma como você escreve código: memória, processo, representação de dados e o custo de cada ida à rede.",
+  "outcome": "Você sabe explicar por que um número decimal dá resultado estranho, por que um processo usa toda a memória e por que chamada de rede é ordens de magnitude mais caro que cálculo.",
+  "tags": ["fundamentos", "performance"],
+  "stack": ["python", "javascript"],
+  "items": [
+    {
+      "id": "arq-memoria-processo-01",
+      "type": "lesson",
+      "title": "Processo, memória e o que acontece ao rodar seu código",
+      "estimatedMinutes": 9,
+      "tags": ["fundamentos"],
+      "why": "\"Memória insuficiente\" e \"o servidor reiniciou sozinho\" deixam de ser mistério quando você sabe o que é um processo.",
+      "goal": "Explicar onde seu programa vive enquanto roda e por que carregar um arquivo inteiro na memória tem limite.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Quando você roda `python app.py`, o sistema cria um processo: um espaço de memória isolado, com seu próprio código carregado e seus próprios dados."
+        },
+        {
+          "kind": "list",
+          "items": [
+            "CPU executa instruções, uma por vez em cada núcleo",
+            "Memória RAM guarda o que está em uso agora; é rápida e acaba",
+            "Disco guarda o que precisa sobreviver; é lento e sobra",
+            "Processo é a instância do seu programa em execução, com memória própria"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Isso explica um erro de importação muito comum:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# carrega o arquivo inteiro na memória: quebra com arquivo de 2 GB\nlinhas = open(\"vendas.csv\").readlines()\n\n# processa uma linha por vez: memória constante\nwith open(\"vendas.csv\", encoding=\"utf-8\") as arquivo:\n    for linha in arquivo:\n        processar(linha)",
+          "highlight": [2]
+        },
+        {
+          "kind": "text",
+          "text": "A segunda versão usa praticamente a mesma memória para 2 KB e para 2 GB. Esse padrão chama-se processamento em fluxo."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Por que o container morre sem erro no log",
+          "text": "Quando o processo passa do limite de memória, o sistema operacional o encerra de imediato. Não há exceção nem stack trace: o processo simplesmente deixa de existir. Ver \"exit code 137\" é o sinal disso."
+        },
+        {
+          "kind": "text",
+          "text": "Processo é isolado, então dois processos da sua aplicação não compartilham variável em memória. É por isso que guardar sessão ou contador numa variável global falha quando a aplicação roda em várias instâncias."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma aplicação guarda o contador de tentativas de login numa variável em memória. Ela roda em três instâncias atrás de um balanceador. O que acontece?",
+          "choices": [
+            "O contador funciona normalmente",
+            "Cada instância tem o seu contador, então o limite pode ser burlado dividindo as tentativas entre elas",
+            "As instâncias sincronizam a variável automaticamente",
+            "A aplicação não consegue subir com três instâncias"
+          ],
+          "answerIndex": 1,
+          "explanation": "Memória de processo não é compartilhada. Controle de limite precisa de armazenamento comum: banco, Redis ou serviço externo."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva duas versões de uma contagem de linhas de arquivo: uma com readlines() e outra em fluxo. Compare o uso de memória com um arquivo grande, se tiver um à mão.",
+        "expected": "Mesmo resultado; consumo de memória bem diferente."
+      },
+      "ifStuck": ["Em fluxo, você mantém apenas um contador e a linha atual."],
+      "commonErrors": [
+        {
+          "error": "MemoryError ou processo encerrado durante importação.",
+          "why": "O arquivo inteiro foi carregado numa lista.",
+          "fix": "Processe linha por linha e grave em lotes."
+        }
+      ],
+      "exercise": {
+        "id": "ex-arq-fluxo-01",
+        "title": "Contar em fluxo, sem carregar tudo",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 7,
+        "prompt": "Implemente `contarEmFluxo(linhas, condicao)` sem criar nenhuma lista nova: percorra e devolva quantas linhas satisfazem a condição. A função recebe um array e uma função de teste, e deve devolver apenas o número.",
+        "starter": "function contarEmFluxo(linhas, condicao) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "lista vazia", "expression": "contarEmFluxo([], () => true)", "expected": 0 },
+          { "name": "conta as que passam", "expression": "contarEmFluxo(['a','bb','ccc'], (l) => l.length > 1)", "expected": 2 },
+          { "name": "nenhuma passa", "expression": "contarEmFluxo(['a'], (l) => l.length > 5)", "expected": 0 },
+          {
+            "name": "funciona com muitos itens",
+            "expression": "contarEmFluxo(Array.from({length: 50000}, (_, i) => i), (n) => n % 2 === 0)",
+            "expected": 25000
+          }
+        ],
+        "hints": [
+          "Um contador e um laço bastam.",
+          "Não use filter: ele cria uma lista intermediária, que é justamente o que queremos evitar."
+        ],
+        "solution": "function contarEmFluxo(linhas, condicao) {\n  let total = 0\n  for (const linha of linhas) {\n    if (condicao(linha)) total += 1\n  }\n  return total\n}\n",
+        "solutionNotes": "Com 50 mil itens a diferença é pequena. O padrão importa quando a entrada é um arquivo ou um cursor de banco, onde a lista intermediária não caberia na memória."
+      },
+      "glossary": ["Log", "Performance"]
+    },
+    {
+      "id": "arq-representacao-dados-01",
+      "type": "lesson",
+      "title": "Como o computador guarda números e texto",
+      "estimatedMinutes": 10,
+      "tags": ["fundamentos", "dados"],
+      "why": "0.1 + 0.2 não dá 0.3. Se você trabalha com dinheiro e não sabe disso, vai gerar diferença de centavos que ninguém consegue explicar.",
+      "goal": "Reconhecer os limites de float, inteiro e codificação de texto, e escolher o tipo correto para dinheiro.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Números decimais são guardados em binário com precisão finita. Alguns valores não têm representação exata."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "0.1 + 0.2            // 0.30000000000000004\n0.1 + 0.2 === 0.3    // false\n\n// e o clássico:\n1.005 * 100          // 100.49999999999999"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Dinheiro nunca em float",
+          "text": "Guarde centavos como inteiro, ou use um tipo decimal (Decimal no Python, NUMERIC no PostgreSQL). Somar mil valores em float produz diferença que aparece no fechamento do mês."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "from decimal import Decimal\n\nDecimal(\"0.1\") + Decimal(\"0.2\")   # Decimal('0.3')\n\n# ou, ainda mais simples: trabalhe em centavos\ntotal_centavos = 1050 + 299        # 1349\nreais = total_centavos / 100       # só na exibição"
+        },
+        {
+          "kind": "text",
+          "text": "Texto tem o problema equivalente: um caractere não é um byte. Em UTF-8, acentos ocupam dois bytes e emoji podem ocupar quatro."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "len(\"ação\")                   # 4 caracteres\nlen(\"ação\".encode(\"utf-8\"))   # 6 bytes"
+        },
+        {
+          "kind": "text",
+          "text": "Por isso um campo VARCHAR(10) pode recusar um nome de 8 letras com acentos em alguns bancos, e por isso um arquivo lido com o encoding errado mostra \"aÃ§Ã£o\"."
+        },
+        {
+          "kind": "text",
+          "text": "Inteiros também têm limite. Em JavaScript, números acima de 2^53 perdem precisão — o que quebra id grande vindo de banco."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "Number.MAX_SAFE_INTEGER       // 9007199254740991\n9007199254740993 === 9007199254740992   // true (!)"
+        },
+        {
+          "kind": "quiz",
+          "question": "Um relatório financeiro soma 30.000 valores em float e fecha com R$ 0,07 de diferença. Qual é a causa mais provável?",
+          "choices": [
+            "Erro de arredondamento na exibição",
+            "Acúmulo de imprecisão do ponto flutuante binário ao somar muitos valores",
+            "O banco de dados está corrompido",
+            "Falta de transação na consulta"
+          ],
+          "answerIndex": 1,
+          "explanation": "Cada soma carrega um erro minúsculo. Em 30 mil operações, o erro se acumula até virar centavos. A correção é usar inteiro em centavos ou decimal."
+        }
+      ],
+      "tryNow": {
+        "instructions": "No console do navegador, calcule 0.1 + 0.2 e depois (0.1 * 10 + 0.2 * 10) / 10. Compare os resultados.",
+        "expected": "A segunda versão dá 0.3 exato, porque a soma acontece entre inteiros."
+      },
+      "ifStuck": ["A ideia é sempre a mesma: faça a conta com inteiros e divida só na hora de mostrar."],
+      "commonErrors": [
+        {
+          "error": "Comparar valores decimais com ==.",
+          "why": "Dois cálculos que deveriam dar o mesmo número podem diferir na última casa.",
+          "fix": "Compare com tolerância: abs(a - b) < 0.000001, ou trabalhe com inteiros."
+        }
+      ],
+      "exercise": {
+        "id": "ex-arq-centavos-01",
+        "title": "Somar dinheiro sem perder centavo",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `somarEmCentavos(valores)`: recebe uma lista de valores em reais como número (ex.: 10.55) e devolve o total em centavos como inteiro. Converta cada valor para centavos arredondando antes de somar, para não acumular imprecisão. Lista vazia devolve 0.",
+        "starter": "function somarEmCentavos(valores) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "lista vazia", "expression": "somarEmCentavos([])", "expected": 0 },
+          { "name": "soma simples", "expression": "somarEmCentavos([10.55, 0.45])", "expected": 1100 },
+          { "name": "o caso classico", "expression": "somarEmCentavos([0.1, 0.2])", "expected": 30 },
+          {
+            "name": "muitos valores nao acumulam erro",
+            "expression": "somarEmCentavos(Array.from({length: 1000}, () => 0.01))",
+            "expected": 1000
+          },
+          { "name": "resultado e inteiro", "expression": "Number.isInteger(somarEmCentavos([1.999]))", "expected": true }
+        ],
+        "hints": [
+          "Multiplique cada valor por 100 e arredonde ANTES de somar.",
+          "Math.round(10.55 * 100) resolve o valor individual.",
+          "Se você somar tudo em reais e converter no fim, o erro já estará acumulado."
+        ],
+        "solution": "function somarEmCentavos(valores) {\n  let total = 0\n  for (const valor of valores) {\n    total += Math.round(valor * 100)\n  }\n  return total\n}\n",
+        "solutionNotes": "A ordem é o ponto central: arredondar por valor e somar inteiros. Somar float e arredondar no fim reintroduz o problema."
+      },
+      "glossary": ["Performance"]
+    },
+    {
+      "id": "arq-custo-das-operacoes-01",
+      "type": "lesson",
+      "title": "O custo de cada coisa: da CPU à rede",
+      "estimatedMinutes": 9,
+      "tags": ["performance", "fundamentos"],
+      "why": "Otimizar cálculo quando o gargalo é rede é desperdício. Saber a ordem de grandeza diz onde olhar primeiro.",
+      "goal": "Comparar a ordem de grandeza das operações e usar isso para decidir onde otimizar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Ordens de grandeza aproximadas, que valem como referência mental:"
+        },
+        {
+          "kind": "table",
+          "headers": ["Operação", "Tempo aproximado", "Comparação"],
+          "rows": [
+            ["Operação em memória", "1 nanossegundo", "1 segundo"],
+            ["Leitura em SSD", "100 microssegundos", "1 dia"],
+            ["Consulta ao banco na mesma rede", "1 milissegundo", "10 dias"],
+            ["Chamada de API pela internet", "100 milissegundos", "3 anos"]
+          ],
+          "caption": "A coluna da direita traduz para escala humana: se a operação em memória durasse 1 segundo."
+        },
+        {
+          "kind": "text",
+          "text": "A conclusão prática: reduzir o NÚMERO de idas à rede vale mais que otimizar o código entre elas."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// 50 requisições em sequência: 50 x 100ms = 5 segundos\nfor (const id of ids) {\n  const pedido = await buscarPedido(id)\n  processar(pedido)\n}\n\n// 1 requisição: 100ms\nconst pedidos = await buscarPedidos(ids)\npedidos.forEach(processar)"
+        },
+        {
+          "kind": "text",
+          "text": "Quando não há como agrupar, ao menos não espere uma por vez:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// em paralelo: o tempo total fica próximo do mais lento\nconst pedidos = await Promise.all(ids.map(buscarPedido))"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Paralelo tem limite",
+          "text": "Disparar 5.000 requisições paralelas derruba o serviço do outro lado (e provavelmente o seu). Processe em lotes."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela faz 40 requisições sequenciais de 80ms cada. Qual mudança traz o maior ganho?",
+          "choices": [
+            "Otimizar o processamento de cada resposta",
+            "Reduzir o número de requisições, agrupando os dados em um único endpoint",
+            "Trocar a biblioteca de requisição",
+            "Adicionar mais memória ao servidor"
+          ],
+          "answerIndex": 1,
+          "explanation": "São 3,2 segundos só de espera. O processamento em memória é milhares de vezes mais rápido que isso e não é o gargalo."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Abra a aba de rede em qualquer site e conte quantas requisições ele faz para carregar a tela inicial. Veja quais acontecem em sequência.",
+        "expected": "Requisições em cascata (uma esperando a anterior) aparecem como degraus na linha de tempo."
+      },
+      "ifStuck": ["Na aba de rede, ordene por tempo de início: o degrau indica dependência entre chamadas."],
+      "commonErrors": [
+        {
+          "error": "await dentro de um for para chamadas independentes.",
+          "why": "Cada iteração espera a anterior, somando as latências.",
+          "fix": "Promise.all quando as chamadas não dependem entre si, em lotes se forem muitas."
+        }
+      ],
+      "glossary": ["Latência", "Cache", "Performance"]
+    },
+    {
+      "id": "arq-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["fundamentos"],
+      "summary": "Três coisas desta parte vão aparecer no seu trabalho toda semana: memória de processo, imprecisão de float e custo de rede.",
+      "learned": [
+        "Processo tem memória própria: variável global não é compartilhada entre instâncias",
+        "Processar em fluxo mantém memória constante",
+        "Dinheiro em centavos inteiros ou decimal, nunca float",
+        "Caractere não é byte: encoding importa",
+        "Rede é ordens de magnitude mais caro que memória; reduza o número de idas"
+      ],
+      "nextUp": "Segurança da informação."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-arq-aplicada",
+      "title": "Arquitetura aplicada",
+      "format": "alternativa",
+      "summary": "Quatro situações em que o hardware aparece no código.",
+      "estimatedMinutes": 7,
+      "topics": ["memória", "representação de dados", "performance"],
+      "afterItemId": "arq-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-arq-oom-01",
+          "kind": "situacao",
+          "prompt": "Um processo de importação morre sem deixar erro no log da aplicação, com \"exit code 137\" no container. O que investigar primeiro?",
+          "choices": [
+            "Erro de sintaxe no arquivo importado",
+            "Consumo de memória: o sistema encerrou o processo por exceder o limite",
+            "Permissão de leitura do arquivo",
+            "Timeout do banco de dados"
+          ],
+          "answerIndex": 1,
+          "explanation": "137 corresponde a encerramento por sinal 9, típico do controlador de memória. Como o processo é morto de fora, não há exceção para registrar.",
+          "topics": ["memória"]
+        },
+        {
+          "id": "q-arq-float-02",
+          "kind": "codigo",
+          "prompt": "Qual é o resultado desta comparação em JavaScript?",
+          "code": { "language": "javascript", "code": "console.log(0.1 + 0.2 === 0.3)" },
+          "choices": ["true", "false", "Erro de sintaxe", "Depende do navegador"],
+          "answerIndex": 1,
+          "explanation": "0.1 + 0.2 resulta em 0.30000000000000004. É consequência da representação binária de decimais, igual em qualquer linguagem que use ponto flutuante IEEE 754.",
+          "topics": ["representação de dados"]
+        },
+        {
+          "id": "q-arq-rede-03",
+          "kind": "situacao",
+          "prompt": "Você precisa reduzir o tempo de uma rotina que faz 200 chamadas sequenciais a uma API externa. Qual medida ataca o problema principal?",
+          "choices": [
+            "Reescrever o processamento em uma linguagem mais rápida",
+            "Agrupar as chamadas, ou executá-las em paralelo com lotes controlados",
+            "Aumentar o timeout de cada chamada",
+            "Adicionar índice no banco local"
+          ],
+          "answerIndex": 1,
+          "explanation": "O tempo está na espera de rede, não no processamento. Trocar de linguagem otimiza a parte que já era irrelevante.",
+          "topics": ["performance"]
+        },
+        {
+          "id": "q-arq-estado-04",
+          "kind": "debugging",
+          "prompt": "Um limite de 5 tentativas de login é controlado por um dicionário em memória. Em produção, com 3 instâncias, o limite não funciona. Por quê?",
+          "choices": [
+            "O dicionário não suporta muitas chaves",
+            "Cada instância é um processo com memória própria, então cada uma conta separadamente",
+            "Falta usar await ao ler o dicionário",
+            "O balanceador de carga apaga a memória"
+          ],
+          "answerIndex": 1,
+          "explanation": "Estado que precisa ser compartilhado entre instâncias tem de ficar fora do processo: banco, cache distribuído ou serviço dedicado.",
+          "topics": ["memória"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,303 @@
+{
+  "demands": [
+    {
+      "id": "dem-notificacao-duplicada",
+      "title": "Clientes receberam o mesmo email três vezes",
+      "type": "integracao",
+      "difficulty": "avancado",
+      "estimatedMinutes": 70,
+      "contextQuality": "incompleto",
+      "priority": "alta",
+      "requester": "Time de marketing",
+      "summary": "O aviso de pedido enviado chegou repetido para parte dos clientes. Descobrir por quê e impedir que volte.",
+      "context": "Na terça-feira, um grupo de clientes recebeu três vezes o email de \"seu pedido foi enviado\". O marketing recebeu reclamações. O envio é disparado por um evento que chega do sistema de logística por webhook. O time de logística afirma que enviou o evento \"algumas vezes por causa de instabilidade\", o que, segundo eles, é o comportamento normal do serviço.",
+      "request": "Fazer o cliente receber um email por pedido, mesmo que o evento chegue mais de uma vez.",
+      "stack": ["python", "api", "integracao"],
+      "moduleIds": ["comunicacao-aplicacoes", "cloud-iot", "banco-dados"],
+      "system": {
+        "description": "Endpoint que recebe o webhook da logística e dispara o email.",
+        "files": [
+          {
+            "path": "api/webhooks/logistica.py",
+            "language": "python",
+            "code": "@app.post(\"/webhooks/logistica\")\ndef receber(evento: EventoLogistica):\n    if evento.tipo == \"pedido_enviado\":\n        pedido = repositorio.buscar(evento.pedido_id)\n        email.enviar_envio_confirmado(pedido)\n    return {\"ok\": True}"
+          },
+          {
+            "path": "api/modelos/eventos.py",
+            "language": "python",
+            "code": "class EventoLogistica(BaseModel):\n    evento_id: str\n    tipo: str\n    pedido_id: int\n    ocorrido_em: datetime"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Um email por pedido enviado, independentemente de quantas vezes o evento chegue",
+        "Evento repetido é reconhecido e ignorado, com registro",
+        "O provedor continua recebendo resposta rápida"
+      ],
+      "acceptance": [
+        "Processar o mesmo evento_id duas vezes envia apenas um email",
+        "A verificação funciona mesmo com duas instâncias da aplicação processando ao mesmo tempo",
+        "Evento ignorado aparece no log com o motivo",
+        "O endpoint responde antes de o email ser enviado",
+        "Existe teste que processa o mesmo evento duas vezes e verifica um único envio"
+      ],
+      "constraints": [
+        "Não é possível mudar o comportamento do sistema de logística",
+        "O envio de email pode falhar e precisa poder ser repetido sem gerar duplicata para o cliente"
+      ],
+      "investigation": {
+        "intro": "Trechos do log do dia do incidente.",
+        "logs": [
+          "2026-03-10T08:00:12Z INFO webhook recebido evento_id=evt_8812 tipo=pedido_enviado pedido=90412 duracao=4210ms",
+          "2026-03-10T08:00:17Z INFO webhook recebido evento_id=evt_8812 tipo=pedido_enviado pedido=90412 duracao=3980ms",
+          "2026-03-10T08:00:23Z INFO webhook recebido evento_id=evt_8812 tipo=pedido_enviado pedido=90412 duracao=4102ms",
+          "2026-03-10T08:00:30Z INFO email enviado pedido=90412 destinatario=***",
+          "2026-03-10T08:00:31Z INFO email enviado pedido=90412 destinatario=***",
+          "2026-03-10T08:00:33Z INFO email enviado pedido=90412 destinatario=***"
+        ],
+        "metrics": [
+          { "label": "Tempo médio de resposta do webhook", "value": "4,1 s" },
+          { "label": "Timeout documentado do provedor", "value": "3 s" },
+          { "label": "Eventos recebidos no dia", "value": "14.820" },
+          { "label": "Eventos distintos (evento_id)", "value": "6.140" },
+          { "label": "Instâncias da aplicação", "value": "3" }
+        ],
+        "notes": [
+          "O mesmo evento_id chegou três vezes, com poucos segundos de diferença.",
+          "O provedor documenta entrega no mínimo uma vez, com repetição quando não recebe resposta a tempo.",
+          "O envio do email acontece dentro da requisição do webhook."
+        ]
+      },
+      "hints": [
+        "Compare o tempo médio de resposta com o timeout do provedor. Isso explica por que o evento foi reenviado.",
+        "O campo evento_id existe e não está sendo usado para nada.",
+        "Com três instâncias, verificar \"já processei?\" em memória não funciona. Onde essa verificação precisa acontecer para ser confiável?"
+      ],
+      "reviewChecklist": [
+        "A resposta do webhook passou a ser rápida o suficiente para o timeout do provedor",
+        "A verificação de repetição é atômica e funciona com várias instâncias",
+        "Evento repetido é registrado, não apenas descartado",
+        "A falha no envio do email não impede o reconhecimento do evento, nem causa duplicata",
+        "Existe teste com evento repetido"
+      ]
+    },
+    {
+      "id": "dem-refatorar-servico-tickets",
+      "title": "Preparar o serviço de tickets para receber a regra de SLA",
+      "type": "refatoracao",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "completo",
+      "priority": "media",
+      "requester": "Liderança técnica",
+      "summary": "Antes de adicionar a regra de SLA, separar a decisão de negócio do acesso a dados e criar rede de testes.",
+      "context": "Na próxima sprint entra a regra de SLA: tickets urgentes precisam de primeira resposta em 2 horas, altos em 8 horas, e o sistema vai destacar os que estão fora do prazo. A função atual mistura consulta ao banco, regra e montagem da resposta, e não tem teste. Colocar a regra nova aí dentro significaria mais uma condição num lugar que ninguém consegue testar.",
+      "request": "Refatorar antes de adicionar a regra, sem mudar comportamento nenhum.",
+      "stack": ["python", "arquitetura", "testes"],
+      "moduleIds": ["engenharia-software", "python-aplicado", "java-oo"],
+      "system": {
+        "description": "Função atual, usada pela tela de fila de atendimento.",
+        "files": [
+          {
+            "path": "api/servicos/tickets.py",
+            "language": "python",
+            "code": "def listar_fila(usuario_id, apenas_meus=False):\n    conexao = banco.conectar()\n    sql = \"SELECT id, titulo, prioridade, status, criado_em, responsavel_id FROM ticket WHERE status != 'fechado'\"\n    if apenas_meus:\n        sql += f\" AND responsavel_id = {usuario_id}\"\n    tickets = conexao.consultar(sql)\n\n    ordem = {\"urgente\": 0, \"alta\": 1, \"media\": 2, \"baixa\": 3}\n    tickets = sorted(tickets, key=lambda t: (ordem.get(t[\"prioridade\"], 9), t[\"criado_em\"]))\n\n    saida = []\n    for ticket in tickets:\n        responsavel = conexao.consultar(f\"SELECT nome FROM usuario WHERE id = {ticket['responsavel_id']}\")\n        saida.append({\n            \"id\": ticket[\"id\"],\n            \"titulo\": ticket[\"titulo\"],\n            \"prioridade\": ticket[\"prioridade\"],\n            \"responsavel\": responsavel[0][\"nome\"] if responsavel else None,\n            \"aberto_ha_horas\": (datetime.now() - ticket[\"criado_em\"]).total_seconds() / 3600,\n        })\n    return saida"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "A tela de fila continua exatamente igual para quem usa",
+        "A ordenação e os campos devolvidos permanecem os mesmos"
+      ],
+      "acceptance": [
+        "A regra de ordenação está numa função pura, testável sem banco",
+        "O acesso a dados está separado da regra",
+        "A consulta não concatena valores: usa parâmetros",
+        "A busca do responsável não acontece mais dentro do laço",
+        "O cálculo de tempo aberto recebe o instante atual por parâmetro, para o teste ser determinístico",
+        "Existem testes cobrindo a ordenação, incluindo prioridade desconhecida e empate",
+        "Nenhum comportamento visível mudou: o commit de refatoração não altera resposta"
+      ],
+      "constraints": [
+        "Nenhuma mudança de comportamento nesta entrega",
+        "A regra de SLA NÃO entra agora: o objetivo é preparar o terreno",
+        "Refatoração e qualquer outra alteração em commits separados"
+      ],
+      "hints": [
+        "Comece escrevendo testes do comportamento atual, mesmo feio. Eles são a rede.",
+        "Há uma vulnerabilidade escondida na montagem da consulta: repare no `apenas_meus`.",
+        "`datetime.now()` dentro da função torna o teste dependente do relógio."
+      ],
+      "reviewChecklist": [
+        "Os testes foram escritos antes da refatoração e passaram nos dois momentos",
+        "A regra de ordenação é testável sem banco nem relógio",
+        "A concatenação na consulta foi eliminada",
+        "O número de consultas por chamada não cresce com o número de tickets",
+        "Nenhuma alteração de comportamento entrou junto"
+      ]
+    },
+    {
+      "id": "dem-endpoint-exportacao",
+      "title": "Exportar relatório em CSV",
+      "type": "backend",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 45,
+      "contextQuality": "completo",
+      "priority": "baixa",
+      "requester": "Financeiro",
+      "summary": "O financeiro precisa levar os dados para a planilha deles.",
+      "context": "O time financeiro consulta o relatório na tela e depois copia os números na mão para a planilha de fechamento. São cerca de 40 minutos por mês e já houve erro de digitação. Eles pediram um botão de exportar.",
+      "request": "Permitir exportar o relatório em CSV, com os mesmos filtros da tela.",
+      "stack": ["python", "api"],
+      "moduleIds": ["python", "comunicacao-aplicacoes", "big-data-python"],
+      "system": {
+        "description": "Endpoint existente do relatório, em JSON, com filtros de período e centro de custo.",
+        "files": [
+          {
+            "path": "api/rotas/relatorios.py",
+            "language": "python",
+            "code": "@app.get(\"/relatorios/despesas\")\ndef relatorio(desde: date, ate: date, centro_custo: str | None = None,\n              usuario = Depends(sessao_atual)):\n    return servico.montar_despesas(desde, ate, centro_custo, usuario.empresa_id)"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "O arquivo abre corretamente no Excel em português, com acentos",
+        "Os mesmos filtros da tela valem na exportação",
+        "Valores monetários no formato que o financeiro usa"
+      ],
+      "acceptance": [
+        "O endpoint devolve o CSV com Content-Type e nome de arquivo adequados",
+        "Acentos aparecem corretos ao abrir no Excel",
+        "Campos com vírgula, aspas ou quebra de linha não corrompem as colunas",
+        "A exportação respeita o isolamento por empresa, igual ao relatório da tela",
+        "Existe limite de linhas, com comportamento definido quando ultrapassar",
+        "Existe teste que verifica o cabeçalho e uma linha com caractere especial"
+      ],
+      "constraints": [
+        "Não gerar o arquivo inteiro em memória: use geração em fluxo",
+        "Não criar um endpoint sem autenticação para facilitar o download"
+      ],
+      "hints": [
+        "Excel em português espera separador ponto e vírgula e costuma precisar de BOM para reconhecer UTF-8.",
+        "Não monte o CSV concatenando texto: a biblioteca padrão trata aspas e separadores dentro do campo.",
+        "Pense no que acontece com um relatório de 500 mil linhas."
+      ],
+      "reviewChecklist": [
+        "Content-Type e Content-Disposition corretos",
+        "Encoding testado abrindo o arquivo no Excel",
+        "Campo com vírgula e com aspas foi testado",
+        "O isolamento por empresa é o mesmo do endpoint JSON",
+        "A geração é em fluxo, sem montar tudo em memória",
+        "Limite de linhas definido e comunicado"
+      ]
+    },
+    {
+      "id": "dem-tela-vazia-sem-explicacao",
+      "title": "Tela de tickets fica em branco quando o filtro não acha nada",
+      "type": "frontend",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 35,
+      "contextQuality": "completo",
+      "priority": "media",
+      "requester": "Time de suporte",
+      "summary": "Sem resultado, a tela fica vazia e as pessoas acham que o sistema quebrou.",
+      "context": "O suporte abriu três chamados internos dizendo que \"a tela de tickets parou de funcionar\". Nas três vezes, o filtro simplesmente não tinha resultado. A tela mostra a tabela vazia, sem cabeçalho de explicação, e quem usa não distingue isso de uma falha. Também foi relatado que, em conexão lenta, a tela fica em branco por alguns segundos antes de aparecer qualquer coisa.",
+      "request": "Fazer a tela comunicar o que está acontecendo em cada situação.",
+      "stack": ["javascript", "html", "css"],
+      "moduleIds": ["desenvolvimento-web", "usabilidade"],
+      "system": {
+        "description": "Componente atual da listagem.",
+        "files": [
+          {
+            "path": "web/tickets/lista.js",
+            "language": "javascript",
+            "code": "async function carregar(filtros) {\n  const resposta = await fetch('/api/tickets?' + new URLSearchParams(filtros))\n  const tickets = await resposta.json()\n  render(tickets)\n}\n\nfunction render(tickets) {\n  tabela.innerHTML = tickets\n    .map((t) => `<tr><td>${t.id}</td><td>${t.titulo}</td></tr>`)\n    .join('')\n}"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Enquanto carrega, a tela indica que está carregando",
+        "Sem resultado, explica que não há tickets para aquele filtro e sugere o que fazer",
+        "Em caso de falha, mostra mensagem com opção de tentar de novo",
+        "O estado de erro é visualmente diferente do estado vazio"
+      ],
+      "acceptance": [
+        "Os quatro estados estão implementados: carregando, vazio, erro e sucesso",
+        "Estado vazio não usa vermelho nem linguagem de falha",
+        "Erro real mostra ação de tentar novamente",
+        "Falha de rede e resposta com status de erro são ambos tratados",
+        "O título do ticket é inserido como texto, sem permitir HTML",
+        "A tela funciona em 360px de largura, sem scroll horizontal"
+      ],
+      "constraints": [
+        "Não adicionar biblioteca de interface: o projeto é JavaScript puro",
+        "Manter a estrutura de tabela existente"
+      ],
+      "hints": [
+        "Repare que o código atual não verifica `resposta.ok`. O que acontece quando a API devolve 500?",
+        "O uso de innerHTML com o título do ticket tem um problema além da apresentação.",
+        "Lista vazia e erro precisam ser visualmente distintos, e vermelho fica reservado para um deles."
+      ],
+      "reviewChecklist": [
+        "Os quatro estados foram testados de verdade, inclusive desligando a rede",
+        "Estado vazio explica o motivo e sugere próxima ação",
+        "resposta.ok é verificado antes de converter o corpo",
+        "Nenhum dado de usuário é inserido como HTML",
+        "Testado em 360px"
+      ]
+    },
+    {
+      "id": "dem-documentar-api",
+      "title": "Documentar a API de tickets para o time parceiro",
+      "type": "documentacao",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 40,
+      "contextQuality": "completo",
+      "priority": "media",
+      "requester": "Liderança técnica",
+      "summary": "Um time parceiro vai integrar com a API e hoje a única documentação é o código.",
+      "context": "Um time de outra área vai criar tickets a partir do sistema deles. Hoje, para entender a API, é preciso ler o código. Nas últimas duas semanas você respondeu as mesmas perguntas por mensagem quatro vezes: o que é obrigatório, o que acontece quando falta campo, e como autenticar.",
+      "request": "Escrever a documentação da API de tickets para quem vai integrar.",
+      "stack": ["documentacao", "api"],
+      "moduleIds": ["comunicacao-aplicacoes", "engenharia-software"],
+      "system": {
+        "description": "Endpoints existentes que precisam ser documentados.",
+        "files": [
+          {
+            "path": "api/rotas/tickets.py",
+            "language": "python",
+            "code": "@app.post(\"/tickets\", status_code=201)\ndef criar(dados: NovoTicket, usuario = Depends(sessao_atual)): ...\n\n@app.get(\"/tickets/{id}\")\ndef obter(id: int, usuario = Depends(sessao_atual)): ...\n\n@app.get(\"/tickets\")\ndef listar(status: str | None = None, pagina: int = 1,\n           limite: int = 20, usuario = Depends(sessao_atual)): ...\n\nclass NovoTicket(BaseModel):\n    titulo: str = Field(min_length=3, max_length=140)\n    descricao: str = Field(max_length=4000)\n    prioridade: Literal[\"baixa\", \"media\", \"alta\", \"urgente\"] = \"media\""
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Quem nunca viu a API consegue fazer a primeira chamada sem perguntar nada",
+        "Os erros possíveis estão documentados com o status e o formato da resposta"
+      ],
+      "acceptance": [
+        "Cada endpoint tem método, caminho, parâmetros, corpo, resposta de sucesso e erros",
+        "Há um exemplo de requisição e de resposta para cada endpoint",
+        "A autenticação está explicada, incluindo o que acontece quando a sessão expira",
+        "Os limites estão documentados: tamanho de campo, limite de paginação",
+        "Nenhum exemplo contém credencial real",
+        "Um exemplo de erro mostra o formato exato da resposta de validação"
+      ],
+      "constraints": [
+        "A documentação fica no repositório, em Markdown, junto do código",
+        "Não descrever comportamento que você não verificou: teste cada exemplo antes de documentar"
+      ],
+      "hints": [
+        "Escreva a partir das perguntas que já te fizeram: elas são a pauta.",
+        "Para cada campo, diga se é obrigatório, o tipo e o limite.",
+        "Rode cada exemplo antes de colar na documentação. Exemplo errado é pior que ausência de exemplo."
+      ],
+      "reviewChecklist": [
+        "Todos os endpoints estão documentados",
+        "Os exemplos foram executados e conferidos",
+        "Erros e status estão descritos, não só o caminho de sucesso",
+        "Não há credencial ou dado real nos exemplos",
+        "Uma pessoa de fora conseguiria fazer a primeira chamada só com o documento"
+      ]
+    }
+  ]
+}

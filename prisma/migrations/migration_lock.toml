@@ -1,0 +1,3 @@
+# Gerado pelo Prisma. Estas migrations sao de PostgreSQL: existem para
+# producao. O desenvolvimento local continua em SQLite com `db push`.
+provider = "postgresql"

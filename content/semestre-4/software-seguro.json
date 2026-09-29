@@ -1,0 +1,706 @@
+{
+  "id": "software-seguro",
+  "semester": 4,
+  "order": 5,
+  "title": "Desenvolvimento de software seguro",
+  "summary": "Modelagem de ameaças, gestão de segredos, dependências, logs e monitoramento. Segurança como parte do processo, não como revisão final.",
+  "outcome": "Você consegue analisar uma funcionalidade procurando o que pode dar errado, tratar segredos com rotação, avaliar dependências e escrever log que serve numa investigação sem vazar dado.",
+  "tags": [
+    "seguranca",
+    "processo"
+  ],
+  "stack": [
+    "python",
+    "javascript"
+  ],
+  "items": [
+    {
+      "id": "seg2-threat-modeling-01",
+      "type": "lesson",
+      "title": "Modelagem de ameaças em 15 minutos",
+      "estimatedMinutes": 10,
+      "tags": [
+        "seguranca"
+      ],
+      "why": "Descobrir a falha no desenho custa uma conversa. Descobrir depois do vazamento custa o resto.",
+      "goal": "Analisar uma funcionalidade com quatro perguntas e sair com ações concretas.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Não é preciso metodologia formal. Quatro perguntas, aplicadas a qualquer funcionalidade nova, encontram a maior parte dos problemas:"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Quais dados isso toca, e quão sensíveis são?",
+            "Quem pode chamar isso, e como o sistema verifica?",
+            "O que acontece se a entrada for maliciosa, enorme ou repetida?",
+            "Se der errado, como eu descubro?"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Aplicando a um upload de documentos:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Pergunta",
+            "Resposta",
+            "Ação"
+          ],
+          "rows": [
+            [
+              "quais dados",
+              "documentos de clientes, com CPF",
+              "acesso restrito ao dono e ao suporte"
+            ],
+            [
+              "quem chama",
+              "usuário autenticado",
+              "verificar sessão e dono na recuperação"
+            ],
+            [
+              "entrada maliciosa",
+              "arquivo enorme, tipo falso, nome com caminho",
+              "limitar tamanho, validar conteúdo, gerar nome próprio"
+            ],
+            [
+              "como descubro",
+              "nada hoje",
+              "registrar upload, download e falha de acesso"
+            ]
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Nome de arquivo enviado pelo usuário",
+          "text": "Um nome como ../../etc/config pode escrever fora da pasta pretendida. Nunca use o nome recebido para montar caminho: gere um identificador próprio e guarde o nome original apenas para exibição."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "import uuid\nfrom pathlib import Path\n\nEXTENSOES = {\".pdf\", \".png\", \".jpg\"}\nTAMANHO_MAXIMO = 10 * 1024 * 1024\n\n\ndef salvar_upload(arquivo, tamanho, pasta: Path):\n    extensao = Path(arquivo.nome_original).suffix.lower()\n    if extensao not in EXTENSOES:\n        raise ArquivoRecusado(\"tipo não permitido\")\n    if tamanho > TAMANHO_MAXIMO:\n        raise ArquivoRecusado(\"arquivo maior que 10 MB\")\n\n    # o nome no disco é nosso, não do usuário\n    destino = pasta / f\"{uuid.uuid4().hex}{extensao}\"\n    destino.write_bytes(arquivo.conteudo)\n    return destino"
+        },
+        {
+          "kind": "text",
+          "text": "Extensão não prova o conteúdo: um executável renomeado para .png continua sendo executável. Para arquivo que será servido de volta, verifique o tipo real e devolva sempre com o cabeçalho correto, evitando que o navegador interprete."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual é o risco de usar o nome de arquivo enviado pelo usuário para montar o caminho de gravação?",
+          "choices": [
+            "O nome pode ter acentos e quebrar o sistema de arquivos",
+            "O nome pode conter sequências de diretório e fazer a gravação acontecer fora da pasta pretendida",
+            "O arquivo pode ficar grande demais",
+            "Nenhum, desde que a pasta tenha permissão restrita"
+          ],
+          "answerIndex": 1,
+          "explanation": "É a falha de travessia de caminho. A defesa é não usar o nome recebido: gere o seu e guarde o original apenas como texto.",
+          "topics": [
+            "entrada"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue a funcionalidade mais recente que você fez e responda às quatro perguntas. Anote cada ação que aparecer.",
+        "expected": "Pelo menos uma ação concreta que você ainda não tinha feito."
+      },
+      "ifStuck": [
+        "Comece pela pergunta 3: o que eu conseguiria enviar de propósito para quebrar isso?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Validar tipo de arquivo só pela extensão.",
+          "why": "A extensão é parte do nome e é controlada por quem envia.",
+          "fix": "Verifique a assinatura do conteúdo e sirva com o cabeçalho de tipo correto."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg2-upload-01",
+        "title": "Validação de upload",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `validarUpload({ nome, tamanho, tipo })`. Devolva { ok: true, nomeSeguro } ou { ok: false, motivo }. Regras: extensão permitida apenas .pdf, .png, .jpg (do campo nome, sem diferenciar maiúsculas); tamanho máximo 10 MB (10485760); nome contendo '/', '\\\\' ou '..' é recusado com motivo 'nome inválido'. O nomeSeguro é `arquivo` + a extensão em minúsculas.",
+        "starter": "function validarUpload(entrada) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "pdf valido",
+            "expression": "validarUpload({nome:'contrato.PDF', tamanho: 1000, tipo:'application/pdf'})",
+            "expected": {
+              "ok": true,
+              "nomeSeguro": "arquivo.pdf"
+            }
+          },
+          {
+            "name": "extensao nao permitida",
+            "expression": "validarUpload({nome:'script.exe', tamanho: 10, tipo:'application/octet-stream'}).motivo",
+            "expected": "tipo não permitido"
+          },
+          {
+            "name": "tamanho acima do limite",
+            "expression": "validarUpload({nome:'foto.png', tamanho: 10485761, tipo:'image/png'}).motivo",
+            "expected": "arquivo muito grande"
+          },
+          {
+            "name": "limite exato e aceito",
+            "expression": "validarUpload({nome:'foto.png', tamanho: 10485760, tipo:'image/png'}).ok",
+            "expected": true
+          },
+          {
+            "name": "travessia de caminho e recusada",
+            "expression": "validarUpload({nome:'../../etc/senha.pdf', tamanho: 10, tipo:'application/pdf'}).motivo",
+            "expected": "nome inválido"
+          },
+          {
+            "name": "barra invertida tambem e recusada",
+            "expression": "validarUpload({nome:'pasta\\\\foto.png', tamanho: 10, tipo:'image/png'}).motivo",
+            "expected": "nome inválido"
+          }
+        ],
+        "hints": [
+          "Verifique o nome antes da extensão: um nome com travessia precisa ser recusado por esse motivo.",
+          "Para a extensão: pegue o que vem depois do último ponto e passe para minúsculas.",
+          "10485760 é o limite aceito; acima disso é recusado."
+        ],
+        "solution": "const PERMITIDAS = new Set(['pdf', 'png', 'jpg'])\nconst TAMANHO_MAXIMO = 10485760\n\nfunction validarUpload(entrada) {\n  const nome = String(entrada?.nome ?? '')\n\n  if (nome.includes('/') || nome.includes('\\\\') || nome.includes('..')) {\n    return { ok: false, motivo: 'nome inválido' }\n  }\n\n  const extensao = nome.split('.').pop()?.toLowerCase() ?? ''\n  if (!PERMITIDAS.has(extensao)) {\n    return { ok: false, motivo: 'tipo não permitido' }\n  }\n\n  if (!Number.isFinite(entrada.tamanho) || entrada.tamanho > TAMANHO_MAXIMO) {\n    return { ok: false, motivo: 'arquivo muito grande' }\n  }\n\n  return { ok: true, nomeSeguro: `arquivo.${extensao}` }\n}\n",
+        "solutionNotes": "A validação de extensão não prova o conteúdo. Em produção, verifique a assinatura do arquivo e sirva sempre com Content-Type explícito e Content-Disposition adequado."
+      },
+      "glossary": [
+        "autorizacao",
+        "XSS",
+        "Log",
+        "Exceção"
+      ]
+    },
+    {
+      "id": "seg2-segredos-dependencias-01",
+      "type": "lesson",
+      "title": "Segredos, dependências e log",
+      "estimatedMinutes": 10,
+      "tags": [
+        "seguranca",
+        "devops"
+      ],
+      "why": "As três fontes mais comuns de incidente em projeto pequeno: chave vazada, dependência vulnerável e log com dado sensível.",
+      "goal": "Tratar segredo com rotação, avaliar dependência e escrever log útil sem vazar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Segredo tem ciclo de vida: criar, usar, rotacionar, revogar. Se você não sabe como trocar uma chave sem parar o sistema, não tem o ciclo completo."
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Fora do código e fora do repositório, sempre",
+            "Chaves diferentes por ambiente: vazamento em homologação não alcança produção",
+            "Menor privilégio: chave de leitura não precisa poder escrever",
+            "Rotação: saiba trocar sem interrupção, e trate qualquer exposição como comprometimento"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Exposto é comprometido",
+          "text": "Chave que apareceu em log, print de tela, mensagem de chat ou commit precisa ser trocada. Não existe \"provavelmente ninguém viu\"."
+        },
+        {
+          "kind": "text",
+          "text": "Dependências: cada uma é código de terceiro dentro do seu produto."
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ npm audit",
+            "$ pip-audit",
+            "",
+            "# e o mais importante: o arquivo de lock vai para o Git",
+            "$ git add package-lock.json"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Antes de adicionar uma dependência: ela é mantida? quantas dependências ela traz junto? o que eu escreveria no lugar? Para vinte linhas de código, escrever costuma ser melhor que adicionar um pacote."
+        },
+        {
+          "kind": "text",
+          "text": "Log: o equilíbrio entre investigar e vazar."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# vaza\nlog.info(f\"login: email={email} senha={senha} token={token}\")\n\n# investiga sem vazar\nlog.info(\"login falhou\", extra={\n    \"usuario_id\": usuario.id,\n    \"motivo\": \"senha incorreta\",\n    \"requisicao_id\": requisicao.id,\n    \"ip_hash\": hash_ip(ip),\n})"
+        },
+        {
+          "kind": "text",
+          "text": "A regra: identificadores sim, conteúdo não. `usuario_id` permite investigar; `email` e `senha` são dado pessoal e credencial."
+        },
+        {
+          "kind": "text",
+          "text": "E o identificador de requisição é o que liga as linhas de uma mesma operação. Sem ele, log de sistema movimentado é ruído."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma chave de API apareceu numa mensagem de erro registrada em log por três dias. Qual é a ação necessária?",
+          "choices": [
+            "Apagar as linhas do log",
+            "Rotacionar a chave: ela passou por sistemas de log e possivelmente por backups e ferramentas de terceiros",
+            "Restringir o acesso ao log",
+            "Nenhuma, se o log for interno"
+          ],
+          "answerIndex": 1,
+          "explanation": "Log costuma ser replicado, agregado e guardado em backup. Uma vez ali, a chave está em mais lugares do que você consegue limpar.",
+          "topics": [
+            "segredos"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Rode a verificação de vulnerabilidades do seu projeto e leia o primeiro resultado: qual pacote, qual falha, e se ela afeta o modo como você usa.",
+        "expected": "Você consegue dizer se o alerta é relevante para o seu uso ou não."
+      },
+      "ifStuck": [
+        "Nem todo alerta afeta você: leia qual função é vulnerável e verifique se o seu código a alcança."
+      ],
+      "commonErrors": [
+        {
+          "error": "Registrar o corpo inteiro da requisição no log.",
+          "why": "Vai senha, token e dado pessoal junto.",
+          "fix": "Registre campos escolhidos, ou mascare os sensíveis antes de gravar."
+        }
+      ],
+      "glossary": [
+        "variavel-de-ambiente",
+        "dependencia",
+        "Log",
+        "Hash",
+        "versionamento"
+      ]
+    },
+    {
+      "id": "seg2-autorizacao-por-papel-01",
+      "type": "lesson",
+      "title": "Autorização por papel sem espalhar if",
+      "estimatedMinutes": 10,
+      "tags": [
+        "seguranca",
+        "arquitetura"
+      ],
+      "why": "Verificação de permissão copiada em cada rota é onde nasce a brecha: basta esquecer numa. Centralizar transforma a regra em algo que dá para ler e testar de uma vez.",
+      "goal": "Descrever permissões numa matriz e verificar sempre pelo mesmo caminho.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O padrão que não escala é este, repetido em vinte rotas:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "if usuario.papel != \"admin\" and usuario.papel != \"suporte\":\n    raise SemPermissao()"
+        },
+        {
+          "kind": "text",
+          "text": "Quando entra um papel novo, alguém precisa achar as vinte. A que for esquecida vira a brecha — e ninguém descobre, porque nada quebra."
+        },
+        {
+          "kind": "text",
+          "text": "A alternativa é separar **o que pode ser feito** de **quem pode fazer**:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "PERMISSOES = {\n    \"solicitante\": {\"ticket:criar\", \"ticket:ler_proprio\", \"ticket:comentar\"},\n    \"atendente\": {\"ticket:criar\", \"ticket:ler_todos\", \"ticket:comentar\", \"ticket:assumir\"},\n    \"administrador\": {\"ticket:ler_todos\", \"ticket:excluir\", \"usuario:gerenciar\"},\n}\n\n\ndef pode(usuario, acao):\n    return acao in PERMISSOES.get(usuario.papel, set())"
+        },
+        {
+          "kind": "text",
+          "text": "A rota passa a declarar a ação, não o papel. Papel novo é uma linha na matriz, e nenhuma rota muda:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "@app.delete(\"/tickets/{ticket_id}\")\ndef excluir(ticket_id: int, usuario = Depends(sessao_atual)):\n    exigir(usuario, \"ticket:excluir\")\n    ..."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Papel não substitui dono",
+          "text": "\"ler_proprio\" continua exigindo a comparação com o dono do registro. A matriz responde \"esse papel pode ler tickets?\"; ela não responde \"esse ticket é dele?\". As duas verificações coexistem."
+        },
+        {
+          "kind": "text",
+          "text": "A matriz num lugar só rende um teste que vale por todos os outros: percorrer papéis e ações e comparar com o esperado."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def test_solicitante_nao_exclui_ticket():\n    assert not pode(usuario(papel=\"solicitante\"), \"ticket:excluir\")\n\n\ndef test_toda_acao_usada_existe_na_matriz():\n    # Acao escrita errada numa rota viraria negacao silenciosa.\n    todas = {acao for acoes in PERMISSOES.values() for acao in acoes}\n    for acao in ACOES_USADAS_NAS_ROTAS:\n        assert acao in todas"
+        },
+        {
+          "kind": "text",
+          "text": "O segundo teste protege contra um erro fácil: `\"ticket:excluír\"` com acento não existe na matriz, e `pode` devolve falso para todo mundo. Parece seguro, mas quebra o sistema para quem deveria poder."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual verificação a matriz de permissões NÃO substitui?",
+          "choices": [
+            "Saber se o papel pode executar a ação",
+            "Saber se o registro pertence ao usuário",
+            "Saber se o usuário está autenticado",
+            "Saber quais ações existem no sistema"
+          ],
+          "answerIndex": 1,
+          "explanation": "A matriz é sobre o papel. Propriedade do registro é uma comparação com o dado — e é justamente ela que impede trocar o id na URL e ver o ticket de outro."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva a matriz de permissões do seu projeto: papéis nas linhas, ações nas colunas. Depois confira se alguma rota faz verificação diferente da matriz.",
+        "expected": "A matriz cabe numa tela e é revisável por alguém que não programa."
+      },
+      "ifStuck": [
+        "Comece listando as ações, não os papéis. Ação é verbo: criar, ler, excluir, assumir.",
+        "Se uma ação depende do dono, o nome deve dizer: ler_proprio e ler_todos são ações diferentes."
+      ],
+      "commonErrors": [
+        {
+          "error": "Verificar permissão só no frontend.",
+          "why": "O endpoint continua aberto para quem o chamar direto.",
+          "fix": "A matriz vive no servidor; o frontend pode usá-la para esconder botões, mas a decisão é do servidor."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg2-matriz-permissoes-01",
+        "title": "Verificar permissão pela matriz",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `podeExecutar(matriz, usuario, acao, recurso)`. `matriz` mapeia papel para lista de ações. Devolva true quando o papel do usuário tem a ação. Se a ação terminar em ':proprio', exija também que `recurso.donoId` seja igual a `usuario.id`. Papel desconhecido, ação ausente da matriz ou usuário sem papel devolvem false.",
+        "starter": "function podeExecutar(matriz, usuario, acao, recurso) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "papel tem a acao",
+            "expression": "podeExecutar({atendente: ['ticket:ler_todos']}, {id: 1, papel: 'atendente'}, 'ticket:ler_todos', null)",
+            "expected": true
+          },
+          {
+            "name": "papel nao tem a acao",
+            "expression": "podeExecutar({solicitante: ['ticket:criar']}, {id: 1, papel: 'solicitante'}, 'ticket:excluir', null)",
+            "expected": false
+          },
+          {
+            "name": "papel desconhecido",
+            "expression": "podeExecutar({atendente: ['ticket:ler_todos']}, {id: 1, papel: 'fantasma'}, 'ticket:ler_todos', null)",
+            "expected": false
+          },
+          {
+            "name": "usuario sem papel",
+            "expression": "podeExecutar({atendente: ['ticket:ler_todos']}, {id: 1}, 'ticket:ler_todos', null)",
+            "expected": false
+          },
+          {
+            "name": "acao propria com o dono certo",
+            "expression": "podeExecutar({solicitante: ['ticket:ler:proprio']}, {id: 7, papel: 'solicitante'}, 'ticket:ler:proprio', {donoId: 7})",
+            "expected": true
+          },
+          {
+            "name": "acao propria com outro dono",
+            "expression": "podeExecutar({solicitante: ['ticket:ler:proprio']}, {id: 7, papel: 'solicitante'}, 'ticket:ler:proprio', {donoId: 8})",
+            "expected": false
+          },
+          {
+            "name": "acao propria sem recurso nao passa",
+            "expression": "podeExecutar({solicitante: ['ticket:ler:proprio']}, {id: 7, papel: 'solicitante'}, 'ticket:ler:proprio', null)",
+            "expected": false
+          },
+          {
+            "name": "matriz vazia nega tudo",
+            "expression": "podeExecutar({}, {id: 1, papel: 'admin'}, 'qualquer', null)",
+            "expected": false
+          }
+        ],
+        "hints": [
+          "Primeiro verifique se o papel tem a ação; só então trate o caso ':proprio'.",
+          "endsWith(':proprio') identifica a ação que exige dono.",
+          "Sem recurso, a ação própria não pode passar: na dúvida, negue."
+        ],
+        "solution": "function podeExecutar(matriz, usuario, acao, recurso) {\n  const acoes = matriz?.[usuario?.papel] ?? []\n  if (!acoes.includes(acao)) return false\n\n  // A matriz responde pelo papel; a propriedade do recurso e outra pergunta.\n  if (acao.endsWith(':proprio')) {\n    if (!recurso) return false\n    return recurso.donoId === usuario.id\n  }\n\n  return true\n}\n",
+        "solutionNotes": "Negar quando falta o recurso é a escolha certa: um esquecimento vira acesso negado, que alguém reclama, e não acesso liberado, que ninguém percebe."
+      },
+      "glossary": [
+        "autorizacao",
+        "autenticacao",
+        "sessao",
+        "Teste unitário",
+        "api"
+      ]
+    },
+    {
+      "id": "seg2-detectar-e-responder-01",
+      "type": "lesson",
+      "title": "Detectar e responder",
+      "estimatedMinutes": 9,
+      "tags": [
+        "seguranca",
+        "devops"
+      ],
+      "why": "A maior parte dos incidentes não é descoberta por alarme: é descoberta por alguém de fora avisando. O que muda isso é registrar os eventos certos e saber o que fazer quando eles aparecem.",
+      "goal": "Definir os eventos que merecem registro de segurança e escrever o roteiro de resposta.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Registrar tudo é o mesmo que não registrar nada: ninguém lê. A lista curta que importa:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Falha de login, com identificador e origem",
+            "Sucesso de login em horário ou origem fora do padrão",
+            "Troca de senha, de email e de papel",
+            "Acesso negado por falta de permissão",
+            "Exclusão de dado e exportação em massa",
+            "Criação e revogação de chave de API"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Repare no quarto item. Acesso negado isolado é rotina; em sequência, é alguém testando ids."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "14:02:11 acesso negado usuario=482 rota=/tickets/1001\n14:02:12 acesso negado usuario=482 rota=/tickets/1002\n14:02:12 acesso negado usuario=482 rota=/tickets/1003\n\nTrês negativas em dois segundos, ids em sequência:\nnão é engano de navegação."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "O que nunca entra no registro",
+          "text": "Senha, token, chave, número de cartão e o corpo inteiro da requisição. Registro de segurança costuma ser guardado por mais tempo e copiado para mais lugares que o resto — ele é o pior lugar para um segredo ficar."
+        },
+        {
+          "kind": "text",
+          "text": "Detectar sem plano não adianta. O roteiro de resposta cabe em cinco passos e precisa existir antes de ser necessário:"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Conter: revogar sessões e chaves do que foi comprometido",
+            "Preservar: copiar os registros antes que expirem ou sejam sobrescritos",
+            "Avaliar: qual dado foi alcançado, de quem, por quanto tempo",
+            "Corrigir: fechar a falha que permitiu o acesso",
+            "Registrar: escrever o que aconteceu e o que muda daqui em diante"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O passo 2 é o mais esquecido e o que mais custa: reiniciar o servidor ou deixar o registro expirar apaga a única evidência de quanto tempo durou o acesso."
+        },
+        {
+          "kind": "text",
+          "text": "E a conta que ninguém faz até precisar: por quanto tempo o registro é guardado? Se a retenção é de sete dias e a invasão começou há um mês, não há como responder o que foi acessado."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você descobre que uma chave de API vazou. Qual é a ordem correta das duas primeiras ações?",
+          "choices": [
+            "Investigar o que foi acessado e depois revogar a chave",
+            "Revogar a chave e preservar os registros, e só então investigar",
+            "Avisar os usuários e depois revogar",
+            "Corrigir o código que vazou a chave e depois revogar"
+          ],
+          "answerIndex": 1,
+          "explanation": "Conter vem primeiro: enquanto a chave vale, o acesso continua. Preservar vem logo em seguida porque a investigação depende de registros que podem expirar ou ser sobrescritos enquanto você investiga."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Responda três perguntas sobre o seu projeto: o que é registrado hoje, por quanto tempo fica guardado, e quanto tempo levaria para revogar todas as sessões de um usuário.",
+        "expected": "Se a terceira resposta for \"não sei como\", essa é a primeira coisa a construir."
+      },
+      "ifStuck": [
+        "Comece pelo que você precisaria saber para responder \"esse acesso era legítimo?\".",
+        "Se o registro não tem identificador de usuário e origem, ele não responde nada."
+      ],
+      "commonErrors": [
+        {
+          "error": "Registrar o corpo inteiro da requisição para \"ter contexto\".",
+          "why": "Vai senha, token e dado pessoal junto, e o registro é guardado por mais tempo que o resto.",
+          "fix": "Registre campos escolhidos, e mascare os sensíveis antes de gravar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg2-detectar-varredura-01",
+        "title": "Detectar varredura de ids",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `detectarVarredura(eventos, limite, janelaSegundos)`. Cada evento tem `usuarioId`, `tipo` e `em` (segundos). Devolva os ids dos usuários com pelo menos `limite` eventos do tipo 'acesso_negado' dentro de qualquer janela de `janelaSegundos`, em ordem crescente. Eventos de outros tipos são ignorados.",
+        "starter": "function detectarVarredura(eventos, limite, janelaSegundos) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "sem eventos",
+            "expression": "detectarVarredura([], 3, 60)",
+            "expected": []
+          },
+          {
+            "name": "abaixo do limite",
+            "expression": "detectarVarredura([{usuarioId: 1, tipo: 'acesso_negado', em: 0}, {usuarioId: 1, tipo: 'acesso_negado', em: 1}], 3, 60)",
+            "expected": []
+          },
+          {
+            "name": "atinge o limite na janela",
+            "expression": "detectarVarredura([{usuarioId: 1, tipo: 'acesso_negado', em: 0}, {usuarioId: 1, tipo: 'acesso_negado', em: 1}, {usuarioId: 1, tipo: 'acesso_negado', em: 2}], 3, 60)",
+            "expected": [
+              1
+            ]
+          },
+          {
+            "name": "espalhado demais nao conta",
+            "expression": "detectarVarredura([{usuarioId: 1, tipo: 'acesso_negado', em: 0}, {usuarioId: 1, tipo: 'acesso_negado', em: 500}, {usuarioId: 1, tipo: 'acesso_negado', em: 1000}], 3, 60)",
+            "expected": []
+          },
+          {
+            "name": "ignora outros tipos",
+            "expression": "detectarVarredura([{usuarioId: 1, tipo: 'login_ok', em: 0}, {usuarioId: 1, tipo: 'login_ok', em: 1}, {usuarioId: 1, tipo: 'login_ok', em: 2}], 3, 60)",
+            "expected": []
+          },
+          {
+            "name": "separa por usuario",
+            "expression": "detectarVarredura([{usuarioId: 1, tipo: 'acesso_negado', em: 0}, {usuarioId: 2, tipo: 'acesso_negado', em: 1}, {usuarioId: 1, tipo: 'acesso_negado', em: 2}], 2, 60)",
+            "expected": [
+              1
+            ]
+          },
+          {
+            "name": "resultado ordenado",
+            "expression": "detectarVarredura([{usuarioId: 9, tipo: 'acesso_negado', em: 0}, {usuarioId: 9, tipo: 'acesso_negado', em: 1}, {usuarioId: 3, tipo: 'acesso_negado', em: 0}, {usuarioId: 3, tipo: 'acesso_negado', em: 1}], 2, 60)",
+            "expected": [
+              3,
+              9
+            ]
+          }
+        ],
+        "hints": [
+          "Agrupe os eventos de 'acesso_negado' por usuário e ordene os instantes.",
+          "Numa lista ordenada, a janela existe se o evento na posição i + limite - 1 estiver a menos de janelaSegundos do evento i.",
+          "A comparação é <=: eventos exatamente na borda da janela contam."
+        ],
+        "solution": "function detectarVarredura(eventos, limite, janelaSegundos) {\n  const porUsuario = new Map()\n\n  for (const evento of eventos ?? []) {\n    if (evento.tipo !== 'acesso_negado') continue\n    const instantes = porUsuario.get(evento.usuarioId) ?? []\n    instantes.push(evento.em)\n    porUsuario.set(evento.usuarioId, instantes)\n  }\n\n  const suspeitos = []\n\n  for (const [usuarioId, instantes] of porUsuario) {\n    instantes.sort((a, b) => a - b)\n\n    // Janela deslizante: basta olhar o evento `limite - 1` posicoes a frente.\n    for (let i = 0; i + limite - 1 < instantes.length; i += 1) {\n      if (instantes[i + limite - 1] - instantes[i] <= janelaSegundos) {\n        suspeitos.push(usuarioId)\n        break\n      }\n    }\n  }\n\n  return suspeitos.sort((a, b) => a - b)\n}\n",
+        "solutionNotes": "Detectar é o começo. O que fazer com o resultado é decisão de produto: registrar, exigir nova autenticação ou bloquear. Bloquear automaticamente tem o seu próprio risco — vira uma forma de derrubar a conta de outra pessoa de propósito."
+      },
+      "glossary": [
+        "Log",
+        "sessao",
+        "autorizacao",
+        "Hash",
+        "Debug"
+      ]
+    },
+    {
+      "id": "seg2-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "seguranca"
+      ],
+      "summary": "Você tem um roteiro aplicável a qualquer funcionalidade nova e sabe tratar as três fontes mais comuns de incidente.",
+      "learned": [
+        "Quatro perguntas: quais dados, quem chama, entrada maliciosa, como descubro",
+        "Nunca use o nome de arquivo recebido para montar caminho",
+        "Extensão não prova conteúdo",
+        "Chave exposta é chave comprometida: rotacione",
+        "Chaves diferentes por ambiente, com menor privilégio",
+        "Log com identificadores, nunca com credencial ou dado pessoal desnecessário"
+      ],
+      "nextUp": "Você percorreu o currículo. Daqui em diante o caminho é demanda, projeto e portfólio."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-seg2-processo",
+      "title": "Software seguro",
+      "format": "alternativa",
+      "summary": "Quatro decisões de segurança no processo de desenvolvimento.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "ameaças",
+        "segredos",
+        "dependências",
+        "logs"
+      ],
+      "afterItemId": "seg2-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-seg2-caminho-01",
+          "kind": "codigo",
+          "prompt": "Qual é a falha neste código de upload?",
+          "code": {
+            "language": "python",
+            "code": "destino = pasta / arquivo.nome_original\ndestino.write_bytes(arquivo.conteudo)"
+          },
+          "choices": [
+            "Falta verificar o tamanho do arquivo",
+            "O nome recebido é usado para montar o caminho: um nome com ../ grava fora da pasta pretendida",
+            "write_bytes não existe",
+            "Falta fechar o arquivo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Travessia de caminho. O tamanho também precisa de limite, mas esta é a falha que permite escrever onde não deveria.",
+          "topics": [
+            "ameaças"
+          ]
+        },
+        {
+          "id": "q-seg2-log-02",
+          "kind": "conceitual",
+          "prompt": "Qual linha de log é adequada para investigar uma falha de login?",
+          "choices": [
+            "log.info(f\"login falhou: {email} / {senha}\")",
+            "log.info(\"login falhou\", extra={\"usuario_id\": id, \"motivo\": \"senha incorreta\", \"requisicao_id\": rid})",
+            "log.info(\"erro\")",
+            "log.info(f\"corpo da requisição: {request.body}\")"
+          ],
+          "answerIndex": 1,
+          "explanation": "Identificadores permitem correlacionar sem expor credencial nem dado pessoal. \"erro\" sozinho não permite investigar nada.",
+          "topics": [
+            "logs"
+          ]
+        },
+        {
+          "id": "q-seg2-chave-03",
+          "kind": "situacao",
+          "prompt": "A mesma chave de API é usada em desenvolvimento, homologação e produção. Qual é o risco?",
+          "choices": [
+            "Nenhum, simplifica a configuração",
+            "Uma exposição em qualquer ambiente compromete produção, e não há como revogar só o ambiente afetado",
+            "O custo da API aumenta",
+            "A chave expira mais rápido"
+          ],
+          "answerIndex": 1,
+          "explanation": "Ambientes de desenvolvimento têm menos controle e mais gente com acesso. Chave separada limita o alcance de qualquer incidente.",
+          "topics": [
+            "segredos"
+          ]
+        },
+        {
+          "id": "q-seg2-dependencia-04",
+          "kind": "conceitual",
+          "prompt": "Por que o arquivo de lock de dependências deve ser versionado no Git?",
+          "choices": [
+            "Para o repositório ficar completo",
+            "Para garantir que todos os ambientes instalem exatamente as mesmas versões, incluindo dependências indiretas",
+            "Porque o instalador exige",
+            "Para acelerar a instalação"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem lock, uma dependência indireta pode mudar de versão entre a sua máquina e produção, e o bug aparece só lá.",
+          "topics": [
+            "dependências"
+          ]
+        }
+      ]
+    }
+  ]
+}

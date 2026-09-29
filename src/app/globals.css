@@ -1,0 +1,252 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design system.
+ *
+ * Regras que este arquivo aplica:
+ * - poucas cores, alto contraste, nada de gradiente decorativo;
+ * - vermelho (danger) SOMENTE para erro real, risco e falha de validacao;
+ * - tipografia confortavel para leitura longa no celular;
+ * - foco sempre visivel.
+ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+      sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+    /* Neutros: base do produto. */
+    --surface: 250 250 249;
+    --surface-raised: 255 255 255;
+    --surface-sunken: 244 244 242;
+    --surface-code: 246 246 244;
+
+    --line: 226 226 222;
+    --line-strong: 198 198 192;
+
+    --ink: 28 28 27;
+    --ink-muted: 91 91 87;
+    --ink-faint: 130 130 124;
+    --ink-inverse: 255 255 255;
+
+    /* Acento unico, sobrio. Usado em acao primaria e progresso. */
+    --accent: 29 78 120;
+    --accent-hover: 22 60 94;
+    --accent-soft: 232 240 247;
+    --accent-ink: 20 52 82;
+
+    /* Sucesso tecnico: teste passou, operacao concluida. Nao e recompensa. */
+    --ok: 22 101 74;
+    --ok-soft: 231 243 238;
+    --ok-ink: 18 80 59;
+
+    /* Alerta: atencao tecnica. */
+    --warn: 132 85 12;
+    --warn-soft: 250 243 228;
+    --warn-ink: 107 68 8;
+
+    /* Erro real. Nunca para falta de estudo, atraso ou progresso baixo. */
+    --danger: 168 44 38;
+    --danger-soft: 251 235 233;
+    --danger-ink: 138 34 30;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --surface: 22 23 24;
+    --surface-raised: 30 31 33;
+    --surface-sunken: 16 17 18;
+    --surface-code: 25 26 28;
+
+    --line: 55 57 60;
+    --line-strong: 82 85 89;
+
+    --ink: 235 236 237;
+    --ink-muted: 165 168 172;
+    --ink-faint: 124 128 133;
+    --ink-inverse: 22 23 24;
+
+    --accent: 126 180 224;
+    --accent-hover: 158 199 233;
+    --accent-soft: 28 44 60;
+    --accent-ink: 198 222 241;
+
+    --ok: 110 193 160;
+    --ok-soft: 24 46 39;
+    --ok-ink: 158 214 191;
+
+    --warn: 216 168 84;
+    --warn-soft: 51 41 21;
+    --warn-ink: 233 196 133;
+
+    --danger: 232 126 116;
+    --danger-soft: 58 30 28;
+    --danger-ink: 243 175 168;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+
+      --surface: 22 23 24;
+      --surface-raised: 30 31 33;
+      --surface-sunken: 16 17 18;
+      --surface-code: 25 26 28;
+
+      --line: 55 57 60;
+      --line-strong: 82 85 89;
+
+      --ink: 235 236 237;
+      --ink-muted: 165 168 172;
+      --ink-faint: 124 128 133;
+      --ink-inverse: 22 23 24;
+
+      --accent: 126 180 224;
+      --accent-hover: 158 199 233;
+      --accent-soft: 28 44 60;
+      --accent-ink: 198 222 241;
+
+      --ok: 110 193 160;
+      --ok-soft: 24 46 39;
+      --ok-ink: 158 214 191;
+
+      --warn: 216 168 84;
+      --warn-soft: 51 41 21;
+      --warn-ink: 233 196 133;
+
+      --danger: 232 126 116;
+      --danger-soft: 58 30 28;
+      --danger-ink: 243 175 168;
+    }
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans text-base antialiased;
+    /* Evita scroll horizontal acidental no celular. */
+    overflow-x: hidden;
+  }
+
+  /* Foco sempre visivel para quem navega por teclado. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Remove o contorno apenas para ponteiro, mantendo teclado. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-ink font-semibold tracking-tight;
+    text-wrap: balance;
+  }
+
+  /* Codigo pode rolar na horizontal: quebrar linha muda o sentido. */
+  pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  code,
+  pre,
+  kbd {
+    @apply font-mono;
+  }
+
+  /* Alvo de toque confortavel no celular. */
+  button,
+  a[role='button'],
+  [type='button'],
+  [type='submit'] {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.22);
+  }
+}
+
+@layer components {
+  /* Area de leitura: largura limitada para texto longo. */
+  .leitura {
+    @apply max-w-reading;
+  }
+
+  .leitura p {
+    @apply text-ink;
+  }
+
+  /* Barra de progresso discreta, sem cor de recompensa. */
+  .trilho {
+    @apply bg-surface-sunken relative h-1.5 w-full overflow-hidden rounded-full;
+  }
+
+  .trilho > span {
+    @apply bg-accent absolute inset-y-0 left-0 rounded-full;
+  }
+
+  /* Skeleton de carregamento: mantem o layout estavel. */
+  .esqueleto {
+    @apply bg-surface-sunken animate-pulse rounded;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .esqueleto {
+      animation: none;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* CodeMirror: alinhar ao design system. */
+.cm-editor {
+  @apply bg-surface-code text-ink rounded border;
+  border-color: rgb(var(--line));
+  font-family: var(--font-mono);
+}
+
+.cm-editor.cm-focused {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 1px;
+}
+
+.cm-gutters {
+  background: rgb(var(--surface-sunken)) !important;
+  color: rgb(var(--ink-faint)) !important;
+  border-right-color: rgb(var(--line)) !important;
+}
+
+.cm-activeLine,
+.cm-activeLineGutter {
+  background: rgb(var(--accent) / 0.06) !important;
+}
+
+.cm-cursor {
+  border-left-color: rgb(var(--ink)) !important;
+}
+
+.cm-selectionBackground,
+.cm-editor ::selection {
+  background: rgb(var(--accent) / 0.2) !important;
+}

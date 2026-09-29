@@ -1,0 +1,354 @@
+{
+  "id": "uml",
+  "semester": 2,
+  "order": 2,
+  "title": "Modelagem e UML",
+  "summary": "Desenhar antes de codar só o suficiente para decidir. Caso de uso, classes e sequência, no nível que se usa numa reunião.",
+  "outcome": "Você consegue transformar uma demanda em requisitos, desenhar o modelo de dados e explicar o fluxo de uma operação para outra pessoa.",
+  "tags": ["modelagem", "processo"],
+  "stack": ["text", "sql"],
+  "items": [
+    {
+      "id": "uml-requisitos-01",
+      "type": "lesson",
+      "title": "Da demanda ao requisito",
+      "estimatedMinutes": 9,
+      "tags": ["modelagem", "requisitos"],
+      "why": "Demanda chega em uma frase. Requisito é o que você consegue verificar. A diferença entre os dois é onde nasce retrabalho.",
+      "goal": "Escrever requisitos verificáveis e critérios de aceite a partir de um pedido vago.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Pedido: \"o suporte precisa poder filtrar pedidos\""
+        },
+        {
+          "kind": "text",
+          "text": "Perguntas antes de qualquer código: filtrar por quê? quantos registros existem? quem tem acesso? o que é \"antigo\"? pode exportar?"
+        },
+        {
+          "kind": "text",
+          "text": "Requisito verificável tem sujeito, ação e condição observável:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Ruim:  o sistema deve ser rápido\nBom:   a listagem filtrada deve responder em menos de 1s para até 50 mil pedidos\n\nRuim:  o suporte deve ver os pedidos\nBom:   um usuário com perfil de suporte pode listar pedidos de qualquer cliente,\n       e não pode alterá-los"
+        },
+        {
+          "kind": "text",
+          "text": "Critério de aceite é a lista que permite alguém além de você dizer \"está pronto\":"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Filtro por status e por período funciona combinado",
+            "Período aceita só início, só fim ou os dois",
+            "Nenhum resultado mostra mensagem explicando, não erro",
+            "Filtro inválido devolve 422 e a tela mostra o campo com problema",
+            "A listagem devolve no máximo 50 registros por página"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O requisito que ninguém escreve",
+          "text": "Volume. \"Funciona\" com 20 registros e \"funciona\" com 200 mil são tarefas diferentes. Pergunte o número antes de escolher a solução."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual destes é um requisito verificável?",
+          "choices": [
+            "A interface deve ser intuitiva",
+            "O relatório deve carregar em menos de 2 segundos com 12 meses de dados",
+            "O sistema deve ser seguro",
+            "O código deve ser limpo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Tem número, condição e como medir. Os outros três são desejos: ninguém consegue dizer objetivamente se foram atendidos."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue o pedido \"queremos um relatório de vendas\" e escreva cinco perguntas e cinco critérios de aceite.",
+        "expected": "Nenhum critério contém palavras como rápido, fácil ou intuitivo."
+      },
+      "ifStuck": ["Para cada critério, pergunte: como eu provo que isso foi cumprido?"],
+      "commonErrors": [
+        {
+          "error": "Começar a implementar com o pedido de uma frase.",
+          "why": "Metade das decisões acaba sendo tomada por você, em silêncio, e revisada depois.",
+          "fix": "Escreva os critérios e mostre para quem pediu antes de codar. Cinco minutos ali economizam dias."
+        }
+      ],
+      "exercise": {
+        "id": "ex-uml-criterios-01",
+        "title": "Transformar pedido em critérios",
+        "kind": "reflection",
+        "language": "text",
+        "estimatedMinutes": 8,
+        "prompt": "Pedido recebido: \"precisamos avisar o cliente quando o pedido atrasar\". Escreva 5 critérios de aceite verificáveis. Cubra: o que é atraso, canal do aviso, quantas vezes avisar e o que acontece se o envio falhar.",
+        "starter": "",
+        "expectedResult": "Cinco critérios que outra pessoa consegue verificar sem perguntar nada a você.",
+        "hints": [
+          "\"Atrasar\" precisa de definição em número: quantos dias além da data prevista?",
+          "Avisar duas vezes o mesmo cliente é defeito. Como evitar?",
+          "Falha de envio é caso previsto: o que o sistema faz?"
+        ],
+        "solution": "1. Um pedido é considerado atrasado quando passa da data prevista de entrega em 1 dia ou mais.\n2. O aviso é enviado por email para o endereço cadastrado no pedido.\n3. Cada pedido gera no máximo um aviso de atraso, registrado com data e hora.\n4. Se o envio falhar, o sistema tenta novamente por até 3 vezes com intervalo crescente e registra a falha final no log.\n5. Pedido cancelado não gera aviso, mesmo que esteja além da data prevista.",
+        "solutionNotes": "O critério 5 é o tipo de caso que só aparece se alguém perguntar. É por isso que se escreve antes."
+      },
+      "glossary": ["Log", "fila"]
+    },
+    {
+      "id": "uml-modelo-dados-01",
+      "type": "lesson",
+      "title": "Modelo de dados: entidades e relações",
+      "estimatedMinutes": 10,
+      "tags": ["modelagem", "banco"],
+      "why": "Errar o modelo de dados é o erro mais caro do projeto. Código se reescreve numa tarde; migrar dado em produção é semana.",
+      "goal": "Desenhar entidades, cardinalidade e chaves para um domínio pequeno.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Entidade é um substantivo do domínio que precisa existir por si: cliente, pedido, produto, ticket."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Cliente  1 ---- N  Pedido  1 ---- N  ItemPedido  N ---- 1  Produto\n\nLê-se: um cliente tem muitos pedidos; um pedido tem muitos itens;\ncada item aponta para um produto."
+        },
+        {
+          "kind": "text",
+          "text": "As perguntas que definem a cardinalidade: um pedido pode existir sem cliente? um cliente pode ter dois pedidos? o mesmo produto aparece em vários pedidos?"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "CREATE TABLE pedido (\n  id          SERIAL PRIMARY KEY,\n  cliente_id  INT NOT NULL REFERENCES cliente(id),\n  status      TEXT NOT NULL,\n  criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\nCREATE TABLE item_pedido (\n  id          SERIAL PRIMARY KEY,\n  pedido_id   INT NOT NULL REFERENCES pedido(id) ON DELETE CASCADE,\n  produto_id  INT NOT NULL REFERENCES produto(id),\n  quantidade  INT NOT NULL CHECK (quantidade > 0),\n  preco_unit  NUMERIC(12,2) NOT NULL\n);"
+        },
+        {
+          "kind": "text",
+          "text": "Três decisões escondidas nesse trecho:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "`ON DELETE CASCADE` em item: item não faz sentido sem o pedido",
+            "`preco_unit` guardado no item: o preço do produto muda, o do pedido não pode mudar depois",
+            "`CHECK (quantidade > 0)`: o banco garante, independentemente do código"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Não guardar o preço no item",
+          "text": "Se o total do pedido for calculado a partir do preço atual do produto, todo pedido antigo muda de valor quando a tabela de preços é atualizada. É um erro de modelagem que corrompe histórico."
+        },
+        {
+          "kind": "text",
+          "text": "Relação muitos-para-muitos precisa de tabela intermediária. Ela costuma ganhar campos próprios (data, quantidade, quem fez)."
+        },
+        {
+          "kind": "quiz",
+          "question": "Onde deve ficar o preço usado no cálculo de um pedido já fechado?",
+          "choices": [
+            "Sempre na tabela de produto, consultado na hora de exibir",
+            "Copiado no item do pedido, no momento da compra",
+            "Num arquivo de configuração",
+            "Calculado a partir do total dividido pela quantidade"
+          ],
+          "answerIndex": 1,
+          "explanation": "O preço do pedido é um fato histórico. Consultar o preço atual faz o passado mudar quando o presente muda.",
+          "topics": ["modelagem"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Desenhe (em texto mesmo) o modelo de um sistema de atendimento: usuário, ticket, comentário, prioridade e histórico de status. Marque a cardinalidade de cada relação.",
+        "expected": "Cada relação com número nas duas pontas, e uma nota dizendo o que pode existir sem o quê."
+      },
+      "ifStuck": ["Comece listando os substantivos da descrição do problema. Cada um é candidato a entidade."],
+      "commonErrors": [
+        {
+          "error": "Guardar lista de valores separados por vírgula numa coluna.",
+          "why": "Impede índice, junção e integridade. Toda consulta passa a precisar de manipulação de texto.",
+          "fix": "Tabela relacionada, uma linha por valor."
+        }
+      ],
+      "exercise": {
+        "id": "ex-uml-modelo-sql-01",
+        "title": "Tabela de histórico de status",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva o CREATE TABLE de `ticket_status_historico`, que registra cada mudança de status de um ticket: qual ticket, status anterior, novo status, quem mudou e quando. O histórico não deve sobreviver à exclusão do ticket.",
+        "starter": "CREATE TABLE ticket_status_historico (\n\n);\n",
+        "checks": [
+          { "name": "tem chave primaria", "type": "regex", "value": "PRIMARY KEY|primary key", "hint": "Toda tabela precisa de identificador." },
+          { "name": "referencia o ticket", "type": "regex", "value": "REFERENCES\\s+ticket|references\\s+ticket", "hint": "A ligação com ticket é chave estrangeira." },
+          { "name": "apaga junto com o ticket", "type": "regex", "value": "ON DELETE CASCADE|on delete cascade", "hint": "O enunciado diz que o histórico não sobrevive ao ticket." },
+          { "name": "registra quem mudou", "type": "regex", "value": "usuario|autor", "hint": "Quem fez a mudança?" },
+          { "name": "registra quando", "type": "regex", "value": "TIMESTAMP|timestamp|criado_em|mudado_em", "hint": "Histórico sem data não serve." },
+          { "name": "guarda os dois status", "type": "regex", "value": "(status_anterior|de_status)[\\s\\S]*(status_novo|para_status)", "hint": "Anterior e novo." }
+        ],
+        "hints": [
+          "São seis colunas: id, ticket_id, status_anterior, status_novo, usuario_id, mudado_em.",
+          "status_anterior pode ser nulo na criação do ticket."
+        ],
+        "solution": "CREATE TABLE ticket_status_historico (\n  id              SERIAL PRIMARY KEY,\n  ticket_id       INT NOT NULL REFERENCES ticket(id) ON DELETE CASCADE,\n  status_anterior TEXT,\n  status_novo     TEXT NOT NULL,\n  usuario_id      INT NOT NULL REFERENCES usuario(id),\n  mudado_em       TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\nCREATE INDEX idx_historico_ticket ON ticket_status_historico (ticket_id, mudado_em DESC);\n",
+        "solutionNotes": "O índice existe porque a consulta natural é \"histórico deste ticket, do mais recente para o mais antigo\"."
+      },
+      "glossary": ["chave-estrangeira", "normalizacao", "indice", "migration"]
+    },
+    {
+      "id": "uml-sequencia-01",
+      "type": "lesson",
+      "title": "Diagrama de sequência: quem chama quem",
+      "estimatedMinutes": 8,
+      "tags": ["modelagem"],
+      "why": "Quando uma operação envolve três sistemas, desenhar a ordem revela os pontos de falha antes de você descobrir em produção.",
+      "goal": "Descrever o fluxo de uma operação com participantes, ordem e pontos de falha.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Navegador      API            Banco       Pagamento\n    |           |               |             |\n    |--POST---->|               |             |\n    |  /pedidos |               |             |\n    |           |--INSERT------>|             |\n    |           |<--id 57-------|             |\n    |           |--cobrar------------------->|\n    |           |<--aprovado-----------------|\n    |           |--UPDATE------>|             |\n    |<--201-----|               |             |"
+        },
+        {
+          "kind": "text",
+          "text": "O desenho torna visíveis as perguntas difíceis: o que acontece se o pagamento aprovar e o UPDATE falhar? O pedido fica pago e não confirmado."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Onde o dinheiro se perde",
+          "text": "Toda operação que cruza dois sistemas tem um intervalo em que um confirmou e o outro não. Não existe solução mágica: existe registrar o estado intermediário e ter como reconciliar."
+        },
+        {
+          "kind": "text",
+          "text": "O padrão prático: grave a intenção antes de chamar o serviço externo, e o resultado depois. Assim um processo de reconciliação sabe o que ficou pela metade."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "1. INSERT pedido (status = aguardando_pagamento)\n2. chamar pagamento\n3. UPDATE pedido (status = pago, id_transacao = ...)\n\nSe o passo 3 falhar, o pedido fica em aguardando_pagamento com\ntransação existente no provedor: a reconciliação encontra e conserta."
+        },
+        {
+          "kind": "quiz",
+          "question": "Numa operação que chama um serviço externo de pagamento, qual estratégia reduz o risco de inconsistência?",
+          "choices": [
+            "Chamar o serviço externo dentro de uma transação de banco",
+            "Gravar o estado intermediário antes da chamada e o resultado depois, com um processo que reconcilia o que ficou pendente",
+            "Chamar o serviço externo primeiro e só depois gravar qualquer coisa",
+            "Repetir a chamada até dar certo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Transação de banco não abrange sistema externo: se a transação for revertida, a cobrança continua feita. Estado intermediário mais reconciliação é o padrão.",
+          "topics": ["arquitetura"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Desenhe em texto o fluxo de \"upload de documento com processamento em fila\": navegador, API, storage, fila, processador. Marque onde pode falhar.",
+        "expected": "Pelo menos três pontos de falha marcados, com o estado que o sistema ficaria em cada um."
+      },
+      "ifStuck": ["Para cada seta, pergunte: se esta chamada falhar aqui, em que estado ficam os dois lados?"],
+      "commonErrors": [
+        {
+          "error": "Chamar serviço externo dentro de transação de banco.",
+          "why": "A transação segura conexão durante uma espera de rede e não controla o sistema externo.",
+          "fix": "Feche a transação, chame o serviço e abra outra transação para registrar o resultado."
+        }
+      ],
+      "glossary": ["transacao", "fila", "webhook", "api"]
+    },
+    {
+      "id": "uml-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["modelagem"],
+      "summary": "Você consegue sair de um pedido vago e chegar a requisitos, modelo de dados e fluxo desenhado.",
+      "learned": [
+        "Requisito verificável tem número e condição observável",
+        "Critério de aceite permite outra pessoa dizer que está pronto",
+        "Volume de dado é requisito, e muda a solução",
+        "Preço no item do pedido: histórico não pode mudar",
+        "Lista em coluna separada por vírgula é dívida imediata",
+        "Operação entre sistemas precisa de estado intermediário e reconciliação"
+      ],
+      "nextUp": "Estrutura de dados: escolher a estrutura certa para cada acesso."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-uml-modelagem",
+      "title": "Modelagem aplicada",
+      "format": "alternativa",
+      "summary": "Quatro decisões de modelagem com consequência real.",
+      "estimatedMinutes": 7,
+      "topics": ["requisitos", "modelagem", "integridade"],
+      "afterItemId": "uml-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-uml-preco-01",
+          "kind": "situacao",
+          "prompt": "Depois de um reajuste de preços, os totais de pedidos antigos mudaram nos relatórios. Qual é a causa?",
+          "choices": [
+            "Erro de arredondamento",
+            "O total é calculado a partir do preço atual do produto, em vez do preço registrado no item do pedido",
+            "Falta de índice na tabela de produtos",
+            "Cache desatualizado"
+          ],
+          "answerIndex": 1,
+          "explanation": "É erro de modelagem: o preço praticado é um fato do momento da compra e precisa ser copiado no item.",
+          "topics": ["modelagem"]
+        },
+        {
+          "id": "q-uml-csv-02",
+          "kind": "conceitual",
+          "prompt": "Por que guardar \"tag1,tag2,tag3\" numa coluna de texto é considerado erro de modelagem?",
+          "choices": [
+            "Porque ocupa mais espaço em disco",
+            "Porque impede índice, junção e integridade, e toda consulta passa a depender de manipulação de texto",
+            "Porque o limite de caracteres é pequeno",
+            "Porque vírgula não é permitida em SQL"
+          ],
+          "answerIndex": 1,
+          "explanation": "Buscar \"todos os itens com a tag X\" passa a exigir LIKE, que não usa índice e casa parcialmente com nomes parecidos.",
+          "topics": ["modelagem"]
+        },
+        {
+          "id": "q-uml-requisito-03",
+          "kind": "situacao",
+          "prompt": "Quem pediu a funcionalidade diz apenas que \"precisa ser rápido\". O que fazer?",
+          "choices": [
+            "Implementar o mais rápido que conseguir e mostrar depois",
+            "Transformar em número junto com quem pediu: qual tempo aceitável, para qual volume de dados",
+            "Ignorar: performance se resolve depois",
+            "Adicionar cache em tudo preventivamente"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem número não há como saber se entregou. E a resposta muda a solução: 1s para 500 registros e 1s para 5 milhões são projetos diferentes.",
+          "topics": ["requisitos"]
+        },
+        {
+          "id": "q-uml-cascade-04",
+          "kind": "codigo",
+          "prompt": "Nesta definição, o que acontece com os itens quando um pedido é excluído?",
+          "code": {
+            "language": "sql",
+            "code": "CREATE TABLE item_pedido (\n  id SERIAL PRIMARY KEY,\n  pedido_id INT NOT NULL REFERENCES pedido(id) ON DELETE CASCADE\n);"
+          },
+          "choices": [
+            "Os itens ficam com pedido_id nulo",
+            "Os itens são excluídos automaticamente pelo banco",
+            "A exclusão do pedido é bloqueada",
+            "Nada: é preciso apagar os itens pelo código"
+          ],
+          "answerIndex": 1,
+          "explanation": "CASCADE propaga a exclusão. É adequado aqui, porque item não existe sem pedido. Para dado que deve sobreviver (nota fiscal, log), CASCADE é perigoso.",
+          "topics": ["integridade"]
+        }
+      ]
+    }
+  ]
+}

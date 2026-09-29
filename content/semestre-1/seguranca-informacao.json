@@ -1,0 +1,418 @@
+{
+  "id": "seguranca-informacao",
+  "semester": 1,
+  "order": 5,
+  "title": "Segurança da informação",
+  "summary": "Senha, sessão, permissão e as falhas que aparecem em code review de verdade: injeção, XSS, CSRF e segredo vazado.",
+  "outcome": "Você consegue guardar senha corretamente, proteger rotas no servidor, reconhecer as falhas do OWASP Top 10 em código e explicar por que validação no frontend não é segurança.",
+  "tags": ["seguranca", "backend"],
+  "stack": ["python", "javascript", "sql"],
+  "items": [
+    {
+      "id": "seg-senha-hash-01",
+      "type": "lesson",
+      "title": "Senha: nunca guardar, sempre derivar",
+      "estimatedMinutes": 10,
+      "tags": ["seguranca", "autenticacao"],
+      "why": "Vazamento de banco acontece. O que separa um incidente chato de um desastre é o formato em que as senhas estavam.",
+      "goal": "Guardar senha com função de hash adequada e entender por que SHA-256 não serve.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Senha não é guardada. Guarda-se o resultado de uma função de mão única, que permite verificar sem recuperar."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# errado: texto puro\nusuario.senha = \"minhasenha123\"\n\n# errado: hash rápido, feito para integridade e não para senha\nusuario.senha = hashlib.sha256(senha.encode()).hexdigest()\n\n# correto: função lenta, com salt por usuário\nusuario.senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt())",
+          "highlight": [2, 5]
+        },
+        {
+          "kind": "text",
+          "text": "SHA-256 é rápido de propósito: uma placa de vídeo calcula bilhões por segundo. Isso é ótimo para verificar arquivo e péssimo para senha."
+        },
+        {
+          "kind": "table",
+          "headers": ["Função", "Serve para senha?", "Motivo"],
+          "rows": [
+            ["SHA-256, MD5", "Não", "rápidas: força bruta viável"],
+            ["bcrypt", "Sim", "lenta e com custo ajustável"],
+            ["argon2, scrypt", "Sim", "lentas e exigem memória"]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Salt é um valor aleatório por usuário, guardado junto do hash. Sem ele, duas pessoas com a mesma senha teriam o mesmo hash, e uma tabela pré-calculada resolveria as duas de uma vez."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def verificar(senha_digitada, hash_guardado):\n    return bcrypt.checkpw(senha_digitada.encode(), hash_guardado)"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Mensagem de login não deve revelar nada",
+          "text": "\"Email não cadastrado\" permite descobrir quem tem conta. Use a mesma mensagem para email inexistente e senha errada: \"Email ou senha incorretos\"."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que SHA-256 é inadequado para senha, mesmo com salt?",
+          "choices": [
+            "Porque produz hash curto demais",
+            "Porque é muito rápido: permite testar bilhões de combinações por segundo em hardware comum",
+            "Porque não aceita caracteres acentuados",
+            "Porque é reversível com a chave certa"
+          ],
+          "answerIndex": 1,
+          "explanation": "O salt impede tabela pré-calculada, mas não deixa a função lenta. Contra força bruta, o que protege é o custo por tentativa.",
+          "topics": ["autenticação"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pesquise qual função de hash de senha a linguagem do seu projeto recomenda e escreva as duas funções: gerar e verificar. Não implemente criptografia própria.",
+        "expected": "Duas funções curtas usando uma biblioteca estabelecida."
+      },
+      "ifStuck": ["Em Python: bcrypt ou argon2-cffi. Em Node: bcrypt ou o scrypt do módulo crypto."],
+      "commonErrors": [
+        {
+          "error": "Truncar a senha antes de aplicar o hash.",
+          "why": "Reduz o espaço de possibilidades e enfraquece tudo.",
+          "fix": "Aplique o hash na senha completa. Se houver limite técnico, documente e escolha função sem esse limite."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg-mensagem-login-01",
+        "title": "Resposta de login que não vaza informação",
+        "kind": "quiz",
+        "language": "text",
+        "estimatedMinutes": 3,
+        "prompt": "Qual conjunto de respostas de login evita revelar quais emails estão cadastrados?",
+        "choices": [
+          "\"Email não encontrado\" e \"Senha incorreta\"",
+          "\"Email ou senha incorretos\" nos dois casos, com tempo de resposta parecido",
+          "\"Email não encontrado\" e \"Email ou senha incorretos\"",
+          "Redirecionar para o cadastro quando o email não existe"
+        ],
+        "answerIndex": 1,
+        "explanation": "Mensagens diferentes permitem enumerar contas. O tempo de resposta também: se o caminho sem usuário responde instantaneamente e o outro demora, a diferença revela a mesma informação."
+      },
+      "glossary": ["Hash", "autenticacao", "sessao"]
+    },
+    {
+      "id": "seg-sessao-autorizacao-01",
+      "type": "lesson",
+      "title": "Sessão e autorização no servidor",
+      "estimatedMinutes": 10,
+      "tags": ["seguranca", "backend"],
+      "why": "Esconder o botão não protege nada. A falha mais comum em aplicação web é confiar em id que veio do cliente.",
+      "goal": "Proteger uma rota verificando sessão e dono do recurso no servidor.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Autenticação diz quem é. Autorização diz o que essa pessoa pode. As duas acontecem no servidor, em toda requisição."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "@app.get(\"/pedidos/{pedido_id}\")\ndef obter_pedido(pedido_id: int, usuario = Depends(sessao_atual)):\n    pedido = repositorio.buscar(pedido_id)\n\n    if pedido is None:\n        raise HTTPException(404)\n\n    # sem esta verificação, qualquer usuário lê o pedido de qualquer outro\n    if pedido.usuario_id != usuario.id:\n        raise HTTPException(404)\n\n    return pedido"
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Por que 404 e não 403",
+          "text": "Responder 403 confirma que o pedido existe. Para recurso de outra pessoa, 404 não revela nem a existência. É uma escolha consciente."
+        },
+        {
+          "kind": "text",
+          "text": "Esta é a falha conhecida como IDOR: trocar o id na URL e ver o dado de outro. Ela é simples, frequente e cara."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// o cliente pode mandar qualquer coisa\nfetch('/api/pedidos?usuario_id=42')\n\n// o servidor NUNCA deve usar esse valor para decidir acesso.\n// o usuário sai da sessão, não do parâmetro."
+        },
+        {
+          "kind": "text",
+          "text": "O cookie de sessão precisa de três atributos:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Set-Cookie: sessao=<token opaco>; HttpOnly; Secure; SameSite=Lax; Path=/",
+          "caption": "HttpOnly impede leitura por JavaScript (limita o dano de um XSS). Secure exige HTTPS. SameSite limita envio a partir de outros sites."
+        },
+        {
+          "kind": "text",
+          "text": "O token no cookie deve ser opaco e aleatório, e no banco deve ficar apenas o hash dele. Assim um vazamento da tabela de sessões não permite assumir sessões."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma API confia no campo `usuario_id` enviado no corpo da requisição para filtrar os dados. Qual é a consequência?",
+          "choices": [
+            "Nenhuma, se o frontend sempre mandar o valor correto",
+            "Qualquer pessoa autenticada pode trocar o valor e ler ou alterar dados de outros usuários",
+            "A API fica mais lenta",
+            "Só é problema se a API for pública"
+          ],
+          "answerIndex": 1,
+          "explanation": "Tudo que vem do cliente é controlado por quem faz a requisição. O identificador do usuário tem de vir da sessão validada no servidor.",
+          "topics": ["autorização"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue qualquer endpoint seu que receba um id e confirme, lendo o código, se existe verificação de dono. Se não existir, escreva-a.",
+        "expected": "Nenhum caminho devolve recurso de outro usuário."
+      },
+      "ifStuck": ["A pergunta é sempre: se eu trocar esse id por outro qualquer, o que acontece?"],
+      "commonErrors": [
+        {
+          "error": "Validar permissão apenas na tela que lista.",
+          "why": "O endpoint de detalhe, o de edição e o de exclusão precisam da mesma verificação, cada um.",
+          "fix": "Centralize a checagem numa função e chame em todos os caminhos."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg-idor-01",
+        "title": "Fechar o IDOR",
+        "kind": "structural",
+        "language": "python",
+        "estimatedMinutes": 8,
+        "prompt": "Corrija este endpoint para que um usuário não consiga ler o ticket de outro. O usuário autenticado está em `usuario`. Use 404 para recurso que não é dele.\n\ndef obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n    return ticket",
+        "starter": "def obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n    return ticket\n",
+        "checks": [
+          { "name": "trata ticket inexistente", "type": "regex", "value": "is None|not ticket", "hint": "O que acontece quando o id não existe?" },
+          { "name": "compara o dono com o usuario da sessao", "type": "regex", "value": "usuario\\.id|usuario_id", "hint": "É preciso comparar o dono do ticket com quem está na sessão." },
+          { "name": "responde 404", "type": "contains", "value": "404", "hint": "O enunciado pede 404 para recurso de outra pessoa." },
+          { "name": "nao usa parametro do cliente como dono", "type": "notContains", "value": "request.args", "hint": "O usuário vem da sessão, não do parâmetro." }
+        ],
+        "hints": [
+          "Duas verificações: existe, e é do usuário atual.",
+          "As duas devolvem 404, de propósito: não revelar a existência do recurso."
+        ],
+        "solution": "def obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n\n    if ticket is None or ticket.usuario_id != usuario.id:\n        # mesma resposta para \"não existe\" e \"não é seu\": não revela a existência\n        raise HTTPException(status_code=404, detail=\"ticket não encontrado\")\n\n    return ticket\n"
+      },
+      "glossary": ["sessao", "autorizacao", "cookie", "status-code", "middleware"]
+    },
+    {
+      "id": "seg-owasp-praticas-01",
+      "type": "lesson",
+      "title": "As falhas que aparecem em code review",
+      "estimatedMinutes": 10,
+      "tags": ["seguranca", "owasp"],
+      "why": "Não é preciso decorar o OWASP Top 10. É preciso reconhecer quatro padrões no código que você lê.",
+      "goal": "Identificar injeção, XSS, CSRF e segredo exposto olhando o código.",
+      "blocks": [
+        { "kind": "text", "text": "**1. Injeção.** Entrada do usuário virando comando." },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# vulnerável\ncursor.execute(f\"SELECT * FROM usuario WHERE email = '{email}'\")\n\n# correto\ncursor.execute(\"SELECT * FROM usuario WHERE email = %s\", (email,))"
+        },
+        { "kind": "text", "text": "**2. XSS.** Entrada do usuário virando HTML." },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// vulnerável\nelemento.innerHTML = comentario\n\n// correto\nelemento.textContent = comentario"
+        },
+        { "kind": "text", "text": "**3. CSRF.** Ação disparada de outro site usando o cookie da vítima." },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# defesas combinadas\n# 1. cookie com SameSite=Lax\n# 2. verificação do cabeçalho Origin nas requisições que alteram dado\n# 3. token anti-CSRF por formulário\n\nif requisicao.metodo in (\"POST\", \"PUT\", \"DELETE\"):\n    if requisicao.origem not in origens_permitidas:\n        return resposta(403, \"origem inválida\")"
+        },
+        { "kind": "text", "text": "**4. Segredo exposto.** Chave no código, no repositório ou no navegador." },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// nunca: a chave vai para o navegador de todo mundo\nconst API_KEY = 'sk-ant-abc123'\nfetch('https://api.exemplo.com', { headers: { 'x-api-key': API_KEY } })\n\n// correto: o navegador chama o SEU servidor, e o servidor usa a chave\nfetch('/api/ia/corretor', { method: 'POST', body: JSON.stringify({ codigo }) })"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Segredo commitado não se apaga",
+          "text": "Remover a chave num commit seguinte não resolve: ela continua no histórico do Git. A única resposta correta é revogar a chave e gerar outra."
+        },
+        {
+          "kind": "text",
+          "text": "E a regra que resume todas: validação no frontend é para ajudar quem preenche. Segurança é sempre no servidor, porque o cliente pode ser modificado."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um formulário valida o CPF em JavaScript antes de enviar. O backend confia nessa validação. Qual é o problema?",
+          "choices": [
+            "Nenhum: a validação já aconteceu",
+            "Qualquer pessoa pode enviar a requisição direto, sem passar pela tela, com dado inválido",
+            "A validação em JavaScript é lenta",
+            "O problema é apenas de experiência do usuário"
+          ],
+          "answerIndex": 1,
+          "explanation": "O frontend é um cliente que você não controla. Validação no navegador melhora a experiência; a garantia tem de estar no servidor.",
+          "topics": ["validação"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Procure no seu código (ou num projeto de exemplo) por concatenação em consulta SQL, uso de innerHTML e qualquer chave escrita direto no código. Anote o que encontrar em Meus erros.",
+        "expected": "Uma lista de pontos concretos, com arquivo e linha."
+      },
+      "ifStuck": ["Busque por: f\"SELECT, innerHTML, api_key, senha =, token ="],
+      "commonErrors": [
+        {
+          "error": "Confiar em lista negra de caracteres para evitar injeção.",
+          "why": "Sempre falta um caso, e a codificação muda o que \"caractere perigoso\" significa.",
+          "fix": "Consulta parametrizada. O banco separa comando de valor, e não existe caractere a filtrar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-seg-achar-falha-01",
+        "title": "Apontar a falha no trecho",
+        "kind": "quiz",
+        "language": "javascript",
+        "estimatedMinutes": 4,
+        "prompt": "Qual é o problema mais grave neste código de frontend?\n\nconst chave = 'sk-live-9f2a'\nawait fetch('https://api.pagamentos.com/cobrar', {\n  method: 'POST',\n  headers: { 'Authorization': `Bearer ${chave}` },\n  body: JSON.stringify({ valor })\n})",
+        "choices": [
+          "Falta tratamento de erro no fetch",
+          "A chave de produção está no código do navegador, visível para qualquer pessoa que abrir a aba de rede",
+          "O valor deveria ser enviado como número",
+          "Falta o header Content-Type"
+        ],
+        "answerIndex": 1,
+        "explanation": "Chave em código de frontend é pública. Todos os outros pontos são válidos, mas este permite cobrar em nome da empresa. A chamada a serviço de pagamento tem de sair do servidor."
+      },
+      "glossary": ["injecao-sql", "XSS", "CSRF", "variavel-de-ambiente", "HTTPS"]
+    },
+    {
+      "id": "seg-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["seguranca"],
+      "summary": "Você tem o suficiente para não cometer as falhas mais comuns e para reconhecê-las lendo código de outra pessoa.",
+      "learned": [
+        "Senha com bcrypt, argon2 ou scrypt; nunca SHA-256, nunca texto puro",
+        "Mensagem de login idêntica para email inexistente e senha errada",
+        "O identificador do usuário vem da sessão, nunca do cliente",
+        "Cookie de sessão com HttpOnly, Secure e SameSite",
+        "Injeção, XSS, CSRF e segredo exposto: os quatro padrões a reconhecer",
+        "Validação no navegador é conveniência; segurança é no servidor"
+      ],
+      "nextUp": "Segundo semestre: usabilidade, modelagem, estrutura de dados, nuvem e comunicação entre aplicações."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-seg-fundamentos",
+      "title": "Segurança aplicada",
+      "format": "alternativa",
+      "summary": "Seis situações de code review. Reconhecer a falha e escolher a correção.",
+      "estimatedMinutes": 10,
+      "topics": ["autenticação", "autorização", "injeção", "XSS", "segredos"],
+      "afterItemId": "seg-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-seg-hash-01",
+          "kind": "codigo",
+          "prompt": "Qual é o problema principal neste cadastro?",
+          "code": {
+            "language": "python",
+            "code": "import hashlib\n\ndef criar_usuario(email, senha):\n    hash_senha = hashlib.sha256(senha.encode()).hexdigest()\n    repo.salvar(email=email, senha=hash_senha)"
+          },
+          "choices": [
+            "Falta validar o formato do email",
+            "SHA-256 é rápida e sem salt: força bruta em um vazamento fica viável",
+            "O hash deveria ser feito no frontend",
+            "Nada: o hash já protege a senha"
+          ],
+          "answerIndex": 1,
+          "explanation": "Hash rápido e sem salt é quase tão ruim quanto texto puro diante de hardware moderno. Use bcrypt, argon2 ou scrypt.",
+          "wrongExplanations": {
+            "2": "Hash no frontend não protege: o valor enviado passa a ser a senha efetiva."
+          },
+          "topics": ["autenticação"]
+        },
+        {
+          "id": "q-seg-idor-02",
+          "kind": "debugging",
+          "prompt": "Trocando o id na URL, um usuário vê a nota fiscal de outro. Onde está a falha?",
+          "code": {
+            "language": "python",
+            "code": "@app.get(\"/notas/{nota_id}\")\ndef obter(nota_id, usuario = Depends(sessao_atual)):\n    return repo.buscar(nota_id)"
+          },
+          "choices": [
+            "Falta autenticação na rota",
+            "Falta autorização: existe sessão, mas ninguém verifica se a nota pertence ao usuário",
+            "O id deveria ser UUID em vez de número sequencial",
+            "Falta tratamento de erro"
+          ],
+          "answerIndex": 1,
+          "explanation": "A autenticação está lá. O que falta é a checagem de dono. Usar UUID apenas dificulta adivinhar o id: não é controle de acesso.",
+          "topics": ["autorização"]
+        },
+        {
+          "id": "q-seg-sql-03",
+          "kind": "codigo",
+          "prompt": "Como corrigir este trecho?",
+          "code": {
+            "language": "python",
+            "code": "termo = request.args.get(\"busca\")\ncursor.execute(f\"SELECT * FROM produto WHERE nome LIKE '%{termo}%'\")"
+          },
+          "choices": [
+            "Remover caracteres especiais do termo antes de concatenar",
+            "Usar consulta parametrizada, passando o padrão do LIKE como valor",
+            "Converter o termo para minúsculas",
+            "Limitar o tamanho do termo a 20 caracteres"
+          ],
+          "answerIndex": 1,
+          "explanation": "Filtrar caracteres é tentativa de adivinhar todos os casos. Com parâmetro, o valor nunca é interpretado como comando: cursor.execute(\"... LIKE %s\", (f\"%{termo}%\",)).",
+          "topics": ["injeção"]
+        },
+        {
+          "id": "q-seg-segredo-04",
+          "kind": "situacao",
+          "prompt": "Você descobre que uma chave de API de produção foi commitada há duas semanas num repositório privado. Qual é a primeira ação?",
+          "choices": [
+            "Apagar a linha e fazer um novo commit",
+            "Revogar a chave e gerar uma nova, porque ela continua no histórico do Git",
+            "Tornar o repositório privado",
+            "Adicionar o arquivo ao .gitignore"
+          ],
+          "answerIndex": 1,
+          "explanation": "O histórico preserva tudo, e o repositório já foi clonado por quem tem acesso. A chave precisa ser considerada comprometida.",
+          "topics": ["segredos"]
+        },
+        {
+          "id": "q-seg-xss-05",
+          "kind": "codigo",
+          "prompt": "Este código exibe o nome digitado pelo usuário. Qual é o risco?",
+          "code": {
+            "language": "javascript",
+            "code": "saudacao.innerHTML = `Olá, ${nomeDigitado}`"
+          },
+          "choices": [
+            "Nenhum, é apenas texto",
+            "XSS: o nome pode conter HTML ou script, que o navegador vai executar",
+            "O template literal não funciona em navegadores antigos",
+            "A variável deveria ser const"
+          ],
+          "answerIndex": 1,
+          "explanation": "Qualquer inserção como HTML de conteúdo controlado por usuário é XSS. textContent resolve: o navegador trata como texto.",
+          "topics": ["XSS"]
+        },
+        {
+          "id": "q-seg-frontend-06",
+          "kind": "conceitual",
+          "prompt": "Um sistema esconde o botão \"excluir\" para usuários sem permissão. Isso é controle de acesso?",
+          "choices": [
+            "Sim, desde que o botão esteja realmente oculto",
+            "Não: é apenas interface. O endpoint de exclusão precisa verificar a permissão no servidor",
+            "Sim, se o backend for do mesmo time",
+            "Depende do framework usado"
+          ],
+          "answerIndex": 1,
+          "explanation": "Esconder o botão é boa experiência. Quem quiser excluir chama o endpoint direto. A decisão de permitir tem de acontecer no servidor.",
+          "topics": ["autorização"]
+        }
+      ]
+    }
+  ]
+}

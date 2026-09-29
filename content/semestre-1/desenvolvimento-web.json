@@ -1,0 +1,615 @@
+{
+  "id": "desenvolvimento-web",
+  "semester": 1,
+  "order": 3,
+  "title": "Desenvolvimento web",
+  "summary": "HTML com semântica, CSS que responde a qualquer tela, JavaScript falando com API e o papel do backend na entrega de uma página.",
+  "outcome": "Você consegue montar uma tela acessível, deixá-la usável no celular, buscar dados de uma API tratando erro e carregamento, e explicar o que o servidor faz em cada requisição.",
+  "tags": ["web", "html", "css", "javascript", "php"],
+  "stack": ["html", "css", "javascript", "php"],
+  "items": [
+    {
+      "id": "web-html-semantico-01",
+      "type": "lesson",
+      "title": "HTML: estrutura que significa algo",
+      "estimatedMinutes": 9,
+      "tags": ["html", "acessibilidade"],
+      "why": "Div para tudo funciona visualmente e quebra leitor de tela, navegação por teclado e formulário. Semântica é o que faz a página ser usável por todo mundo.",
+      "goal": "Escrever uma seção de página usando os elementos certos, com formulário que funciona.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Cada elemento HTML carrega significado. O navegador e as tecnologias assistivas usam esse significado para navegar."
+        },
+        {
+          "kind": "code",
+          "language": "html",
+          "code": "<!-- funciona na tela, não funciona para o resto -->\n<div class=\"titulo\">Pedidos</div>\n<div class=\"botao\" onclick=\"buscar()\">Buscar</div>\n\n<!-- mesma aparência, comportamento correto -->\n<h1>Pedidos</h1>\n<button type=\"button\" onclick=\"buscar()\">Buscar</button>"
+        },
+        {
+          "kind": "text",
+          "text": "O `button` já recebe foco pelo Tab, responde a Enter e Espaço, e é anunciado como botão. A `div` precisaria de tabindex, role e tratamento de teclado para chegar perto."
+        },
+        {
+          "kind": "text",
+          "text": "Formulário exige três coisas: label ligada ao campo, tipo adequado e nome."
+        },
+        {
+          "kind": "code",
+          "language": "html",
+          "code": "<form method=\"get\" action=\"/pedidos\">\n  <label for=\"status\">Status</label>\n  <select id=\"status\" name=\"status\">\n    <option value=\"\">Todos</option>\n    <option value=\"pending\">Pendentes</option>\n  </select>\n\n  <label for=\"desde\">Desde</label>\n  <input id=\"desde\" name=\"desde\" type=\"date\" />\n\n  <button type=\"submit\">Filtrar</button>\n</form>"
+        },
+        {
+          "kind": "text",
+          "text": "O `for` do label aponta para o `id` do campo. Isso faz o toque no texto focar o campo — no celular, é a diferença entre usável e irritante."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O tipo do input muda o teclado do celular",
+          "text": "type=\"email\" mostra o @, type=\"tel\" mostra números, type=\"date\" abre o calendário nativo. Usar type=\"text\" para tudo é trabalho extra para quem preenche."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual problema aparece ao usar `<div onclick>` em vez de `<button>`?",
+          "choices": [
+            "A div não aceita eventos de clique",
+            "Não recebe foco pelo teclado nem é anunciada como controle, então quem não usa mouse não consegue acionar",
+            "O CSS não funciona em div com onclick",
+            "Nenhum: são equivalentes"
+          ],
+          "answerIndex": 1,
+          "explanation": "Clique com mouse funciona. Teclado, leitor de tela e navegação por voz não. É o erro de acessibilidade mais comum em aplicação web."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva o HTML de um filtro de pedidos com campo de busca, select de status e botão. Teste navegando só com Tab e Enter.",
+        "expected": "Você consegue preencher e enviar sem tocar no mouse."
+      },
+      "ifStuck": ["Se o Tab não chega em algum controle, provavelmente ele não é um elemento interativo de verdade."],
+      "commonErrors": [
+        {
+          "error": "Botão dentro de form sem type recarrega a página.",
+          "why": "O padrão de `<button>` dentro de form é type=\"submit\".",
+          "fix": "Use type=\"button\" quando o botão não deve enviar o formulário."
+        }
+      ],
+      "exercise": {
+        "id": "ex-web-form-acessivel-01",
+        "title": "Formulário que funciona no teclado",
+        "kind": "structural",
+        "language": "html",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva um formulário de busca de pedidos com: um campo de texto para número do pedido (com label), um select de status (com label) e um botão de envio. Use elementos semânticos.",
+        "starter": "<form method=\"get\" action=\"/pedidos\">\n\n</form>\n",
+        "checks": [
+          { "name": "usa form", "type": "contains", "value": "<form", "hint": "O agrupamento precisa ser um form de verdade." },
+          { "name": "tem pelo menos dois labels", "type": "regex", "value": "(<label[\\s\\S]*?){2}", "hint": "Cada campo precisa da sua label." },
+          { "name": "label ligada por for", "type": "regex", "value": "<label[^>]*for=", "hint": "O atributo for liga a label ao id do campo." },
+          { "name": "campos tem id", "type": "regex", "value": "<(input|select)[^>]*id=", "hint": "O for da label precisa apontar para um id." },
+          { "name": "campos tem name", "type": "regex", "value": "<(input|select)[^>]*name=", "hint": "Sem name, o valor não é enviado." },
+          { "name": "usa button e nao div clicavel", "type": "contains", "value": "<button", "hint": "Botão precisa ser button." },
+          { "name": "nao usa div com onclick", "type": "notContains", "value": "div onclick", "hint": "Div clicável não recebe foco pelo teclado." }
+        ],
+        "hints": [
+          "Cada campo é um par: label com for, campo com id e name.",
+          "O botão de envio é <button type=\"submit\">."
+        ],
+        "solution": "<form method=\"get\" action=\"/pedidos\">\n  <label for=\"numero\">Número do pedido</label>\n  <input id=\"numero\" name=\"numero\" type=\"text\" inputmode=\"numeric\" />\n\n  <label for=\"status\">Status</label>\n  <select id=\"status\" name=\"status\">\n    <option value=\"\">Todos</option>\n    <option value=\"pending\">Pendentes</option>\n    <option value=\"done\">Concluídos</option>\n  </select>\n\n  <button type=\"submit\">Buscar</button>\n</form>\n",
+        "solutionNotes": "Esta verificação lê o código e confere padrões. Ela não prova que a tela funciona: teste navegando com Tab."
+      },
+      "glossary": ["requisicao", "rota"]
+    },
+    {
+      "id": "web-css-layout-01",
+      "type": "lesson",
+      "title": "CSS: layout que não quebra no celular",
+      "estimatedMinutes": 10,
+      "tags": ["css", "responsividade"],
+      "why": "A maior parte do acesso é por celular. Layout pensado para monitor e depois \"adaptado\" sempre fica pior que o contrário.",
+      "goal": "Montar um layout com Flexbox e Grid que funciona de 360px até desktop sem scroll horizontal.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Comece pelo celular. No espaço estreito você é obrigado a decidir o que é essencial; depois sobra espaço, e sobrar espaço é problema fácil."
+        },
+        {
+          "kind": "code",
+          "language": "css",
+          "code": "/* base: uma coluna, para telas estreitas */\n.lista {\n  display: grid;\n  gap: 12px;\n  padding: 16px;\n}\n\n/* a partir de 640px, duas colunas */\n@media (min-width: 640px) {\n  .lista {\n    grid-template-columns: repeat(2, 1fr);\n  }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Flexbox organiza em uma direção; Grid em duas. A regra prática: linha de botões e barra de topo com Flexbox, listagem e formulário com Grid."
+        },
+        {
+          "kind": "code",
+          "language": "css",
+          "code": ".barra {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  flex-wrap: wrap;   /* sem isto, a barra estoura a largura no celular */\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Scroll horizontal",
+          "text": "Largura fixa em pixel (width: 400px) é a causa número um de scroll horizontal no celular. Use max-width, que respeita telas menores."
+        },
+        {
+          "kind": "code",
+          "language": "css",
+          "code": "/* quebra em tela de 360px */\n.card { width: 400px; }\n\n/* funciona em qualquer largura */\n.card { max-width: 400px; width: 100%; }"
+        },
+        {
+          "kind": "text",
+          "text": "Código em bloco é a exceção: ele precisa poder rolar na horizontal, porque quebrar linha de código muda o sentido."
+        },
+        {
+          "kind": "code",
+          "language": "css",
+          "code": "pre {\n  overflow-x: auto;\n  -webkit-overflow-scrolling: touch;\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Alvos de toque precisam de tamanho. Um botão de 20px é acertado com mouse e errado com o dedo. O mínimo confortável é cerca de 44px de altura."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela aparece com scroll horizontal no celular. Qual é a primeira coisa a procurar?",
+          "choices": [
+            "Falta de media query",
+            "Algum elemento com largura fixa maior que a tela, ou conteúdo que não quebra, como uma URL longa",
+            "Uso de Grid em vez de Flexbox",
+            "Ausência de viewport no HTML"
+          ],
+          "answerIndex": 1,
+          "explanation": "Normalmente é um elemento específico estourando. A meta viewport também é obrigatória, mas sem ela o sintoma é a página inteira reduzida, não scroll de um trecho."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue qualquer tela que você fez e abra o modo dispositivo do navegador em 360px de largura. Encontre o elemento que causa scroll horizontal e corrija.",
+        "expected": "Nenhum scroll horizontal em 360px, e os botões dão para tocar com o dedo."
+      },
+      "ifStuck": [
+        "No console: `document.querySelectorAll('*').forEach(e => { if (e.scrollWidth > document.documentElement.clientWidth) console.log(e) })`"
+      ],
+      "commonErrors": [
+        {
+          "error": "A página inteira aparece minúscula no celular.",
+          "why": "Falta a meta viewport, e o navegador simula uma tela de desktop.",
+          "fix": "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+        }
+      ],
+      "exercise": {
+        "id": "ex-web-css-responsivo-01",
+        "title": "Layout de uma coluna para duas",
+        "kind": "structural",
+        "language": "css",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva o CSS de uma classe `.painel` que começa em uma coluna e passa a duas colunas a partir de 640px. Os cartões dentro não podem ter largura fixa. Inclua espaçamento entre eles.",
+        "starter": ".painel {\n\n}\n",
+        "checks": [
+          { "name": "usa grid ou flex", "type": "regex", "value": "display:\\s*(grid|flex)", "hint": "Qual propriedade cria o layout?" },
+          { "name": "tem espacamento", "type": "regex", "value": "gap:", "hint": "gap controla o espaço entre itens." },
+          { "name": "tem media query", "type": "contains", "value": "@media", "hint": "A mudança de colunas acontece a partir de uma largura." },
+          { "name": "usa min-width na media query", "type": "regex", "value": "min-width:\\s*640", "hint": "Mobile first: a base é uma coluna, e min-width adiciona a segunda." },
+          { "name": "nao usa largura fixa em pixel", "type": "regex", "value": "^(?!.*\\bwidth:\\s*\\d+px)[\\s\\S]*$", "hint": "Largura fixa causa scroll horizontal no celular." }
+        ],
+        "hints": [
+          "A base, fora da media query, é uma coluna.",
+          "grid-template-columns: repeat(2, 1fr) dentro da media query."
+        ],
+        "solution": ".painel {\n  display: grid;\n  gap: 12px;\n  padding: 16px;\n}\n\n@media (min-width: 640px) {\n  .painel {\n    grid-template-columns: repeat(2, 1fr);\n  }\n}\n"
+      },
+      "glossary": ["Performance"]
+    },
+    {
+      "id": "web-javascript-dom-01",
+      "type": "lesson",
+      "title": "JavaScript no navegador: DOM e eventos",
+      "estimatedMinutes": 10,
+      "tags": ["javascript", "dom"],
+      "why": "Toda interação de tela passa por ler o DOM, escutar evento e atualizar conteúdo. E é onde se abre a brecha de XSS.",
+      "goal": "Reagir a um evento, atualizar a tela em segurança e entender por que innerHTML é perigoso.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const formulario = document.querySelector('#filtro')\nconst lista = document.querySelector('#resultado')\n\nformulario.addEventListener('submit', (evento) => {\n  evento.preventDefault()   // sem isto, a página recarrega\n  const termo = formulario.elements.termo.value.trim()\n  lista.textContent = `buscando por ${termo}...`\n})"
+        },
+        {
+          "kind": "text",
+          "text": "`preventDefault()` impede o comportamento padrão do navegador. Em formulário, o padrão é recarregar a página."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "innerHTML com dado de usuário é XSS",
+          "text": "Se o texto vier de alguém e for inserido como HTML, o navegador executa o que estiver ali dentro, inclusive script."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const comentario = '<img src=x onerror=\"alert(document.cookie)\">'\n\nelemento.innerHTML = comentario    // executa\nelemento.textContent = comentario  // mostra como texto"
+        },
+        {
+          "kind": "text",
+          "text": "Para montar estrutura com dado variável, crie os elementos e use textContent no conteúdo:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "function linhaPedido(pedido) {\n  const item = document.createElement('li')\n  const titulo = document.createElement('strong')\n  titulo.textContent = `#${pedido.id}`\n  item.append(titulo, document.createTextNode(` — ${pedido.status}`))\n  return item\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Atualizar a lista inteira a cada tecla é lento. Delegação de evento resolve o oposto: um listener no container atende todos os itens, inclusive os criados depois."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "lista.addEventListener('click', (evento) => {\n  const botao = evento.target.closest('[data-id]')\n  if (!botao) return\n  abrirPedido(botao.dataset.id)\n})"
+        },
+        {
+          "kind": "quiz",
+          "question": "Um campo de comentários mostra o texto com innerHTML. Qual é o risco concreto?",
+          "choices": [
+            "O texto pode ficar com formatação errada",
+            "Alguém pode enviar script que roda no navegador de outros usuários, com acesso à sessão deles",
+            "O site fica mais lento",
+            "Nenhum, porque o navegador bloqueia script em innerHTML"
+          ],
+          "answerIndex": 1,
+          "explanation": "É XSS. O script roda no contexto da sua aplicação e alcança o que a página alcança, incluindo token em memória e ações autenticadas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Monte uma lista que filtra itens conforme você digita, usando textContent. Depois tente digitar <b>teste</b> num campo e confirme que aparece como texto.",
+        "expected": "O texto aparece literal, sem virar negrito."
+      },
+      "ifStuck": ["Se nada acontece, verifique no console se o querySelector encontrou o elemento (não devolveu null)."],
+      "commonErrors": [
+        {
+          "error": "Cannot read properties of null (reading 'addEventListener')",
+          "why": "O script rodou antes do elemento existir no documento.",
+          "fix": "Coloque o script no fim do body, ou use defer no atributo do script."
+        }
+      ],
+      "exercise": {
+        "id": "ex-web-escape-01",
+        "title": "Montar HTML sem abrir brecha",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `escaparHtml(texto)`: devolve o texto com os caracteres &, <, >, \" e ' convertidos nas entidades HTML correspondentes (&amp;, &lt;, &gt;, &quot;, &#39;). A ordem importa: o & precisa ser trocado primeiro. Entrada não textual devolve string vazia.",
+        "starter": "function escaparHtml(texto) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "texto simples nao muda", "expression": "escaparHtml('pedido 12')", "expected": "pedido 12" },
+          { "name": "escapa tag", "expression": "escaparHtml('<b>oi</b>')", "expected": "&lt;b&gt;oi&lt;/b&gt;" },
+          { "name": "escapa e comercial primeiro", "expression": "escaparHtml('a & b')", "expected": "a &amp; b" },
+          { "name": "nao escapa duas vezes", "expression": "escaparHtml('&lt;')", "expected": "&amp;lt;" },
+          { "name": "escapa aspas", "expression": "escaparHtml('diz \"oi\"')", "expected": "diz &quot;oi&quot;" },
+          { "name": "entrada nula devolve vazio", "expression": "escaparHtml(null)", "expected": "" }
+        ],
+        "hints": [
+          "Se você trocar < antes de &, o &lt; gerado terá o & trocado depois e virará &amp;lt;.",
+          "Troque & primeiro, depois os demais.",
+          "Use replaceAll ou uma expressão regular com a flag g."
+        ],
+        "solution": "function escaparHtml(texto) {\n  if (typeof texto !== 'string') return ''\n  return texto\n    .replaceAll('&', '&amp;')\n    .replaceAll('<', '&lt;')\n    .replaceAll('>', '&gt;')\n    .replaceAll('\"', '&quot;')\n    .replaceAll(\"'\", '&#39;')\n}\n",
+        "solutionNotes": "Na prática, prefira textContent a montar HTML e escapar. Esta função é para quando você realmente precisa gerar HTML, por exemplo num email."
+      },
+      "glossary": ["XSS", "requisicao"]
+    },
+    {
+      "id": "web-fetch-async-01",
+      "type": "lesson",
+      "title": "fetch, async/await e os estados que faltam",
+      "estimatedMinutes": 10,
+      "tags": ["javascript", "api"],
+      "why": "Toda tela que busca dado tem quatro estados: carregando, vazio, erro e sucesso. Implementar só o sucesso é o defeito mais comum em tela de iniciante.",
+      "goal": "Buscar dados de uma API tratando erro de rede, erro de status e resposta vazia.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "async function buscarPedidos(status) {\n  const resposta = await fetch(`/api/pedidos?status=${encodeURIComponent(status)}`)\n\n  if (!resposta.ok) {\n    throw new Error(`falha ao buscar pedidos: HTTP ${resposta.status}`)\n  }\n\n  return resposta.json()\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "fetch não lança erro em 404 nem em 500",
+          "text": "A promessa só é rejeitada quando a requisição não acontece (rede caiu, CORS). Resposta 500 chega como sucesso: verificar `resposta.ok` é obrigatório."
+        },
+        {
+          "kind": "text",
+          "text": "`encodeURIComponent` no valor evita que um espaço ou & do usuário quebre a URL. É o mesmo cuidado de parametrizar consulta SQL."
+        },
+        {
+          "kind": "text",
+          "text": "Na tela, os quatro estados:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "async function atualizarLista(status) {\n  mostrar('carregando')\n  try {\n    const pedidos = await buscarPedidos(status)\n    if (pedidos.length === 0) {\n      mostrar('vazio')     // não é erro: é resultado\n      return\n    }\n    mostrar('sucesso', pedidos)\n  } catch (erro) {\n    console.error(erro)\n    mostrar('erro')        // mensagem curta, com opção de tentar de novo\n  }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Estado vazio e estado de erro são coisas diferentes. \"Nenhum pedido pendente\" é informação. \"Não foi possível carregar\" é falha."
+        },
+        {
+          "kind": "table",
+          "headers": ["Estado", "O que a pessoa vê", "Cor"],
+          "rows": [
+            ["Carregando", "indicação de que algo está acontecendo", "neutra"],
+            ["Vazio", "texto explicando que não há resultado", "neutra"],
+            ["Erro", "o que falhou e o que fazer agora", "vermelho"],
+            ["Sucesso", "os dados", "neutra"]
+          ],
+          "caption": "Vermelho só no erro real. Lista vazia não é erro."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma tela mostra \"Erro ao carregar\" quando o filtro não encontra nada. Qual é o problema?",
+          "choices": [
+            "Nenhum: sem resultado é um erro",
+            "Lista vazia está sendo tratada como falha, o que faz a pessoa achar que o sistema quebrou",
+            "Falta um try/catch",
+            "O fetch deveria usar POST"
+          ],
+          "answerIndex": 1,
+          "explanation": "Confundir os dois estados gera chamado de suporte desnecessário e destrói a confiança na tela. Vazio é resultado; erro é falha."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma função que busca de uma URL inexistente (por exemplo /api/nada) e confirme no console que resposta.ok é false e que o catch NÃO foi acionado.",
+        "expected": "O console mostra o status 404 vindo do if, não do catch."
+      },
+      "ifStuck": ["Coloque console.log(resposta.status, resposta.ok) antes do if."],
+      "commonErrors": [
+        {
+          "error": "\"Unexpected token < in JSON at position 0\"",
+          "why": "O servidor devolveu HTML (uma página de erro) e o código chamou resposta.json().",
+          "fix": "Verifique resposta.ok antes de converter, e olhe o corpo real na aba de rede."
+        },
+        {
+          "error": "Erro de CORS ao chamar a API de outro domínio.",
+          "why": "O navegador bloqueia leitura entre origens diferentes sem autorização do servidor.",
+          "fix": "É configuração do servidor: ele precisa responder com Access-Control-Allow-Origin."
+        }
+      ],
+      "exercise": {
+        "id": "ex-web-estados-01",
+        "title": "Decidir o estado da tela",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `estadoDaTela(resultado)`. O parâmetro é um objeto com `carregando` (booleano), `erro` (mensagem ou null) e `itens` (lista ou null). Devolva 'carregando', 'erro', 'vazio' ou 'sucesso'. Prioridade: carregando vence tudo; depois erro; lista vazia ou nula é 'vazio'.",
+        "starter": "function estadoDaTela(resultado) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "carregando vence", "expression": "estadoDaTela({carregando: true, erro: 'x', itens: []})", "expected": "carregando" },
+          { "name": "erro", "expression": "estadoDaTela({carregando: false, erro: 'falhou', itens: null})", "expected": "erro" },
+          { "name": "lista vazia", "expression": "estadoDaTela({carregando: false, erro: null, itens: []})", "expected": "vazio" },
+          { "name": "itens nulos tambem e vazio", "expression": "estadoDaTela({carregando: false, erro: null, itens: null})", "expected": "vazio" },
+          { "name": "sucesso", "expression": "estadoDaTela({carregando: false, erro: null, itens: [{id: 1}]})", "expected": "sucesso" }
+        ],
+        "hints": [
+          "A ordem dos ifs é a própria prioridade descrita no enunciado.",
+          "Cuidado: `!itens.length` quebra quando itens é null. Verifique a existência antes."
+        ],
+        "solution": "function estadoDaTela(resultado) {\n  if (resultado.carregando) return 'carregando'\n  if (resultado.erro) return 'erro'\n  if (!resultado.itens || resultado.itens.length === 0) return 'vazio'\n  return 'sucesso'\n}\n",
+        "solutionNotes": "Concentrar essa decisão numa função pura deixa a tela simples e permite testar os quatro estados sem abrir o navegador."
+      },
+      "glossary": ["requisicao", "resposta", "status-code", "json", "cors"]
+    },
+    {
+      "id": "web-backend-php-01",
+      "type": "lesson",
+      "title": "O lado do servidor: o que o PHP faz numa requisição",
+      "estimatedMinutes": 10,
+      "tags": ["php", "backend", "http"],
+      "why": "Entender o ciclo da requisição no servidor é o que separa quem copia código de quem sabe onde o problema está. PHP mostra esse ciclo sem camadas.",
+      "goal": "Ler o ciclo requisição-resposta no servidor e reconhecer onde entram validação e consulta parametrizada.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Numa requisição, o servidor recebe método, caminho e parâmetros; decide o que fazer; busca dados; e devolve status mais corpo. Todo framework faz isso, com mais camadas."
+        },
+        {
+          "kind": "code",
+          "language": "php",
+          "code": "<?php\n// GET /pedidos.php?status=pending\nheader('Content-Type: application/json; charset=utf-8');\n\n$status = $_GET['status'] ?? null;\n$permitidos = ['pending', 'done', 'canceled'];\n\nif ($status !== null && !in_array($status, $permitidos, true)) {\n    http_response_code(422);\n    echo json_encode(['erro' => 'status inválido']);\n    exit;\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Duas decisões importantes já aparecem: a lista de valores permitidos (nunca confie no que chega) e o status 422 para dado inválido, diferente de 500."
+        },
+        {
+          "kind": "code",
+          "language": "php",
+          "code": "$sql = 'SELECT id, status, criado_em FROM pedido';\n$parametros = [];\n\nif ($status !== null) {\n    $sql .= ' WHERE status = :status';\n    $parametros['status'] = $status;\n}\n\n$sql .= ' ORDER BY criado_em DESC LIMIT 50';\n\n$consulta = $pdo->prepare($sql);\n$consulta->execute($parametros);\n\necho json_encode($consulta->fetchAll(PDO::FETCH_ASSOC));"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Nunca concatene valor na consulta",
+          "text": "\"WHERE status = '$status'\" abre injeção de SQL. Com prepare e parâmetro nomeado, o banco recebe comando e valor separados e trata o valor sempre como dado."
+        },
+        {
+          "kind": "text",
+          "text": "O `LIMIT 50` não é detalhe: sem limite, a consulta cresce junto com a tabela e um dia devolve tudo."
+        },
+        {
+          "kind": "text",
+          "text": "Onde ficam os segredos: fora do código."
+        },
+        {
+          "kind": "code",
+          "language": "php",
+          "code": "$dsn = getenv('DATABASE_DSN');\n$usuario = getenv('DATABASE_USER');\n$senha = getenv('DATABASE_PASSWORD');"
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual resposta HTTP é adequada quando o cliente envia `status=banana` e os valores válidos são outros?",
+          "choices": ["200 com lista vazia", "422 com mensagem explicando o campo inválido", "500, porque o servidor não sabe processar", "404, porque o status não existe"],
+          "answerIndex": 1,
+          "explanation": "O pedido está malformado, então é erro do cliente (4xx). 422 comunica dado inválido. 200 com lista vazia esconde o erro de quem integra; 500 culpa o servidor por um problema de entrada.",
+          "topics": ["http"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva o trecho de servidor (em PHP ou Python, como preferir) que valida um parâmetro de período: duas datas no formato AAAA-MM-DD, e o início não pode ser depois do fim.",
+        "expected": "Requisição inválida devolve 422 com mensagem; válida segue para a consulta."
+      },
+      "ifStuck": ["Valide formato primeiro, depois a relação entre as duas datas."],
+      "commonErrors": [
+        {
+          "error": "A API devolve 200 com {\"erro\": \"...\"} no corpo.",
+          "why": "Quem consome vê sucesso e só descobre a falha lendo o corpo. Monitoramento não acusa.",
+          "fix": "Use o status correto: 4xx para erro do cliente, 5xx para falha do servidor."
+        }
+      ],
+      "exercise": {
+        "id": "ex-web-consulta-parametrizada-01",
+        "title": "Consulta sem injeção",
+        "kind": "structural",
+        "language": "php",
+        "estimatedMinutes": 7,
+        "prompt": "Reescreva esta consulta vulnerável usando PDO com parâmetro nomeado e limite de resultados: $sql = \"SELECT * FROM pedido WHERE status = '$status'\";",
+        "starter": "<?php\n// reescreva aqui\n",
+        "checks": [
+          { "name": "usa prepare", "type": "contains", "value": "prepare", "hint": "Consulta parametrizada começa com prepare." },
+          { "name": "usa parametro nomeado ou posicional", "type": "regex", "value": ":\\w+|\\?", "hint": "O valor entra como parâmetro, não no texto da consulta." },
+          { "name": "executa com os valores separados", "type": "contains", "value": "execute", "hint": "Os valores vão em execute." },
+          { "name": "nao interpola variavel na consulta", "type": "regex", "value": "^(?![\\s\\S]*(WHERE|where)[^;]*\\$\\w)[\\s\\S]*$", "hint": "Nenhuma variável PHP dentro do texto SQL." },
+          { "name": "limita o resultado", "type": "regex", "value": "LIMIT|limit", "hint": "Listagem sem limite quebra quando a tabela cresce." }
+        ],
+        "hints": [
+          "O texto da consulta fica fixo; o valor viaja em execute.",
+          "Formato: $c = $pdo->prepare('... WHERE status = :status LIMIT 50'); $c->execute(['status' => $status]);"
+        ],
+        "solution": "<?php\n$consulta = $pdo->prepare(\n    'SELECT id, status, criado_em FROM pedido WHERE status = :status ORDER BY criado_em DESC LIMIT 50'\n);\n$consulta->execute(['status' => $status]);\n$pedidos = $consulta->fetchAll(PDO::FETCH_ASSOC);\n"
+      },
+      "glossary": ["injecao-sql", "status-code", "variavel-de-ambiente", "paginacao"]
+    },
+    {
+      "id": "web-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 4,
+      "tags": ["web"],
+      "summary": "Você já sabe montar uma tela que funciona no teclado e no celular, buscar dados tratando os quatro estados, e o que o servidor faz do outro lado.",
+      "learned": [
+        "Elemento semântico dá comportamento de graça: foco, teclado, leitura",
+        "Mobile first evita a maior parte dos problemas de layout",
+        "textContent em vez de innerHTML fecha a porta do XSS",
+        "fetch não lança erro em 404 ou 500: verifique resposta.ok",
+        "Toda tela tem quatro estados; vazio não é erro",
+        "No servidor: valide a entrada e parametrize a consulta"
+      ],
+      "nextUp": "Segurança da informação: autenticação, sessão e as falhas mais comuns em aplicação web."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-web-fundamentos",
+      "title": "Desenvolvimento web",
+      "format": "alternativa",
+      "summary": "Seis questões sobre acessibilidade, layout no celular, integração com API e segurança de tela.",
+      "estimatedMinutes": 10,
+      "topics": ["html", "css", "javascript", "api", "segurança"],
+      "afterItemId": "web-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-web-fetch-01",
+          "kind": "debugging",
+          "prompt": "A tela mostra \"carregando\" para sempre quando a API responde 500. Qual é a causa?",
+          "code": {
+            "language": "javascript",
+            "code": "const resposta = await fetch('/api/pedidos')\nconst dados = await resposta.json()\nmostrar('sucesso', dados)"
+          },
+          "choices": [
+            "Falta await no fetch",
+            "resposta.ok não é verificado, e resposta.json() falha ao tentar ler um corpo que não é JSON, sem nenhum tratamento",
+            "O fetch precisa de method: 'GET' explícito",
+            "É necessário usar XMLHttpRequest para capturar 500"
+          ],
+          "answerIndex": 1,
+          "explanation": "fetch considera 500 uma resposta válida. O json() quebra com o HTML de erro, a exceção sobe sem catch e o estado nunca sai de carregando.",
+          "topics": ["api", "javascript"]
+        },
+        {
+          "id": "q-web-xss-02",
+          "kind": "situacao",
+          "prompt": "Um sistema interno mostra o nome do cliente numa tabela usando innerHTML. Os nomes vêm de um formulário público. Qual é o risco?",
+          "choices": [
+            "Nome com acento pode aparecer errado",
+            "Um nome contendo script executa no navegador de quem abre a tabela, com acesso à sessão daquele usuário",
+            "A tabela pode ficar desalinhada",
+            "Nenhum, porque é sistema interno"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sistema interno é justamente onde o estrago é maior: quem abre a tabela é um funcionário com mais permissões que o público.",
+          "topics": ["segurança", "javascript"]
+        },
+        {
+          "id": "q-web-a11y-03",
+          "kind": "codigo",
+          "prompt": "O que está faltando neste campo para que ele funcione bem no celular e com leitor de tela?",
+          "code": {
+            "language": "html",
+            "code": "<span>Email</span>\n<input type=\"text\" name=\"email\" />"
+          },
+          "choices": [
+            "Nada, está correto",
+            "Uma label ligada ao campo por for/id, e o type adequado (email)",
+            "Um atributo placeholder com o texto Email",
+            "Um wrapper div com class form-group"
+          ],
+          "answerIndex": 1,
+          "explanation": "Span não é label: não é anunciada como rótulo do campo e tocá-la não foca o input. E type=email ajusta o teclado do celular.",
+          "wrongExplanations": {
+            "2": "Placeholder desaparece ao digitar e não substitui rótulo."
+          },
+          "topics": ["html"]
+        },
+        {
+          "id": "q-web-css-04",
+          "kind": "conceitual",
+          "prompt": "Por que mobile first costuma dar menos trabalho que desktop first?",
+          "choices": [
+            "Porque CSS para celular é mais simples de escrever",
+            "Porque começar pelo espaço menor obriga a decidir o essencial, e acrescentar espaço depois é mais fácil que remover",
+            "Porque media query com max-width não funciona",
+            "Porque celulares não suportam Grid"
+          ],
+          "answerIndex": 1,
+          "explanation": "Desktop first normalmente vira uma sequência de exceções para caber no celular. O caminho inverso adiciona, em vez de corrigir.",
+          "topics": ["css"]
+        },
+        {
+          "id": "q-web-status-05",
+          "kind": "situacao",
+          "prompt": "Sua API recebe um filtro de data com formato inválido. Qual status devolver?",
+          "choices": ["500", "422", "404", "200 com lista vazia"],
+          "answerIndex": 1,
+          "explanation": "O erro está no pedido, então é 4xx. 422 indica entidade não processável: o formato foi entendido, o conteúdo é inválido. 400 também é defensável.",
+          "topics": ["api"]
+        },
+        {
+          "id": "q-web-estados-06",
+          "kind": "conceitual",
+          "prompt": "Quais estados uma tela que busca dados precisa tratar?",
+          "choices": [
+            "Sucesso e erro",
+            "Carregando, vazio, erro e sucesso",
+            "Só sucesso: o resto o navegador resolve",
+            "Carregando e sucesso"
+          ],
+          "answerIndex": 1,
+          "explanation": "Faltar o estado vazio produz tela em branco sem explicação; faltar o de erro produz tela travada em carregando.",
+          "topics": ["javascript"]
+        }
+      ]
+    }
+  ]
+}

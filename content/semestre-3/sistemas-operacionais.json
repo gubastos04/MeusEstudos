@@ -1,0 +1,669 @@
+{
+  "id": "sistemas-operacionais",
+  "semester": 3,
+  "order": 2,
+  "title": "Sistemas operacionais e Linux",
+  "summary": "Terminal, processos, permissões e leitura de log. O que você usa quando precisa entender o que está acontecendo num servidor.",
+  "outcome": "Você navega no terminal, encontra o processo que consome recursos, ajusta permissão de arquivo e investiga um problema lendo log.",
+  "tags": [
+    "linux",
+    "devops",
+    "terminal"
+  ],
+  "stack": [
+    "bash"
+  ],
+  "items": [
+    {
+      "id": "so-terminal-01",
+      "type": "lesson",
+      "title": "Terminal: os comandos que resolvem 90% dos casos",
+      "estimatedMinutes": 10,
+      "tags": [
+        "linux",
+        "terminal"
+      ],
+      "why": "Em servidor não existe interface gráfica. E investigar log com ferramenta de texto é mais rápido que qualquer painel.",
+      "goal": "Navegar, procurar em arquivos e encadear comandos com pipe.",
+      "blocks": [
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ pwd                      # onde estou",
+            "$ ls -la                   # o que tem aqui, com permissões",
+            "$ cd /var/log              # mudar de pasta",
+            "$ tail -n 100 app.log      # últimas 100 linhas",
+            "$ tail -f app.log          # acompanha em tempo real",
+            "$ grep -i erro app.log     # procura, ignorando maiúsculas"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O pipe (`|`) liga a saída de um comando à entrada do próximo. É o que transforma comandos simples em investigação:"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "# quantas vezes cada erro apareceu, do mais frequente para o menos",
+            "$ grep ERROR app.log | awk '{print $4}' | sort | uniq -c | sort -rn | head",
+            "",
+            "   412 TimeoutError",
+            "    88 IntegrityError",
+            "     3 MemoryError"
+          ],
+          "caption": "Esse encadeamento responde \"qual erro está dominando\" em segundos."
+        },
+        {
+          "kind": "text",
+          "text": "Procurar em código, recursivamente, com número de linha:"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ grep -rn \"api_key\" src/",
+            "src/config.py:14:api_key = \"sk-ant-abc\"",
+            "",
+            "$ find . -name \"*.log\" -size +100M"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Comandos sem volta",
+          "text": "`rm -rf` não pergunta e não tem lixeira. Antes de executar, rode o mesmo caminho com `ls` para ver o que seria apagado. Cuidado especial com variável no caminho: se ela estiver vazia, o caminho muda de sentido."
+        },
+        {
+          "kind": "text",
+          "text": "Redirecionamento: `>` sobrescreve, `>>` acrescenta, `2>` captura a saída de erro."
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ python importar.py > saida.log 2> erros.log",
+            "$ python importar.py >> historico.log 2>&1   # tudo no mesmo arquivo"
+          ]
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa saber qual mensagem de erro é mais frequente num log de 2 GB. Qual abordagem é adequada?",
+          "choices": [
+            "Abrir o arquivo num editor de texto",
+            "Filtrar com grep, extrair o campo do erro e contar com sort e uniq -c",
+            "Baixar o arquivo e abrir numa planilha",
+            "Ler as últimas 100 linhas e supor"
+          ],
+          "answerIndex": 1,
+          "explanation": "Editor carrega o arquivo na memória. O encadeamento de comandos processa em fluxo, com consumo constante, e responde a pergunta exata."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue qualquer arquivo de log (ou gere um) e descubra as 5 linhas de erro mais frequentes usando grep, sort e uniq.",
+        "expected": "Uma lista com contagem, ordenada."
+      },
+      "ifStuck": [
+        "A ordem importa: uniq -c só conta repetições adjacentes, por isso o sort vem antes."
+      ],
+      "commonErrors": [
+        {
+          "error": "uniq -c contando errado.",
+          "why": "uniq só agrupa linhas iguais consecutivas.",
+          "fix": "Sempre `sort | uniq -c`, nunca uniq sozinho."
+        }
+      ],
+      "exercise": {
+        "id": "ex-so-pipeline-01",
+        "title": "Investigar log com pipe",
+        "kind": "structural",
+        "language": "bash",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva um comando que encontre, no arquivo app.log, as 10 rotas que mais aparecem em linhas de erro. Cada linha de erro tem o formato: DATA ERROR req=abc rota=/caminho mensagem. Use grep, sort, uniq e head.",
+        "starter": "",
+        "checks": [
+          {
+            "name": "filtra linhas de erro",
+            "type": "contains",
+            "value": "grep",
+            "hint": "Primeiro isole as linhas de erro."
+          },
+          {
+            "name": "ordena antes de contar",
+            "type": "contains",
+            "value": "sort",
+            "hint": "uniq -c só conta linhas adjacentes."
+          },
+          {
+            "name": "conta repeticoes",
+            "type": "regex",
+            "value": "uniq\\s+-c",
+            "hint": "Qual opção do uniq conta?"
+          },
+          {
+            "name": "limita a saida",
+            "type": "regex",
+            "value": "head",
+            "hint": "As 10 mais frequentes."
+          },
+          {
+            "name": "usa pipe",
+            "type": "contains",
+            "value": "|",
+            "hint": "Encadeie os comandos."
+          }
+        ],
+        "hints": [
+          "Para extrair o campo da rota: grep -o 'rota=[^ ]*'",
+          "A sequência é: filtrar, extrair, ordenar, contar, ordenar por contagem, limitar."
+        ],
+        "solution": "grep ERROR app.log | grep -o 'rota=[^ ]*' | sort | uniq -c | sort -rn | head -n 10\n",
+        "solutionNotes": "O segundo `sort -rn` ordena pela contagem, em ordem decrescente. Sem ele, a saída viria em ordem alfabética de rota."
+      },
+      "glossary": [
+        "Log",
+        "Debug",
+        "stack-trace"
+      ]
+    },
+    {
+      "id": "so-processos-permissoes-01",
+      "type": "lesson",
+      "title": "Processos, portas e permissões",
+      "estimatedMinutes": 9,
+      "tags": [
+        "linux",
+        "devops"
+      ],
+      "why": "\"A porta já está em uso\" e \"permission denied\" são dois dos erros mais frequentes ao subir uma aplicação.",
+      "goal": "Encontrar o processo que ocupa uma porta, ver consumo de recursos e ajustar permissão de arquivo.",
+      "blocks": [
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ ps aux | grep python        # processos rodando",
+            "$ top                         # consumo em tempo real",
+            "$ lsof -i :8000               # quem está usando a porta 8000",
+            "$ kill 4821                   # pede para o processo encerrar",
+            "$ kill -9 4821                # força (último recurso: não permite limpeza)"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A diferença entre `kill` e `kill -9`: o primeiro pede que o processo termine e ele pode fechar conexões e salvar estado; o segundo encerra na hora, sem chance de limpeza."
+        },
+        {
+          "kind": "text",
+          "text": "Permissões aparecem em três grupos: dono, grupo, outros. Cada um com leitura, escrita e execução."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "-rw-r--r--  1 app  app   1240 mar 11 14:02 config.yml\n│└┬┘└┬┘└┬┘\n│ │  │  └── outros: leitura\n│ │  └───── grupo: leitura\n│ └──────── dono: leitura e escrita\n└────────── tipo: arquivo comum (d seria diretório)"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ chmod 600 .env       # só o dono lê e escreve",
+            "$ chmod +x deploy.sh   # torna executável",
+            "$ chown app:app arquivo"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "chmod 777 nunca é a solução",
+          "text": "Dar todas as permissões a todos resolve o sintoma e abre o sistema. Descubra qual usuário precisa de qual acesso: normalmente é `chown` que estava faltando."
+        },
+        {
+          "kind": "text",
+          "text": "Arquivo com segredo merece 600: só o dono lê. Um `.env` com permissão de leitura para todos é vazamento esperando acontecer."
+        },
+        {
+          "kind": "quiz",
+          "question": "Ao subir a aplicação aparece \"address already in use\" na porta 8000. Qual é o caminho?",
+          "choices": [
+            "Reiniciar o computador",
+            "Descobrir qual processo ocupa a porta com lsof -i :8000 e decidir: encerrar aquele processo ou usar outra porta",
+            "Rodar o comando com sudo",
+            "Mudar o código para tentar a porta seguinte automaticamente"
+          ],
+          "answerIndex": 1,
+          "explanation": "Normalmente é uma instância anterior que não encerrou. Identificar antes de matar evita derrubar outra coisa que estava rodando ali.",
+          "topics": [
+            "processos"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Suba um servidor local, descubra o PID dele com lsof, e encerre com kill. Depois confira com ps que ele saiu.",
+        "expected": "Você consegue achar e encerrar um processo pela porta que ele ocupa."
+      },
+      "ifStuck": [
+        "No Windows: netstat -ano | findstr :8000 e depois taskkill /PID <pid>."
+      ],
+      "commonErrors": [
+        {
+          "error": "\"permission denied\" ao escrever numa pasta.",
+          "why": "O usuário que roda a aplicação não é o dono da pasta.",
+          "fix": "chown para o usuário da aplicação. Evite resolver com 777."
+        }
+      ],
+      "glossary": [
+        "Log",
+        "Docker",
+        "variavel-de-ambiente"
+      ]
+    },
+    {
+      "id": "so-encerramento-gracioso-01",
+      "type": "lesson",
+      "title": "Encerrar sem perder trabalho",
+      "estimatedMinutes": 9,
+      "tags": [
+        "linux",
+        "devops"
+      ],
+      "why": "Todo deploy encerra o processo antigo. Se ele morre no meio de uma requisição, alguém vê erro numa operação que estava dando certo.",
+      "goal": "Entender o que o sistema faz ao encerrar um processo e preparar a aplicação para sair de forma limpa.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O sistema operacional não mata o processo de uma vez. Ele pede primeiro:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Sinal",
+            "O que significa",
+            "Dá para tratar?"
+          ],
+          "rows": [
+            [
+              "SIGTERM",
+              "encerre quando puder",
+              "sim — é o usado em deploy"
+            ],
+            [
+              "SIGINT",
+              "Ctrl+C no terminal",
+              "sim"
+            ],
+            [
+              "SIGKILL",
+              "morra agora",
+              "não — o processo some na hora"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A sequência de um deploy é sempre a mesma: manda SIGTERM, espera um prazo e, se o processo continuar de pé, manda SIGKILL."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "deploy → SIGTERM → [prazo de 10 a 30s] → SIGKILL\n\nO que a aplicação faz nesse prazo decide se alguém vê erro."
+        },
+        {
+          "kind": "text",
+          "text": "Um encerramento limpo faz três coisas, nessa ordem:"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Para de aceitar requisição nova",
+            "Termina as que já estão em andamento",
+            "Fecha conexões de banco e devolve tarefas não concluídas"
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "import signal\n\nencerrando = False\n\n\ndef pedir_encerramento(numero_do_sinal, quadro):\n    global encerrando\n    encerrando = True\n    log.info(\"encerramento solicitado; parando de aceitar trabalho novo\")\n\n\nsignal.signal(signal.SIGTERM, pedir_encerramento)\n\nwhile not encerrando:\n    tarefa = fila.proxima()\n    if tarefa:\n        processar(tarefa)\n\nlog.info(\"terminando o que estava em andamento\")\nfila.devolver_pendentes()"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O prazo é curto",
+          "text": "Se a aplicação leva mais tempo que o prazo para terminar, o SIGKILL chega no meio. Tarefa longa precisa ser interrompível e retomável, não apenas \"rápida na maioria das vezes\"."
+        },
+        {
+          "kind": "text",
+          "text": "Em container, há um detalhe que pega muita gente: o processo principal recebe o sinal. Se a aplicação sobe por um script de shell, o sinal vai para o shell e nunca chega na aplicação."
+        },
+        {
+          "kind": "code",
+          "language": "bash",
+          "code": "# o sinal para no shell; a aplicação nunca fica sabendo\nCMD npm start\n\n# a aplicação vira o processo principal e recebe o sinal\nCMD [\"node\", \"servidor.js\"]"
+        },
+        {
+          "kind": "quiz",
+          "question": "Depois de cada deploy aparecem alguns erros 502 no log, sempre nos mesmos segundos. Qual é a explicação mais provável?",
+          "choices": [
+            "O banco de dados fica indisponível durante o deploy",
+            "O processo antigo é encerrado sem terminar as requisições que já estavam em andamento",
+            "O balanceador de carga está mal configurado por padrão",
+            "Faltou aumentar a memória do container"
+          ],
+          "answerIndex": 1,
+          "explanation": "Erro concentrado no instante do deploy aponta para o encerramento. Tratar o SIGTERM e terminar o que está em andamento antes de sair costuma zerar esses erros."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Rode a sua aplicação localmente e encerre com Ctrl+C no meio de uma requisição lenta. Veja se a requisição termina ou se morre no meio.",
+        "expected": "Se morre no meio, você encontrou a origem dos erros de deploy."
+      },
+      "ifStuck": [
+        "Em Node: `process.on('SIGTERM', ...)` e `servidor.close()` param de aceitar conexão nova sem cortar as atuais.",
+        "Em Python com uvicorn ou gunicorn, o encerramento limpo já vem pronto: o cuidado é com as suas tarefas de fundo."
+      ],
+      "commonErrors": [
+        {
+          "error": "Chamar `process.exit()` dentro do tratador de sinal.",
+          "why": "Isso encerra na hora e desfaz justamente o que o tratador existe para evitar.",
+          "fix": "Marque que está encerrando, pare de aceitar trabalho novo e deixe o processo sair sozinho quando terminar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-so-encerramento-01",
+        "title": "Ordem de um encerramento limpo",
+        "kind": "structural",
+        "language": "javascript",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva o tratador de SIGTERM de um servidor Node: pare de aceitar conexões novas, feche a conexão do banco e registre no log. Não use process.exit para encerrar imediatamente.",
+        "starter": "// servidor.js\nconst servidor = app.listen(3000)\n\n",
+        "checks": [
+          {
+            "name": "trata o SIGTERM",
+            "type": "contains",
+            "value": "SIGTERM",
+            "hint": "É o sinal que o deploy envia."
+          },
+          {
+            "name": "para de aceitar conexoes novas",
+            "type": "regex",
+            "value": "servidor\\.close|server\\.close",
+            "hint": "close() para de aceitar conexão nova sem cortar as atuais."
+          },
+          {
+            "name": "fecha o banco",
+            "type": "regex",
+            "value": "disconnect|end\\(\\)|close\\(\\)[\\s\\S]*banco|banco[\\s\\S]*close",
+            "hint": "A conexão do banco também precisa ser devolvida."
+          },
+          {
+            "name": "registra no log",
+            "type": "regex",
+            "value": "console\\.|log\\.",
+            "hint": "Sem registro, ninguém sabe se o encerramento foi limpo."
+          },
+          {
+            "name": "nao encerra na hora",
+            "type": "notContains",
+            "value": "process.exit(0)",
+            "hint": "process.exit desfaz o encerramento limpo."
+          }
+        ],
+        "hints": [
+          "A estrutura é: process.on('SIGTERM', async () => { ... }).",
+          "servidor.close() recebe um callback ou devolve promessa, conforme a versão.",
+          "Feche o banco depois que o servidor parar de aceitar conexão."
+        ],
+        "solution": "// servidor.js\nconst servidor = app.listen(3000)\n\nprocess.on('SIGTERM', () => {\n  console.info('SIGTERM recebido: parando de aceitar conexões novas')\n\n  // close() deixa as requisições em andamento terminarem.\n  servidor.close(async () => {\n    await banco.$disconnect()\n    console.info('encerramento limpo concluído')\n  })\n})\n",
+        "solutionNotes": "Esta verificação lê o código e confere padrões: ela não prova que o encerramento funciona. O teste de verdade é encerrar o processo no meio de uma requisição lenta e ver se a resposta chega."
+      },
+      "glossary": [
+        "deploy",
+        "Docker",
+        "Log",
+        "fila"
+      ]
+    },
+    {
+      "id": "so-tarefas-agendadas-01",
+      "type": "lesson",
+      "title": "Tarefas agendadas e a trava que falta",
+      "estimatedMinutes": 9,
+      "tags": [
+        "linux",
+        "devops"
+      ],
+      "why": "Rotina diária que roda em três instâncias envia três vezes o mesmo email. É o erro mais comum ao passar de um servidor para vários.",
+      "goal": "Agendar uma rotina e garantir que ela execute uma vez só, mesmo com várias instâncias.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O agendador clássico do Linux é o cron. Cada linha é: minuto, hora, dia do mês, mês, dia da semana, comando."
+        },
+        {
+          "kind": "code",
+          "language": "bash",
+          "code": "# min hora dia mes dia-semana  comando\n  0   3   *   *   *           /app/bin/limpar-sessoes\n  */15 *  *   *   *           /app/bin/processar-fila\n  0   8   *   *   1           /app/bin/relatorio-semanal\n\n# 3h todo dia, a cada 15 minutos, e às 8h de segunda"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Cron não sabe do seu ambiente",
+          "text": "Ele roda com um conjunto mínimo de variáveis: o PATH é curto e o seu .env não existe. Comando que funciona no terminal costuma falhar no cron por causa disso. Use caminho absoluto e carregue a configuração explicitamente."
+        },
+        {
+          "kind": "text",
+          "text": "O problema aparece com várias instâncias: o agendador de cada uma dispara no mesmo horário."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "03:00  instância A → envia avisos de atraso\n03:00  instância B → envia avisos de atraso\n03:00  instância C → envia avisos de atraso\n\nO cliente recebe três emails."
+        },
+        {
+          "kind": "text",
+          "text": "A trava mais simples usa o próprio banco. Uma chave única por execução: quem insere primeiro roda, os outros recebem erro de duplicidade e desistem."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "CREATE TABLE execucao (\n  chave        TEXT PRIMARY KEY,\n  executada_em TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\n-- a chave carrega a tarefa e o periodo\nINSERT INTO execucao (chave) VALUES ('aviso-atraso:2026-03-11');"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def executar_uma_vez(nome, periodo, tarefa):\n    chave = f\"{nome}:{periodo}\"\n    try:\n        banco.executar(\"INSERT INTO execucao (chave) VALUES (%s)\", (chave,))\n    except ChaveDuplicada:\n        log.info(\"outra instância já executou\", extra={\"chave\": chave})\n        return False\n\n    tarefa()\n    return True"
+        },
+        {
+          "kind": "text",
+          "text": "A garantia vem do banco, não do código: a restrição de unicidade é verificada de forma atômica, mesmo com as três instâncias inserindo no mesmo milissegundo."
+        },
+        {
+          "kind": "text",
+          "text": "Duas decisões que acompanham: por quanto tempo guardar essas linhas, e o que fazer se a tarefa falhar depois da inserção — porque a chave já estará lá, impedindo a próxima tentativa."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que verificar `SELECT ... WHERE chave = ?` antes de inserir não resolve o problema?",
+          "choices": [
+            "Porque SELECT é mais lento que INSERT",
+            "Porque entre o SELECT e o INSERT as três instâncias podem passar pela verificação, todas encontrando a chave ausente",
+            "Porque o SELECT não funciona com chave primária de texto",
+            "Porque é preciso usar transação para qualquer SELECT"
+          ],
+          "answerIndex": 1,
+          "explanation": "É o mesmo problema de concorrência do agendamento de horário: verificar e depois inserir tem uma janela entre as duas operações. A restrição de unicidade elimina a janela porque a decisão acontece numa operação só."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste as rotinas agendadas do seu projeto. Para cada uma, responda: o que acontece se ela rodar duas vezes no mesmo período?",
+        "expected": "As que causam efeito visível para alguém precisam de trava ou de idempotência."
+      },
+      "ifStuck": [
+        "A chave da trava precisa incluir o período: sem isso, a tarefa roda uma vez só na vida.",
+        "Se a tarefa for idempotente de verdade, rodar duas vezes não faz mal e a trava é opcional."
+      ],
+      "commonErrors": [
+        {
+          "error": "Trava em memória do processo.",
+          "why": "Cada instância tem a própria memória; as outras não enxergam a trava.",
+          "fix": "A trava precisa estar onde todas as instâncias olham: banco ou serviço externo."
+        }
+      ],
+      "exercise": {
+        "id": "ex-so-chave-execucao-01",
+        "title": "Chave de execução por período",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `chaveDeExecucao(nome, periodicidade, momento)`. `momento` é um texto ISO. Para 'diaria' a chave é `nome:AAAA-MM-DD`; para 'horaria', `nome:AAAA-MM-DDTHH`; para 'mensal', `nome:AAAA-MM`. Periodicidade desconhecida ou nome vazio devolve null.",
+        "starter": "function chaveDeExecucao(nome, periodicidade, momento) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "diaria",
+            "expression": "chaveDeExecucao('aviso-atraso', 'diaria', '2026-03-11T03:00:00Z')",
+            "expected": "aviso-atraso:2026-03-11"
+          },
+          {
+            "name": "horaria",
+            "expression": "chaveDeExecucao('processar-fila', 'horaria', '2026-03-11T14:35:00Z')",
+            "expected": "processar-fila:2026-03-11T14"
+          },
+          {
+            "name": "mensal",
+            "expression": "chaveDeExecucao('fechamento', 'mensal', '2026-03-11T00:00:00Z')",
+            "expected": "fechamento:2026-03"
+          },
+          {
+            "name": "duas execucoes no mesmo dia dao a mesma chave",
+            "expression": "chaveDeExecucao('x', 'diaria', '2026-03-11T03:00:00Z') === chaveDeExecucao('x', 'diaria', '2026-03-11T23:59:00Z')",
+            "expected": true
+          },
+          {
+            "name": "dias diferentes dao chaves diferentes",
+            "expression": "chaveDeExecucao('x', 'diaria', '2026-03-11T03:00:00Z') === chaveDeExecucao('x', 'diaria', '2026-03-12T03:00:00Z')",
+            "expected": false
+          },
+          {
+            "name": "periodicidade desconhecida",
+            "expression": "chaveDeExecucao('x', 'quinzenal', '2026-03-11T03:00:00Z')",
+            "expected": null
+          },
+          {
+            "name": "nome vazio",
+            "expression": "chaveDeExecucao('', 'diaria', '2026-03-11T03:00:00Z')",
+            "expected": null
+          }
+        ],
+        "hints": [
+          "O texto ISO já vem no formato certo: basta recortar o pedaço.",
+          "Dia são os 10 primeiros caracteres; hora, os 13; mês, os 7.",
+          "Valide o nome e a periodicidade antes de recortar."
+        ],
+        "solution": "const TAMANHO = { mensal: 7, diaria: 10, horaria: 13 }\n\nfunction chaveDeExecucao(nome, periodicidade, momento) {\n  if (!nome) return null\n\n  const corte = TAMANHO[periodicidade]\n  if (!corte) return null\n\n  return `${nome}:${String(momento).slice(0, corte)}`\n}\n",
+        "solutionNotes": "Recortar o texto ISO funciona porque ele está em UTC. Se a regra de negócio for \"uma vez por dia no fuso de São Paulo\", converta antes — ou a virada do dia acontecerá às 21h."
+      },
+      "glossary": [
+        "indice",
+        "Log",
+        "transacao",
+        "deploy",
+        "variavel-de-ambiente"
+      ]
+    },
+    {
+      "id": "so-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "linux"
+      ],
+      "summary": "Você consegue investigar um servidor: ler log com eficiência, achar processo e resolver problema de permissão sem abrir tudo.",
+      "learned": [
+        "Pipe transforma comandos simples em investigação",
+        "sort antes de uniq -c, sempre",
+        "grep -rn para achar no código; find para achar arquivo",
+        "kill pede, kill -9 força sem limpeza",
+        "lsof -i :porta resolve \"address already in use\"",
+        "chmod 600 em arquivo de segredo; 777 nunca"
+      ],
+      "nextUp": "Banco de dados."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-so-terminal",
+      "title": "Terminal e processos",
+      "format": "alternativa",
+      "summary": "Quatro situações de investigação em servidor.",
+      "estimatedMinutes": 6,
+      "topics": [
+        "terminal",
+        "processos",
+        "permissões"
+      ],
+      "afterItemId": "so-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-so-uniq-01",
+          "kind": "debugging",
+          "prompt": "O comando `grep ERROR app.log | uniq -c` mostra contagens todas iguais a 1, embora existam erros repetidos. Por quê?",
+          "choices": [
+            "O grep está filtrando errado",
+            "uniq -c agrupa apenas linhas iguais consecutivas: falta ordenar antes",
+            "O arquivo está corrompido",
+            "uniq não funciona com pipe"
+          ],
+          "answerIndex": 1,
+          "explanation": "É o erro mais comum com uniq. A sequência correta é `sort | uniq -c`.",
+          "topics": [
+            "terminal"
+          ]
+        },
+        {
+          "id": "q-so-porta-02",
+          "kind": "situacao",
+          "prompt": "\"Address already in use\" ao iniciar a aplicação na porta 3000. Qual é o primeiro comando?",
+          "choices": [
+            "sudo reboot",
+            "lsof -i :3000",
+            "chmod 777 .",
+            "rm -rf node_modules"
+          ],
+          "answerIndex": 1,
+          "explanation": "Identificar o processo antes de agir. Normalmente é uma instância anterior da própria aplicação.",
+          "topics": [
+            "processos"
+          ]
+        },
+        {
+          "id": "q-so-chmod-03",
+          "kind": "conceitual",
+          "prompt": "Qual permissão é adequada para um arquivo .env em servidor?",
+          "choices": [
+            "777",
+            "600",
+            "644",
+            "755"
+          ],
+          "answerIndex": 1,
+          "explanation": "600 dá leitura e escrita apenas ao dono. 644 permitiria qualquer usuário do sistema ler os segredos.",
+          "topics": [
+            "permissões"
+          ]
+        },
+        {
+          "id": "q-so-log-04",
+          "kind": "situacao",
+          "prompt": "Você precisa acompanhar o log enquanto reproduz um erro na aplicação. Qual comando usar?",
+          "choices": [
+            "cat app.log",
+            "tail -f app.log",
+            "grep app.log",
+            "less app.log"
+          ],
+          "answerIndex": 1,
+          "explanation": "tail -f mostra as novas linhas conforme são escritas, que é exatamente o que se precisa ao reproduzir um problema.",
+          "topics": [
+            "terminal"
+          ]
+        }
+      ]
+    }
+  ]
+}

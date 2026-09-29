@@ -1,0 +1,810 @@
+{
+  "id": "python-aplicado",
+  "semester": 3,
+  "order": 4,
+  "title": "Desenvolvimento rápido em Python",
+  "summary": "API com FastAPI: rotas, validação, banco, autenticação, testes e organização em camadas.",
+  "outcome": "Você constrói uma API com validação de entrada, acesso a banco, autenticação e testes, organizada de forma que as regras possam ser testadas sem subir servidor.",
+  "tags": [
+    "python",
+    "api",
+    "backend",
+    "fastapi"
+  ],
+  "stack": [
+    "python",
+    "sql"
+  ],
+  "items": [
+    {
+      "id": "pyapp-rota-validacao-01",
+      "type": "lesson",
+      "title": "Rota com validação de entrada",
+      "estimatedMinutes": 10,
+      "tags": [
+        "fastapi",
+        "api"
+      ],
+      "why": "Validação declarada na borda da aplicação elimina uma classe inteira de bug: nenhum dado inválido chega às regras de negócio.",
+      "goal": "Criar um endpoint com validação automática e resposta de erro adequada.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "from datetime import date\nfrom typing import Literal\n\nfrom fastapi import FastAPI, Query\nfrom pydantic import BaseModel\n\napp = FastAPI()\n\n\nclass PedidoResumo(BaseModel):\n    id: int\n    status: str\n    criado_em: date\n\n\n@app.get(\"/pedidos\", response_model=list[PedidoResumo])\ndef listar_pedidos(\n    status: Literal[\"pending\", \"done\", \"canceled\"] | None = None,\n    desde: date | None = None,\n    ate: date | None = None,\n    limite: int = Query(default=20, ge=1, le=100),\n):\n    return repositorio.listar(status=status, desde=desde, ate=ate, limite=limite)"
+        },
+        {
+          "kind": "text",
+          "text": "Tudo que está nas anotações é verificado antes de a função executar. `status=banana` nunca chega ao seu código: a resposta é 422 com o campo indicado."
+        },
+        {
+          "kind": "code",
+          "language": "json",
+          "code": "{\n  \"detail\": [\n    {\n      \"loc\": [\"query\", \"status\"],\n      \"msg\": \"Input should be 'pending', 'done' or 'canceled'\",\n      \"type\": \"literal_error\"\n    }\n  ]\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O limite com teto",
+          "text": "`le=100` impede alguém pedir limite=1000000 e derrubar o banco. Todo parâmetro numérico que controla volume precisa de teto."
+        },
+        {
+          "kind": "text",
+          "text": "Para criação, o corpo também é um modelo. E o status de sucesso é 201, não 200:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "class NovoTicket(BaseModel):\n    titulo: str = Field(min_length=3, max_length=140)\n    descricao: str = Field(max_length=4000)\n    prioridade: Literal[\"baixa\", \"media\", \"alta\", \"urgente\"] = \"media\"\n\n\n@app.post(\"/tickets\", status_code=201, response_model=TicketCriado)\ndef criar_ticket(dados: NovoTicket, usuario = Depends(sessao_atual)):\n    return servico.criar_ticket(dados, autor_id=usuario.id)"
+        },
+        {
+          "kind": "text",
+          "text": "Repare que `autor_id` vem da sessão, não do corpo. Aceitar o autor no corpo permitiria criar ticket em nome de outra pessoa."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que declarar `limite: int = Query(default=20, ge=1, le=100)` em vez de aceitar qualquer inteiro?",
+          "choices": [
+            "Para deixar a documentação mais bonita",
+            "Porque sem teto alguém pode pedir um volume que esgota memória e conexões do banco",
+            "Porque FastAPI exige valores padrão",
+            "Porque inteiros negativos não existem em Python"
+          ],
+          "answerIndex": 1,
+          "explanation": "Parâmetro que controla volume é vetor de sobrecarga, intencional ou acidental. O teto faz parte do contrato.",
+          "topics": [
+            "api"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Crie um endpoint GET /tickets com filtros de status e prioridade validados por Literal e limite com teto. Suba com uvicorn e teste em /docs.",
+        "expected": "Valor inválido devolve 422 automaticamente, sem você escrever validação."
+      },
+      "ifStuck": [
+        "uvicorn main:app --reload e abra http://localhost:8000/docs"
+      ],
+      "commonErrors": [
+        {
+          "error": "Validar manualmente com ifs no início da função.",
+          "why": "Repete lógica em cada endpoint e esquece casos; a documentação também fica desatualizada.",
+          "fix": "Declare no tipo. A validação e a documentação saem do mesmo lugar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pyapp-validar-paginacao-01",
+        "title": "Normalizar parâmetros de paginação",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `normalizar_paginacao(pagina, limite)`. Devolva um dicionário {\"pagina\", \"limite\", \"offset\"}. Regras: página mínima 1 (valor menor ou inválido vira 1); limite entre 1 e 100 (padrão 20 quando ausente ou inválido, 100 quando maior); offset = (pagina - 1) * limite. Aceite texto numérico.",
+        "starter": "def normalizar_paginacao(pagina, limite):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "valores padrao",
+            "expression": "normalizar_paginacao(None, None)",
+            "expected": {
+              "pagina": 1,
+              "limite": 20,
+              "offset": 0
+            }
+          },
+          {
+            "name": "segunda pagina",
+            "expression": "normalizar_paginacao(2, 20)",
+            "expected": {
+              "pagina": 2,
+              "limite": 20,
+              "offset": 20
+            }
+          },
+          {
+            "name": "pagina zero vira 1",
+            "expression": "normalizar_paginacao(0, 10)",
+            "expected": {
+              "pagina": 1,
+              "limite": 10,
+              "offset": 0
+            }
+          },
+          {
+            "name": "pagina negativa vira 1",
+            "expression": "normalizar_paginacao(-5, 10)",
+            "expected": {
+              "pagina": 1,
+              "limite": 10,
+              "offset": 0
+            }
+          },
+          {
+            "name": "limite acima do teto",
+            "expression": "normalizar_paginacao(1, 5000)",
+            "expected": {
+              "pagina": 1,
+              "limite": 100,
+              "offset": 0
+            }
+          },
+          {
+            "name": "texto numerico e aceito",
+            "expression": "normalizar_paginacao('3', '10')",
+            "expected": {
+              "pagina": 3,
+              "limite": 10,
+              "offset": 20
+            }
+          },
+          {
+            "name": "texto invalido usa o padrao",
+            "expression": "normalizar_paginacao('abc', 'xyz')",
+            "expected": {
+              "pagina": 1,
+              "limite": 20,
+              "offset": 0
+            }
+          }
+        ],
+        "hints": [
+          "Converta com try/except e use o padrão quando falhar.",
+          "max(1, valor) resolve o piso; min(100, valor) resolve o teto.",
+          "Calcule o offset só depois de normalizar os dois valores."
+        ],
+        "solution": "def _inteiro(valor, padrao):\n    try:\n        return int(valor)\n    except (TypeError, ValueError):\n        return padrao\n\n\ndef normalizar_paginacao(pagina, limite):\n    pagina_final = max(1, _inteiro(pagina, 1))\n    limite_final = min(100, max(1, _inteiro(limite, 20)))\n    return {\n        \"pagina\": pagina_final,\n        \"limite\": limite_final,\n        \"offset\": (pagina_final - 1) * limite_final,\n    }\n",
+        "solutionNotes": "Normalizar em vez de rejeitar é adequado em paginação: um limite estranho não deve impedir a pessoa de ver a lista."
+      },
+      "glossary": [
+        "api",
+        "endpoint",
+        "paginacao",
+        "status-code",
+        "rota"
+      ]
+    },
+    {
+      "id": "pyapp-camadas-testes-01",
+      "type": "lesson",
+      "title": "Camadas e testes de API",
+      "estimatedMinutes": 10,
+      "tags": [
+        "fastapi",
+        "testes",
+        "arquitetura"
+      ],
+      "why": "Regra de negócio dentro da rota só pode ser testada subindo servidor e banco. Separar camadas faz a mesma regra ser testada em milissegundos.",
+      "goal": "Separar rota, serviço e repositório, e testar cada nível com a ferramenta adequada.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "rotas/        recebe requisição, valida, devolve resposta\nservicos/     regras de negócio (não sabe o que é HTTP nem SQL)\nrepositorios/ acesso ao banco\nmodelos/      estruturas de dado"
+        },
+        {
+          "kind": "text",
+          "text": "A direção da dependência é o que importa: rota conhece serviço, serviço conhece repositório. Nunca o contrário."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# servicos/tickets.py — nenhuma importação de fastapi nem de sql\ndef pode_reabrir(ticket, usuario, agora):\n    if ticket.status != \"fechado\":\n        return False, \"ticket não está fechado\"\n    if (agora - ticket.fechado_em).days > 30:\n        return False, \"prazo de reabertura expirado\"\n    if ticket.autor_id != usuario.id and not usuario.e_suporte:\n        return False, \"sem permissão\"\n    return True, None"
+        },
+        {
+          "kind": "text",
+          "text": "Essa função é testável com quatro linhas de teste e sem infraestrutura nenhuma:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def test_nao_reabre_depois_de_30_dias():\n    ticket = Ticket(status=\"fechado\", fechado_em=datetime(2026, 1, 1), autor_id=1)\n    usuario = Usuario(id=1, e_suporte=False)\n\n    pode, motivo = pode_reabrir(ticket, usuario, agora=datetime(2026, 3, 1))\n\n    assert pode is False\n    assert \"prazo\" in motivo"
+        },
+        {
+          "kind": "text",
+          "text": "Para a camada de rota, o teste verifica o contrato HTTP: status, formato e autorização."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "from fastapi.testclient import TestClient\n\n\ndef test_listar_exige_sessao():\n    cliente = TestClient(app)\n    resposta = cliente.get(\"/pedidos\")\n    assert resposta.status_code == 401\n\n\ndef test_filtro_invalido_devolve_422():\n    resposta = cliente_autenticado.get(\"/pedidos?status=banana\")\n    assert resposta.status_code == 422"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O teste que mais importa numa API multiusuário",
+          "text": "Verificar que o usuário A não acessa o dado do usuário B. Escreva esse teste para cada recurso: é a falha mais comum e a mais grave."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def test_usuario_nao_acessa_ticket_de_outro():\n    ticket = criar_ticket(autor=usuario_a)\n    resposta = cliente_como(usuario_b).get(f\"/tickets/{ticket.id}\")\n    assert resposta.status_code == 404"
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual arranjo permite testar a regra \"não reabrir ticket após 30 dias\" sem subir servidor nem banco?",
+          "choices": [
+            "Colocar a regra dentro da função da rota e usar TestClient",
+            "Colocar a regra numa função que recebe os dados por parâmetro e devolve a decisão",
+            "Testar pela interface do usuário",
+            "Usar banco de dados em memória e chamar o endpoint"
+          ],
+          "answerIndex": 1,
+          "explanation": "Função pura de decisão é testável em milissegundos e cobre todos os casos de borda. Os testes de rota continuam existindo, para verificar o contrato HTTP.",
+          "topics": [
+            "testes"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um endpoint seu com regra de negócio no meio e extraia a decisão para uma função que recebe dados e devolve (bool, motivo). Escreva dois testes para ela.",
+        "expected": "Os testes rodam sem subir nada."
+      },
+      "ifStuck": [
+        "Se a função precisa importar algo do framework ou do banco, ela ainda não está separada."
+      ],
+      "commonErrors": [
+        {
+          "error": "Testar tudo pelo endpoint.",
+          "why": "Cada caso de borda passa a exigir preparar banco e sessão; a suíte fica lenta e ninguém roda.",
+          "fix": "Regra na função pura, contrato no endpoint. Casos de borda no nível de baixo."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pyapp-regra-reabertura-01",
+        "title": "Regra de reabertura testável",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `pode_reabrir(status, dias_desde_fechamento, autor_id, usuario_id, e_suporte)`. Devolva uma tupla (bool, motivo). Regras, nesta ordem: status diferente de \"fechado\" → (False, \"ticket não está fechado\"); mais de 30 dias → (False, \"prazo de reabertura expirado\"); não é autor e não é suporte → (False, \"sem permissão\"); caso contrário (True, None).",
+        "starter": "def pode_reabrir(status, dias_desde_fechamento, autor_id, usuario_id, e_suporte):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "autor reabre dentro do prazo",
+            "expression": "pode_reabrir('fechado', 5, 1, 1, False)",
+            "expected": [
+              true,
+              null
+            ]
+          },
+          {
+            "name": "ticket aberto nao reabre",
+            "expression": "pode_reabrir('aberto', 5, 1, 1, False)",
+            "expected": [
+              false,
+              "ticket não está fechado"
+            ]
+          },
+          {
+            "name": "fora do prazo",
+            "expression": "pode_reabrir('fechado', 31, 1, 1, False)",
+            "expected": [
+              false,
+              "prazo de reabertura expirado"
+            ]
+          },
+          {
+            "name": "exatamente 30 dias ainda vale",
+            "expression": "pode_reabrir('fechado', 30, 1, 1, False)",
+            "expected": [
+              true,
+              null
+            ]
+          },
+          {
+            "name": "outro usuario sem permissao",
+            "expression": "pode_reabrir('fechado', 5, 1, 2, False)",
+            "expected": [
+              false,
+              "sem permissão"
+            ]
+          },
+          {
+            "name": "suporte reabre de qualquer autor",
+            "expression": "pode_reabrir('fechado', 5, 1, 2, True)",
+            "expected": [
+              true,
+              null
+            ]
+          },
+          {
+            "name": "prazo vence antes da permissao",
+            "expression": "pode_reabrir('fechado', 40, 1, 2, True)",
+            "expected": [
+              false,
+              "prazo de reabertura expirado"
+            ]
+          }
+        ],
+        "hints": [
+          "A ordem das verificações é a ordem do enunciado, e o último teste depende dela.",
+          "Em Python, devolver (True, None) é uma tupla.",
+          "30 dias exatos ainda vale: a comparação é > 30, não >= 30."
+        ],
+        "solution": "def pode_reabrir(status, dias_desde_fechamento, autor_id, usuario_id, e_suporte):\n    if status != \"fechado\":\n        return (False, \"ticket não está fechado\")\n    if dias_desde_fechamento > 30:\n        return (False, \"prazo de reabertura expirado\")\n    if autor_id != usuario_id and not e_suporte:\n        return (False, \"sem permissão\")\n    return (True, None)\n",
+        "solutionNotes": "Receber `dias_desde_fechamento` em vez de calcular a data dentro da função elimina a dependência do relógio e torna o teste determinístico."
+      },
+      "glossary": [
+        "Teste unitário",
+        "autorizacao",
+        "api",
+        "middleware"
+      ]
+    },
+    {
+      "id": "pyapp-erros-da-api-01",
+      "type": "lesson",
+      "title": "Erros da API num formato só",
+      "estimatedMinutes": 10,
+      "tags": [
+        "fastapi",
+        "api"
+      ],
+      "why": "Cada rota inventando o próprio formato de erro obriga quem consome a escrever um tratamento diferente para cada endpoint. E um erro não tratado vaza stack trace.",
+      "goal": "Centralizar o tratamento de erro e devolver sempre o mesmo formato, com o status correto.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O problema aparece quando a API cresce:"
+        },
+        {
+          "kind": "code",
+          "language": "json",
+          "code": "{ \"erro\": \"pedido não encontrado\" }\n{ \"message\": \"Not found\" }\n{ \"detail\": [{ \"loc\": [\"body\", \"titulo\"] }] }\n{ \"success\": false, \"msg\": \"deu ruim\" }"
+        },
+        {
+          "kind": "text",
+          "text": "Quatro formatos na mesma API. Quem integra precisa de quatro tratamentos, e nenhum deles cobre o quinto que vai aparecer."
+        },
+        {
+          "kind": "text",
+          "text": "A solução tem duas partes. Primeiro, exceções do domínio que carregam o significado:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "class ErroDeDominio(Exception):\n    status = 400\n    codigo = \"erro\"\n\n\nclass NaoEncontrado(ErroDeDominio):\n    status = 404\n    codigo = \"nao_encontrado\"\n\n\nclass SemPermissao(ErroDeDominio):\n    status = 404  # 404 de propósito: não revela que o recurso existe\n    codigo = \"nao_encontrado\"\n\n\nclass ConflitoDeEstado(ErroDeDominio):\n    status = 409\n    codigo = \"conflito\""
+        },
+        {
+          "kind": "text",
+          "text": "Segundo, um tratador único na borda, que transforma qualquer uma delas na mesma resposta:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "@app.exception_handler(ErroDeDominio)\nasync def tratar_dominio(requisicao, erro: ErroDeDominio):\n    return JSONResponse(\n        status_code=erro.status,\n        content={\"erro\": str(erro), \"codigo\": erro.codigo},\n    )\n\n\n@app.exception_handler(Exception)\nasync def tratar_inesperado(requisicao, erro: Exception):\n    # O detalhe vai para o log, com o id da requisição; nunca para a resposta.\n    log.exception(\"erro não tratado\", extra={\"requisicao_id\": requisicao.state.id})\n    return JSONResponse(\n        status_code=500,\n        content={\"erro\": \"Algo deu errado do nosso lado.\", \"codigo\": \"interno\"},\n    )"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Stack trace na resposta é entrega de mapa",
+          "text": "Ele revela caminhos de arquivo, versões de biblioteca e, às vezes, trechos de consulta. Erro inesperado vira mensagem genérica na resposta e detalhe completo no log."
+        },
+        {
+          "kind": "text",
+          "text": "Com isso, a rota fica limpa: ela levanta a exceção que descreve a situação e não se preocupa com HTTP."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def obter_ticket(ticket_id: int, usuario):\n    ticket = repositorio.buscar(ticket_id)\n\n    if ticket is None or ticket.usuario_id != usuario.id:\n        raise NaoEncontrado(\"ticket não encontrado\")\n\n    return ticket"
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que vale ter um tratador para `Exception` além dos erros de domínio?",
+          "choices": [
+            "Para esconder bugs em produção",
+            "Para que erro não previsto vire 500 com mensagem genérica e detalhe no log, em vez de stack trace na resposta",
+            "Porque o FastAPI exige",
+            "Para evitar escrever try/except nas rotas"
+          ],
+          "answerIndex": 1,
+          "explanation": "O erro continua acontecendo e continua sendo registrado por inteiro. O que muda é o que sai para quem chamou: mensagem genérica com um identificador, em vez do interior do sistema."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste as respostas de erro que a sua API devolve hoje. Se houver mais de um formato, escreva qual dos formatos vai ficar.",
+        "expected": "Um formato só, com campo de mensagem e campo de código que o cliente possa comparar."
+      },
+      "ifStuck": [
+        "Comece pelas situações, não pelos status: não encontrado, sem permissão, dado inválido, conflito.",
+        "O código em texto (`nao_encontrado`) é o que o cliente compara; a mensagem é para humano ler."
+      ],
+      "commonErrors": [
+        {
+          "error": "Capturar a exceção em cada rota para devolver JSONResponse.",
+          "why": "O mesmo bloco se repete em toda rota e alguém sempre esquece numa.",
+          "fix": "Um tratador na borda. A rota só levanta a exceção certa."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pyapp-erro-http-01",
+        "title": "Traduzir situação em resposta",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `resposta_de_erro(codigo, mensagem, detalhe=None)`. Devolva uma tupla (status, corpo). O corpo é sempre {\"erro\": mensagem, \"codigo\": codigo}, mais \"detalhe\" quando informado. Status: nao_encontrado=404, sem_permissao=404, dado_invalido=422, conflito=409, sem_sessao=401, limite=429; qualquer outro código vira 500 com a mensagem 'Algo deu errado do nosso lado.' e o código 'interno'.",
+        "starter": "def resposta_de_erro(codigo, mensagem, detalhe=None):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "nao encontrado",
+            "expression": "resposta_de_erro('nao_encontrado', 'ticket não encontrado')",
+            "expected": [
+              404,
+              {
+                "erro": "ticket não encontrado",
+                "codigo": "nao_encontrado"
+              }
+            ]
+          },
+          {
+            "name": "sem permissao tambem e 404",
+            "expression": "resposta_de_erro('sem_permissao', 'ticket não encontrado')[0]",
+            "expected": 404
+          },
+          {
+            "name": "dado invalido",
+            "expression": "resposta_de_erro('dado_invalido', 'título é obrigatório')[0]",
+            "expected": 422
+          },
+          {
+            "name": "detalhe entra no corpo",
+            "expression": "resposta_de_erro('dado_invalido', 'título é obrigatório', {'campo': 'titulo'})[1]",
+            "expected": {
+              "erro": "título é obrigatório",
+              "codigo": "dado_invalido",
+              "detalhe": {
+                "campo": "titulo"
+              }
+            }
+          },
+          {
+            "name": "codigo desconhecido vira interno",
+            "expression": "resposta_de_erro('coisa_estranha', 'stack trace enorme aqui')",
+            "expected": [
+              500,
+              {
+                "erro": "Algo deu errado do nosso lado.",
+                "codigo": "interno"
+              }
+            ]
+          },
+          {
+            "name": "mensagem original nao vaza no erro interno",
+            "expression": "'stack' in str(resposta_de_erro('coisa_estranha', 'stack trace enorme aqui'))",
+            "expected": false
+          },
+          {
+            "name": "limite de uso",
+            "expression": "resposta_de_erro('limite', 'muitas tentativas')[0]",
+            "expected": 429
+          }
+        ],
+        "hints": [
+          "Um dicionário mapeia código para status; o `.get` resolve o caso desconhecido.",
+          "No caso desconhecido, a mensagem recebida é descartada: ela pode conter detalhe interno.",
+          "Monte o corpo e só então acrescente o detalhe, se houver."
+        ],
+        "solution": "STATUS = {\n    \"nao_encontrado\": 404,\n    \"sem_permissao\": 404,\n    \"dado_invalido\": 422,\n    \"conflito\": 409,\n    \"sem_sessao\": 401,\n    \"limite\": 429,\n}\n\n\ndef resposta_de_erro(codigo, mensagem, detalhe=None):\n    status = STATUS.get(codigo)\n\n    if status is None:\n        # Codigo desconhecido: a mensagem pode conter detalhe interno e nao sai.\n        return (500, {\"erro\": \"Algo deu errado do nosso lado.\", \"codigo\": \"interno\"})\n\n    corpo = {\"erro\": mensagem, \"codigo\": codigo}\n    if detalhe is not None:\n        corpo[\"detalhe\"] = detalhe\n\n    return (status, corpo)\n",
+        "solutionNotes": "Descartar a mensagem no caso desconhecido é a parte que importa: é justamente ali que chegaria o texto de uma exceção não prevista, que costuma trazer caminho de arquivo e consulta."
+      },
+      "glossary": [
+        "status-code",
+        "Exceção",
+        "Log",
+        "api",
+        "autorizacao"
+      ]
+    },
+    {
+      "id": "pyapp-trabalho-em-segundo-plano-01",
+      "type": "lesson",
+      "title": "Trabalho que não cabe na requisição",
+      "estimatedMinutes": 10,
+      "tags": [
+        "fastapi",
+        "arquitetura"
+      ],
+      "why": "Enviar email, gerar relatório e chamar serviço externo dentro da requisição deixa a pessoa esperando por algo que não interessa a ela naquele momento.",
+      "goal": "Separar o que precisa acontecer antes da resposta do que pode acontecer depois.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A pergunta que decide: **quem chamou precisa do resultado disso agora?**"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Tarefa",
+            "Antes da resposta?",
+            "Por quê"
+          ],
+          "rows": [
+            [
+              "gravar o pedido",
+              "sim",
+              "é o que a pessoa pediu"
+            ],
+            [
+              "validar o formulário",
+              "sim",
+              "o erro precisa voltar"
+            ],
+            [
+              "enviar email de confirmação",
+              "não",
+              "pode falhar e ser repetido"
+            ],
+            [
+              "gerar PDF do relatório",
+              "não",
+              "demora e não é o pedido"
+            ],
+            [
+              "avisar outro sistema",
+              "não",
+              "depende de serviço externo"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Para tarefa curta, o próprio FastAPI resolve. A resposta sai primeiro e a tarefa roda depois:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "@app.post(\"/tickets\", status_code=201)\ndef criar(dados: NovoTicket, tarefas: BackgroundTasks, usuario = Depends(sessao_atual)):\n    ticket = servico.criar_ticket(dados, autor_id=usuario.id)\n    tarefas.add_task(notificar_equipe, ticket.id)\n    return ticket"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Tarefa em segundo plano morre com o processo",
+          "text": "`BackgroundTasks` roda no mesmo processo. Se ele reiniciar no meio — deploy, falta de memória, queda — a tarefa some e ninguém fica sabendo. Serve para o que pode ser perdido."
+        },
+        {
+          "kind": "text",
+          "text": "Para o que não pode ser perdido, a tarefa precisa estar gravada antes de a resposta sair:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def criar(dados, usuario):\n    with banco.transacao():\n        ticket = repositorio.salvar(...)\n        # A intenção de notificar vira dado, na mesma transação do ticket.\n        repositorio.enfileirar(\"notificar_equipe\", {\"ticket_id\": ticket.id})\n    return ticket"
+        },
+        {
+          "kind": "text",
+          "text": "Um processo separado lê essa tabela e executa. Se ele cair, a linha continua lá e alguém tenta de novo — o que exige que a tarefa possa rodar duas vezes sem efeito duplicado."
+        },
+        {
+          "kind": "text",
+          "text": "Uma tabela de tarefas resolve a maior parte dos casos antes de precisar de um serviço de fila dedicado:"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "CREATE TABLE tarefa (\n  id          SERIAL PRIMARY KEY,\n  tipo        TEXT NOT NULL,\n  dados       TEXT NOT NULL,\n  estado      TEXT NOT NULL DEFAULT 'pendente',\n  tentativas  INT  NOT NULL DEFAULT 0,\n  erro        TEXT,\n  criada_em   TIMESTAMPTZ NOT NULL DEFAULT now(),\n  iniciada_em TIMESTAMPTZ\n);"
+        },
+        {
+          "kind": "text",
+          "text": "`iniciada_em` é o que permite detectar tarefa travada: pendente há muito tempo com início marcado significa que alguém começou e não terminou."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um endpoint grava o pedido e envia o email de confirmação antes de responder. O serviço de email ficou lento. O que acontece?",
+          "choices": [
+            "Nada: o pedido já foi gravado",
+            "A pessoa espera pelo email; se estourar o tempo limite, ela vê erro mesmo com o pedido gravado, e pode tentar de novo criando um pedido duplicado",
+            "O email é cancelado automaticamente",
+            "O banco desfaz o pedido"
+          ],
+          "answerIndex": 1,
+          "explanation": "O pior efeito não é a demora: é a pessoa ver erro numa operação que deu certo e repetir a ação. Responder primeiro e notificar depois elimina esse caminho."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um endpoint seu e liste o que ele faz, em ordem. Marque cada passo com \"a pessoa precisa disso agora?\".",
+        "expected": "Tudo que for \"não\" sai da requisição — e o que não pode ser perdido vira registro antes da resposta."
+      },
+      "ifStuck": [
+        "Se a tarefa pode falhar sem a pessoa precisar saber na hora, ela não pertence à requisição.",
+        "Se a tarefa não pode ser perdida, gravá-la faz parte da mesma transação do dado principal."
+      ],
+      "commonErrors": [
+        {
+          "error": "Enfileirar a tarefa antes de confirmar a transação.",
+          "why": "Se a transação for desfeita, a tarefa continua na fila e trabalha sobre um registro que não existe.",
+          "fix": "A tarefa entra na mesma transação, ou é enfileirada depois do commit."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pyapp-tarefa-travada-01",
+        "title": "Encontrar tarefas travadas",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `tarefas_travadas(tarefas, agora, limite_minutos)`. Cada tarefa tem 'id', 'estado' e 'iniciada_em' (minutos desde o início da execução, ou None). Devolva os ids das tarefas em estado 'executando' cujo início passou do limite, em ordem crescente de id. Tarefa executando sem 'iniciada_em' também é considerada travada.",
+        "starter": "def tarefas_travadas(tarefas, agora, limite_minutos):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "tarefas_travadas([], 0, 10)",
+            "expected": []
+          },
+          {
+            "name": "executando dentro do limite",
+            "expression": "tarefas_travadas([{'id': 1, 'estado': 'executando', 'iniciada_em': 3}], 0, 10)",
+            "expected": []
+          },
+          {
+            "name": "executando alem do limite",
+            "expression": "tarefas_travadas([{'id': 1, 'estado': 'executando', 'iniciada_em': 30}], 0, 10)",
+            "expected": [
+              1
+            ]
+          },
+          {
+            "name": "pendente nunca esta travada",
+            "expression": "tarefas_travadas([{'id': 1, 'estado': 'pendente', 'iniciada_em': 999}], 0, 10)",
+            "expected": []
+          },
+          {
+            "name": "executando sem inicio registrado",
+            "expression": "tarefas_travadas([{'id': 7, 'estado': 'executando', 'iniciada_em': None}], 0, 10)",
+            "expected": [
+              7
+            ]
+          },
+          {
+            "name": "limite exato ainda nao trava",
+            "expression": "tarefas_travadas([{'id': 1, 'estado': 'executando', 'iniciada_em': 10}], 0, 10)",
+            "expected": []
+          },
+          {
+            "name": "resultado ordenado por id",
+            "expression": "tarefas_travadas([{'id': 9, 'estado': 'executando', 'iniciada_em': 60}, {'id': 2, 'estado': 'executando', 'iniciada_em': 60}], 0, 10)",
+            "expected": [
+              2,
+              9
+            ]
+          }
+        ],
+        "hints": [
+          "Só interessam as tarefas em estado 'executando'.",
+          "Início ausente é sinal de tarefa que começou e perdeu o registro: conta como travada.",
+          "A comparação é maior que o limite, não maior ou igual."
+        ],
+        "solution": "def tarefas_travadas(tarefas, agora, limite_minutos):\n    travadas = []\n\n    for tarefa in tarefas:\n        if tarefa.get(\"estado\") != \"executando\":\n            continue\n\n        iniciada_em = tarefa.get(\"iniciada_em\")\n        # Sem registro de inicio, nao da para saber ha quanto tempo roda:\n        # tratar como travada e mais seguro que ignorar.\n        if iniciada_em is None or iniciada_em > limite_minutos:\n            travadas.append(tarefa[\"id\"])\n\n    return sorted(travadas)\n",
+        "solutionNotes": "Detectar é metade do trabalho. A outra metade é decidir o que fazer: devolver para pendente e tentar de novo só é seguro se a tarefa for idempotente."
+      },
+      "glossary": [
+        "fila",
+        "transacao",
+        "Log",
+        "webhook",
+        "api"
+      ]
+    },
+    {
+      "id": "pyapp-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "python",
+        "api"
+      ],
+      "summary": "Você tem o suficiente para construir a API de um projeto real: validação na borda, regras testáveis e autorização no servidor.",
+      "learned": [
+        "Validação declarada no tipo: dado inválido nunca chega às regras",
+        "Parâmetro de volume sempre com teto",
+        "Identificador do usuário vem da sessão, nunca do corpo",
+        "Camadas com dependência em uma direção: rota, serviço, repositório",
+        "Regra em função pura; contrato HTTP no endpoint",
+        "Teste de isolamento entre usuários para cada recurso"
+      ],
+      "nextUp": "Quarto semestre: complexidade, Java, dados em escala e software seguro."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-pyapp-api",
+      "title": "API em Python",
+      "format": "alternativa",
+      "summary": "Quatro decisões de projeto de API e teste.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "validação",
+        "autorização",
+        "testes"
+      ],
+      "afterItemId": "pyapp-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-pyapp-autor-01",
+          "kind": "codigo",
+          "prompt": "Qual é o problema de segurança neste endpoint?",
+          "code": {
+            "language": "python",
+            "code": "class NovoTicket(BaseModel):\n    titulo: str\n    autor_id: int\n\n@app.post(\"/tickets\")\ndef criar(dados: NovoTicket):\n    return servico.criar_ticket(dados)"
+          },
+          "choices": [
+            "Falta response_model",
+            "O autor vem do corpo da requisição: qualquer pessoa pode criar ticket em nome de outra, e não há verificação de sessão",
+            "O título deveria ter tamanho máximo",
+            "Falta status_code 201"
+          ],
+          "answerIndex": 1,
+          "explanation": "Os outros pontos são válidos, mas este permite falsificar autoria. O autor tem de sair da sessão validada no servidor.",
+          "topics": [
+            "autorização"
+          ]
+        },
+        {
+          "id": "q-pyapp-limite-02",
+          "kind": "conceitual",
+          "prompt": "Por que um parâmetro `limite` numa listagem precisa de valor máximo?",
+          "choices": [
+            "Para a documentação ficar completa",
+            "Porque sem teto uma requisição pode pedir volume suficiente para esgotar memória e conexões",
+            "Porque o HTTP limita o tamanho da query string",
+            "Porque o banco não aceita LIMIT alto"
+          ],
+          "answerIndex": 1,
+          "explanation": "É o caminho mais simples para derrubar uma API, inclusive sem intenção — basta um script mal configurado.",
+          "topics": [
+            "validação"
+          ]
+        },
+        {
+          "id": "q-pyapp-teste-03",
+          "kind": "situacao",
+          "prompt": "Sua suíte de testes leva 8 minutos porque tudo é testado pelo endpoint com banco. Qual mudança traz mais ganho?",
+          "choices": [
+            "Rodar os testes em paralelo",
+            "Extrair as regras para funções puras e testar os casos de borda nelas, deixando no endpoint só o contrato",
+            "Usar banco em memória",
+            "Reduzir o número de testes"
+          ],
+          "answerIndex": 1,
+          "explanation": "Paralelismo e banco em memória ajudam, mas o custo estrutural continua. Casos de borda em função pura rodam em milissegundos.",
+          "topics": [
+            "testes"
+          ]
+        },
+        {
+          "id": "q-pyapp-isolamento-04",
+          "kind": "situacao",
+          "prompt": "Qual teste é indispensável numa API em que cada usuário tem seus próprios dados?",
+          "choices": [
+            "Verificar que a resposta tem o formato JSON correto",
+            "Verificar que o usuário A recebe 404 ao acessar um recurso do usuário B",
+            "Verificar o tempo de resposta",
+            "Verificar que a documentação está gerada"
+          ],
+          "answerIndex": 1,
+          "explanation": "Vazamento entre usuários é a falha mais comum e mais grave nesse tipo de aplicação, e é fácil de testar.",
+          "topics": [
+            "autorização",
+            "testes"
+          ]
+        }
+      ]
+    }
+  ]
+}

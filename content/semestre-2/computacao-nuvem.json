@@ -1,0 +1,345 @@
+{
+  "id": "computacao-nuvem",
+  "semester": 2,
+  "order": 4,
+  "title": "Computação em nuvem",
+  "summary": "O que é preciso saber para colocar uma aplicação no ar: ambiente, variável de ambiente, container, banco gerenciado e o que muda quando existem várias instâncias.",
+  "outcome": "Você consegue preparar uma aplicação para deploy: configuração fora do código, banco gerenciado, sem estado em memória e com um caminho de volta quando der errado.",
+  "tags": ["devops", "nuvem", "deploy"],
+  "stack": ["bash", "yaml", "javascript"],
+  "items": [
+    {
+      "id": "nuvem-ambiente-config-01",
+      "type": "lesson",
+      "title": "Configuração fora do código",
+      "estimatedMinutes": 9,
+      "tags": ["devops", "ambiente"],
+      "why": "Mesmo código, ambientes diferentes. Se a URL do banco está no código, você tem dois códigos — e um deles vai para o Git com segredo dentro.",
+      "goal": "Separar configuração de código e validar a configuração na inicialização.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Três ambientes, um código: desenvolvimento na sua máquina, homologação para testar, produção com gente usando. O que muda entre eles é configuração."
+        },
+        {
+          "kind": "code",
+          "language": "bash",
+          "code": "# .env.example — vai para o Git, sem valores reais\nDATABASE_URL=\"\"\nAPP_SECRET=\"\"\nANTHROPIC_API_KEY=\"\"\n\n# .env — fica na sua máquina, nunca no Git\nDATABASE_URL=\"postgresql://localhost:5432/app_dev\"\nAPP_SECRET=\"valor-aleatorio-longo\""
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "O arquivo .env no .gitignore, desde o primeiro commit",
+          "text": "Se um segredo entrar no histórico, não basta apagar: o histórico guarda. A única resposta é revogar a chave."
+        },
+        {
+          "kind": "text",
+          "text": "Valide a configuração ao iniciar. Falhar imediatamente com mensagem clara é melhor que quebrar na primeira requisição:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const obrigatorias = ['DATABASE_URL', 'APP_SECRET']\nconst faltando = obrigatorias.filter((nome) => !process.env[nome])\n\nif (faltando.length > 0) {\n  console.error(`Configuração faltando: ${faltando.join(', ')}`)\n  process.exit(1)\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Isso se chama falhar rápido. O erro aparece no deploy, não no meio da noite, quando um usuário aciona o caminho que precisava daquela variável."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual valor NÃO deve ficar em variável de ambiente?",
+          "choices": [
+            "URL do banco de dados",
+            "Chave de API de um serviço externo",
+            "Nada: variável de ambiente é o lugar certo para configuração e segredo do servidor",
+            "Segredo de assinatura de sessão"
+          ],
+          "answerIndex": 2,
+          "explanation": "Todos os três pertencem ao ambiente. O cuidado é outro: variável exposta ao navegador (prefixo público em alguns frameworks) deixa de ser secreta."
+        }
+      ],
+      "tryNow": {
+        "instructions": "No seu projeto, liste todas as variáveis necessárias e escreva o .env.example com comentário explicando cada uma e como gerar as que são segredo.",
+        "expected": "Uma pessoa nova consegue rodar o projeto lendo só esse arquivo."
+      },
+      "ifStuck": ["Procure no código por valores fixos que mudariam em produção: URL, porta, caminho, chave."],
+      "commonErrors": [
+        {
+          "error": "Variável com prefixo público contendo segredo.",
+          "why": "Frameworks expõem variáveis com certo prefixo ao navegador. O valor vai para o JavaScript que qualquer pessoa lê.",
+          "fix": "Segredo nunca com prefixo público. Ele é usado no servidor, que expõe um endpoint próprio."
+        }
+      ],
+      "exercise": {
+        "id": "ex-nuvem-env-example-01",
+        "title": "Escrever o .env.example",
+        "kind": "structural",
+        "language": "bash",
+        "estimatedMinutes": 6,
+        "prompt": "Escreva o .env.example de uma aplicação com banco PostgreSQL, segredo de sessão e chave de API opcional. Inclua comentário em cada bloco e nenhum valor real.",
+        "starter": "",
+        "checks": [
+          { "name": "tem DATABASE_URL", "type": "contains", "value": "DATABASE_URL", "hint": "A aplicação precisa saber onde está o banco." },
+          { "name": "tem segredo de sessao", "type": "regex", "value": "SECRET|SEGREDO", "hint": "Sessão precisa de um segredo para assinar." },
+          { "name": "tem comentario explicativo", "type": "contains", "value": "#", "hint": "Comentário é o que faz outra pessoa entender." },
+          { "name": "nao contem valor real de chave", "type": "notContains", "value": "sk-ant-", "hint": "Arquivo de exemplo não tem valor real." },
+          { "name": "nao contem senha real", "type": "regex", "value": "^(?![\\s\\S]*postgresql:\\/\\/[^\\s\"]*:[^\\s\"@]+@)[\\s\\S]*$", "hint": "A URL de exemplo não deve ter senha dentro." }
+        ],
+        "hints": [
+          "Deixe os valores vazios ou com placeholder genérico.",
+          "Diga no comentário como gerar o segredo."
+        ],
+        "solution": "# Banco de dados (PostgreSQL)\nDATABASE_URL=\"\"\n\n# Assina os cookies de sessão. Gere com:\n#   node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"\nAPP_SECRET=\"\"\n\n# Opcional. Sem esta chave, os recursos de IA ficam desligados\n# e a aplicação funciona normalmente.\nANTHROPIC_API_KEY=\"\"\n"
+      },
+      "glossary": ["variavel-de-ambiente", "deploy", "repositorio"]
+    },
+    {
+      "id": "nuvem-estado-instancias-01",
+      "type": "lesson",
+      "title": "Várias instâncias: o que deixa de funcionar",
+      "estimatedMinutes": 9,
+      "tags": ["devops", "arquitetura"],
+      "why": "Código que funciona em uma instância pode falhar em três. Descobrir isso depois do deploy é a pior hora.",
+      "goal": "Reconhecer o que precisa sair da memória do processo antes de escalar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Escalar horizontalmente é rodar várias cópias da aplicação atrás de um balanceador. Cada requisição pode cair em qualquer cópia."
+        },
+        {
+          "kind": "text",
+          "text": "O que para de funcionar:"
+        },
+        {
+          "kind": "table",
+          "headers": ["Guardado em memória", "Problema", "Onde deve ficar"],
+          "rows": [
+            ["sessão do usuário", "cai em outra instância e perde o login", "banco ou cache compartilhado"],
+            ["contador de limite", "cada instância conta separado", "banco ou Redis"],
+            ["arquivo enviado", "some no próximo deploy", "storage de objetos"],
+            ["cache em memória", "cada instância com dado diferente", "cache compartilhado"],
+            ["tarefa agendada", "roda N vezes", "agendador único ou trava distribuída"]
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Disco do container é temporário",
+          "text": "Arquivo salvo no sistema de arquivos da instância desaparece no próximo deploy ou reinício. Upload precisa ir para storage externo."
+        },
+        {
+          "kind": "text",
+          "text": "Sobre tarefa agendada: se três instâncias executam o mesmo agendamento, o email é enviado três vezes. A solução simples é uma trava no banco."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- só uma instância consegue inserir a chave do dia\nINSERT INTO execucao_diaria (chave, executado_em)\nVALUES ('aviso-atraso-2026-03-11', now());\n-- as outras recebem erro de chave duplicada e desistem"
+        },
+        {
+          "kind": "quiz",
+          "question": "Depois de escalar para 3 instâncias, usuários passaram a ser deslogados aleatoriamente. Qual é a causa mais provável?",
+          "choices": [
+            "O balanceador está mal configurado",
+            "A sessão está guardada na memória do processo, e a requisição seguinte cai em outra instância que não a conhece",
+            "O cookie expirou",
+            "Falta HTTPS"
+          ],
+          "answerIndex": 1,
+          "explanation": "É o caso clássico. A sessão precisa ficar num armazenamento que todas as instâncias alcancem: banco ou cache compartilhado."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste tudo que sua aplicação guarda em memória entre requisições. Para cada item, decida onde ele deveria ficar.",
+        "expected": "Nenhum item essencial permanece apenas na memória do processo."
+      },
+      "ifStuck": ["Procure por variáveis declaradas fora de função que são modificadas durante requisições."],
+      "commonErrors": [
+        {
+          "error": "Upload salvo em pasta local funcionando em desenvolvimento e sumindo em produção.",
+          "why": "Em produção o container é substituído a cada deploy.",
+          "fix": "Storage de objetos, com o caminho guardado no banco."
+        }
+      ],
+      "glossary": ["sessao", "Cache", "Docker", "deploy", "fila"]
+    },
+    {
+      "id": "nuvem-deploy-01",
+      "type": "lesson",
+      "title": "Deploy: o mínimo para dormir tranquilo",
+      "estimatedMinutes": 9,
+      "tags": ["devops", "deploy"],
+      "why": "Deploy precisa ser chato. A diferença entre chato e assustador é ter migration, variáveis conferidas e caminho de volta.",
+      "goal": "Montar a sequência de um deploy seguro e saber o que verificar depois.",
+      "blocks": [
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Testes passando na branch que vai subir",
+            "Variáveis de ambiente conferidas no ambiente de destino",
+            "Migration aplicada antes do código novo, e compatível com o código antigo",
+            "Deploy",
+            "Verificação: abrir a aplicação, checar log de erro, checar uma operação real",
+            "Caminho de volta pronto: como reverter em um comando"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Migration compatível com as duas versões",
+          "text": "Durante o deploy, código antigo e novo rodam ao mesmo tempo. Remover uma coluna que o código antigo ainda usa derruba a aplicação. Remova em dois deploys: primeiro pare de usar, depois remova."
+        },
+        {
+          "kind": "text",
+          "text": "Um pipeline mínimo, que já evita a maior parte dos acidentes:"
+        },
+        {
+          "kind": "code",
+          "language": "yaml",
+          "code": "name: ci\non: [push, pull_request]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n      - run: npm run build"
+        },
+        {
+          "kind": "text",
+          "text": "O `build` no pipeline pega o erro que só aparece na compilação de produção — e que apareceria no deploy, com pressa."
+        },
+        {
+          "kind": "text",
+          "text": "Depois do deploy, olhe três coisas: log de erro, tempo de resposta e uma operação real feita por você mesmo."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa remover uma coluna que o código atual ainda lê. Qual é a sequência segura?",
+          "choices": [
+            "Remover a coluna e fazer o deploy do código novo em seguida",
+            "Fazer deploy do código que não usa mais a coluna e, num segundo deploy, remover a coluna",
+            "Remover a coluna durante a madrugada",
+            "Renomear a coluna e ajustar o código depois"
+          ],
+          "answerIndex": 1,
+          "explanation": "Durante o deploy as duas versões coexistem. Separar em dois passos garante que nenhuma versão ativa depende do que foi removido."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva o checklist de deploy do seu projeto, com os comandos exatos, incluindo como reverter.",
+        "expected": "Um documento que você conseguiria seguir às 23h de um sábado."
+      },
+      "ifStuck": ["Comece anotando o que você faz hoje, na ordem. O checklist é isso, escrito."],
+      "commonErrors": [
+        {
+          "error": "Aplicar migration depois do deploy do código.",
+          "why": "O código novo espera uma estrutura que ainda não existe e falha em toda requisição.",
+          "fix": "Migration primeiro, sempre compatível com a versão que está no ar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-nuvem-ci-01",
+        "title": "Pipeline de verificação",
+        "kind": "structural",
+        "language": "yaml",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva um workflow de CI que, a cada push e pull request, instale as dependências, rode a verificação de tipos, os testes e o build.",
+        "starter": "name: ci\n\n",
+        "checks": [
+          { "name": "dispara em push", "type": "contains", "value": "push", "hint": "O gatilho fica em on." },
+          { "name": "dispara em pull request", "type": "regex", "value": "pull_request", "hint": "A verificação vale principalmente no PR." },
+          { "name": "instala dependencias", "type": "regex", "value": "npm ci|npm install|pip install", "hint": "Sem dependências nada roda." },
+          { "name": "roda os testes", "type": "regex", "value": "npm test|npm run test|pytest", "hint": "O passo mais importante." },
+          { "name": "roda o build", "type": "regex", "value": "npm run build|build", "hint": "Erro de compilação precisa aparecer no CI, não no deploy." }
+        ],
+        "hints": [
+          "A estrutura é: name, on, jobs, steps.",
+          "Cada comando é um item com `- run:`."
+        ],
+        "solution": "name: ci\non: [push, pull_request]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n          cache: npm\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n      - run: npm run build\n"
+        },
+      "glossary": ["deploy", "migration", "versionamento", "Docker"]
+    },
+    {
+      "id": "nuvem-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["devops"],
+      "summary": "Você sabe preparar uma aplicação para rodar fora da sua máquina, com configuração externa e sem depender da memória do processo.",
+      "learned": [
+        "Configuração e segredo em variável de ambiente, .env fora do Git",
+        "Valide a configuração na inicialização: falhe rápido",
+        "Sessão, limite, upload e cache não podem ficar na memória do processo",
+        "Disco de container é temporário",
+        "Migration antes do código, compatível com a versão no ar",
+        "Remoção de coluna em dois deploys"
+      ],
+      "nextUp": "Comunicação entre aplicações: HTTP, REST e integração que tolera falha."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-nuvem-deploy",
+      "title": "Deploy e ambiente",
+      "format": "alternativa",
+      "summary": "Quatro situações de quem coloca aplicação no ar.",
+      "estimatedMinutes": 7,
+      "topics": ["ambiente", "escala", "deploy"],
+      "afterItemId": "nuvem-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-nuvem-sessao-01",
+          "kind": "debugging",
+          "prompt": "Usuários são deslogados aleatoriamente depois de escalar para 3 instâncias. Onde investigar?",
+          "choices": [
+            "No tempo de expiração do cookie",
+            "No armazenamento da sessão: se está na memória do processo, cada instância só conhece as próprias",
+            "No certificado HTTPS",
+            "No DNS"
+          ],
+          "answerIndex": 1,
+          "explanation": "Estado compartilhado entre requisições precisa ficar fora do processo quando existe mais de uma instância.",
+          "topics": ["escala"]
+        },
+        {
+          "id": "q-nuvem-upload-02",
+          "kind": "situacao",
+          "prompt": "Arquivos enviados pelos usuários desaparecem a cada deploy. Qual é a causa?",
+          "choices": [
+            "O banco de dados está sendo recriado",
+            "Os arquivos estão no disco do container, que é substituído em cada deploy",
+            "O navegador está limpando o cache",
+            "Falta permissão de escrita"
+          ],
+          "answerIndex": 1,
+          "explanation": "Container é efêmero. Upload vai para storage de objetos, e o banco guarda o caminho.",
+          "topics": ["escala"]
+        },
+        {
+          "id": "q-nuvem-migration-03",
+          "kind": "conceitual",
+          "prompt": "Por que remover uma coluna no mesmo deploy que remove o uso dela é arriscado?",
+          "choices": [
+            "Porque migrations não podem remover colunas",
+            "Porque durante o deploy as duas versões do código rodam ao mesmo tempo, e a antiga ainda usa a coluna",
+            "Porque o banco precisa reiniciar",
+            "Porque perde o índice"
+          ],
+          "answerIndex": 1,
+          "explanation": "A janela de coexistência é curta e suficiente para gerar erro em produção. Dois deploys eliminam o risco.",
+          "topics": ["deploy"]
+        },
+        {
+          "id": "q-nuvem-segredo-04",
+          "kind": "situacao",
+          "prompt": "Uma variável com prefixo público (exposta ao navegador) foi usada para guardar a chave de uma API paga. Qual é a consequência?",
+          "choices": [
+            "Nenhuma, se o site usar HTTPS",
+            "A chave está no JavaScript entregue a todos os visitantes e pode ser usada por qualquer pessoa",
+            "A chave expira mais rápido",
+            "Só é problema em produção"
+          ],
+          "answerIndex": 1,
+          "explanation": "HTTPS protege o transporte, não o conteúdo entregue. Chave paga em frontend costuma virar fatura inesperada.",
+          "topics": ["ambiente"]
+        }
+      ]
+    }
+  ]
+}

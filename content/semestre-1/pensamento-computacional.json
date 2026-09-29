@@ -1,0 +1,584 @@
+{
+  "id": "pensamento-computacional",
+  "semester": 1,
+  "order": 1,
+  "title": "Pensamento computacional",
+  "summary": "Como quebrar um problema em partes que o computador consegue executar. É a parte que não muda quando você troca de linguagem.",
+  "outcome": "Você consegue receber um problema mal descrito, quebrá-lo em passos, escrever o algoritmo em português e listar os casos que podem dar errado.",
+  "tags": ["fundamentos", "logica"],
+  "stack": ["text"],
+  "items": [
+    {
+      "id": "pc-programar-e-instruir-01",
+      "type": "lesson",
+      "title": "Programar é escrever instruções exatas",
+      "estimatedMinutes": 7,
+      "tags": ["fundamentos"],
+      "why": "Quase todo bug de iniciante vem de supor que o computador vai entender a intenção. Ele não entende. Ele executa.",
+      "goal": "Escrever uma instrução tão exata que outra pessoa consiga executar sem perguntar nada.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Um programa é um texto que descreve passos. O computador executa cada passo na ordem, do jeito que está escrito, sem preencher lacunas."
+        },
+        {
+          "kind": "text",
+          "text": "Isso parece óbvio e é a causa da maior parte dos erros. Você sabe o que quis dizer. O código faz o que você escreveu."
+        },
+        {
+          "kind": "text",
+          "text": "Compare estas duas instruções para a mesma tarefa: **separar os pedidos que ainda não foram atendidos**."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Versão 1\n  Pegue os pedidos pendentes.\n\nVersão 2\n  Para cada pedido da lista:\n    se o campo status for igual ao texto \"pending\",\n      coloque esse pedido na lista de saída.\n  Devolva a lista de saída.",
+          "caption": "A versão 1 depende de interpretação. A versão 2 pode ser executada."
+        },
+        {
+          "kind": "text",
+          "text": "Na versão 2 está explícito: onde procurar (campo `status`), o que comparar (texto exato `\"pending\"`), o que fazer com o que casa e o que devolver no fim."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O detalhe que trava gente todo dia",
+          "text": "\"pending\" e \"Pending\" são textos diferentes para o computador. A maioria das linguagens compara letra por letra, incluindo maiúsculas."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um sistema deveria mostrar pedidos com status \"pending\" e não mostra nenhum, mesmo existindo pedidos pendentes no banco. Qual hipótese você investiga primeiro?",
+          "choices": [
+            "O computador está lento e não terminou de processar",
+            "O valor guardado no banco pode ser diferente do texto comparado no código, por exemplo \"Pending\" ou \"pendente\"",
+            "A linguagem escolhida não sabe comparar textos",
+            "A lista de pedidos precisa ser ordenada antes de comparar"
+          ],
+          "answerIndex": 1,
+          "explanation": "Comparação de texto é literal. Antes de mexer na lógica, vale olhar o valor real gravado no banco. Diferença de maiúscula, acento ou idioma explica esse sintoma na maioria das vezes."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva, em português, os passos para achar o maior número de uma lista. Regra: não pode usar a palavra \"maior\" como se ela já resolvesse o problema. Descreva a comparação.",
+        "expected": "Algo como: guarde o primeiro número como candidato; percorra os demais; se o número atual for maior que o candidato, troque o candidato; no fim, devolva o candidato."
+      },
+      "ifStuck": [
+        "Imagine uma pilha de cartas com um número em cada uma. Você só pode ver uma carta por vez.",
+        "Você precisa de um lugar para guardar o melhor valor visto até agora. Como descreveria esse lugar?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Escrever \"pegue o maior número\" como um dos passos.",
+          "why": "Isso é o problema, não a solução. O computador não tem essa operação pronta na cabeça.",
+          "fix": "Descreva a comparação item por item e o lugar onde o melhor valor fica guardado."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pc-instrucao-exata-01",
+        "title": "Achar a instrução ambígua",
+        "kind": "quiz",
+        "language": "text",
+        "estimatedMinutes": 3,
+        "prompt": "Um ticket diz: \"Ao cancelar o pedido, avisar o cliente.\" Qual informação falta para isso ser implementável sem adivinhar?",
+        "choices": [
+          "A linguagem de programação que deve ser usada",
+          "Por qual canal avisar, com qual conteúdo e o que fazer se o envio falhar",
+          "O nome da pessoa que abriu o ticket",
+          "Nada: a instrução está completa"
+        ],
+        "answerIndex": 1,
+        "explanation": "\"Avisar\" não diz canal, conteúdo nem comportamento em caso de falha. No trabalho, essas perguntas se fazem antes de implementar, não depois."
+      },
+      "glossary": ["algoritmo"]
+    },
+    {
+      "id": "pc-decomposicao-01",
+      "type": "lesson",
+      "title": "Decomposição: quebrar até caber na cabeça",
+      "estimatedMinutes": 8,
+      "tags": ["fundamentos"],
+      "why": "Tarefa grande paralisa. Tarefa quebrada em partes de dez minutos você consegue começar hoje, mesmo cansado.",
+      "goal": "Transformar uma demanda vaga em uma lista de partes pequenas e verificáveis.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Decompor é dividir um problema em partes menores que podem ser resolvidas e testadas separadamente."
+        },
+        {
+          "kind": "text",
+          "text": "Serve para duas coisas: você consegue começar, e consegue parar. Se cada parte tem começo e fim, interromper no meio não desfaz o que já foi feito."
+        },
+        {
+          "kind": "text",
+          "text": "Demanda real, do jeito que ela chega:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "\"O suporte precisa de uma tela para achar pedidos antigos.\"",
+          "caption": "Uma frase. Provavelmente umas seis tarefas."
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Descobrir como o suporte procura hoje e o que falta (perguntar, não supor)",
+            "Definir por quais campos vai ser possível filtrar",
+            "Buscar os pedidos no banco já filtrados, e não filtrar depois na tela",
+            "Montar a tela com os campos de filtro",
+            "Tratar o caso de nenhum resultado",
+            "Limitar a quantidade devolvida por vez"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Cada item vira uma tarefa com resultado observável. O item 5 parece detalhe, mas é o tipo de coisa que separa entrega pronta de entrega pela metade."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Teste de tamanho",
+          "text": "Se você não consegue dizer em uma frase como saber que a parte terminou, ela ainda está grande."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue esta demanda: \"os relatórios estão demorando demais\". Escreva 4 a 6 partes, sem propor solução ainda. A primeira parte deve ser de investigação.",
+        "expected": "A primeira parte é sempre descobrir o que \"demorando\" significa: qual relatório, quanto tempo, desde quando, para quantos usuários."
+      },
+      "ifStuck": [
+        "Comece pelas perguntas que você faria para quem reclamou.",
+        "Separe o que é medir do que é corrigir. Medir vem primeiro."
+      ],
+      "commonErrors": [
+        {
+          "error": "Começar a decomposição já pela solução (\"criar índice no banco\").",
+          "why": "Você escolheu a causa antes de investigar. Se o problema for outro, o trabalho foi perdido.",
+          "fix": "A primeira parte é medir e localizar. A solução aparece depois da evidência."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pc-decomposicao-01",
+        "title": "Ordenar as partes de uma demanda",
+        "kind": "quiz",
+        "language": "text",
+        "estimatedMinutes": 3,
+        "prompt": "Numa demanda de \"tela lenta\", qual é a primeira parte a executar?",
+        "choices": [
+          "Criar índices nas tabelas envolvidas",
+          "Reescrever a consulta para usar menos junções",
+          "Medir onde o tempo está sendo gasto: consulta, processamento ou rede",
+          "Adicionar cache na resposta"
+        ],
+        "answerIndex": 2,
+        "explanation": "As outras três são soluções possíveis para causas diferentes. Sem medir, você escolhe uma por palpite e pode otimizar a parte que não era o problema."
+      },
+      "glossary": ["algoritmo", "Query"]
+    },
+    {
+      "id": "pc-abstracao-01",
+      "type": "lesson",
+      "title": "Abstração: esconder o que não importa agora",
+      "estimatedMinutes": 7,
+      "tags": ["fundamentos"],
+      "why": "Ninguém consegue pensar em tudo ao mesmo tempo. Abstração é a técnica de olhar uma parte sem perder o conjunto.",
+      "goal": "Descrever uma operação pelo que ela faz, separando isso de como ela faz.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Abstrair é dar nome a um conjunto de passos e passar a usar o nome. Depois disso, você pensa no nome e não nos passos."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Sem abstração\n  1. abrir conexão com o banco\n  2. montar a consulta\n  3. executar\n  4. converter cada linha em objeto\n  5. fechar conexão\n  6. somar o valor de cada pedido\n\nCom abstração\n  1. pedidos = buscar_pedidos_do_mes()\n  2. total = somar_valores(pedidos)"
+        },
+        {
+          "kind": "text",
+          "text": "Os passos continuam existindo. Você só não precisa deles na cabeça enquanto pensa no total."
+        },
+        {
+          "kind": "text",
+          "text": "Um bom nome diz o resultado, não o mecanismo. `buscar_pedidos_do_mes` continua correto se amanhã os dados vierem de outro lugar."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Abstração vazando",
+          "text": "Se para usar uma função você precisa saber como ela funciona por dentro, a abstração não está pronta. É o caso de uma função chamada `salvar` que às vezes não salva e você tem de lembrar de chamar outra coisa antes."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual nome de função descreve melhor o resultado, em vez do mecanismo?",
+          "choices": [
+            "rodar_loop_pedidos()",
+            "select_pedidos_join_cliente()",
+            "pedidos_pendentes_do_cliente()",
+            "processar()"
+          ],
+          "answerIndex": 2,
+          "explanation": "Diz o que você recebe de volta. Os dois primeiros expõem como foi feito, e travam a implementação. O último não diz nada."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva os nomes de três funções para um sistema de estoque, descrevendo resultado e não mecanismo. Depois, para cada uma, escreva o que ela recebe e o que devolve.",
+        "expected": "Por exemplo: produtos_abaixo_do_minimo() devolve lista de produtos; registrar_entrada(produto, quantidade) devolve a movimentação criada."
+      },
+      "ifStuck": ["Pergunte: se eu ler só esse nome daqui a três meses, entendo o que vai acontecer?"],
+      "commonErrors": [
+        {
+          "error": "Nomes como `dados`, `info`, `processar`, `handle`.",
+          "why": "Não informam nada, e quem lê precisa abrir a função para entender o código que a chama.",
+          "fix": "Use substantivo do domínio: pedido, movimentação, ticket, fornecedor."
+        }
+      ],
+      "glossary": ["algoritmo", "Refatoração"]
+    },
+    {
+      "id": "pc-algoritmo-em-passos-01",
+      "type": "lesson",
+      "title": "Do português ao código: o mesmo algoritmo",
+      "estimatedMinutes": 10,
+      "tags": ["fundamentos", "logica"],
+      "why": "A linguagem é a última decisão. Quem escreve o algoritmo primeiro erra menos e troca de linguagem sem sofrer.",
+      "goal": "Ver o mesmo algoritmo em português, em Python e em JavaScript, e reconhecer o que é lógica e o que é sintaxe.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Problema: dada uma lista de pedidos, devolver apenas os pendentes."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "1. crie uma lista vazia chamada saida\n2. para cada pedido da entrada:\n3.     se pedido.status for igual a \"pending\":\n4.         adicione pedido em saida\n5. devolva saida"
+        },
+        { "kind": "text", "text": "Em Python:" },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def pedidos_pendentes(pedidos):\n    saida = []\n    for pedido in pedidos:\n        if pedido[\"status\"] == \"pending\":\n            saida.append(pedido)\n    return saida"
+        },
+        { "kind": "text", "text": "Em JavaScript:" },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "function pedidosPendentes(pedidos) {\n  const saida = []\n  for (const pedido of pedidos) {\n    if (pedido.status === 'pending') {\n      saida.push(pedido)\n    }\n  }\n  return saida\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Os cinco passos estão nos três. O que muda é pontuação, palavra-chave e como se acessa um campo. Isso é sintaxe, e se consulta."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O que vale memorizar",
+          "text": "A estrutura: acumulador, percurso, condição, retorno. Ela reaparece em quase todo código que você vai escrever."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Abaixo você vai implementar em JavaScript. Antes de escrever código, escreva os passos em português numa anotação. Depois compare com o que você programou.",
+        "expected": "Os passos em português devem corresponder linha a linha ao código."
+      },
+      "ifStuck": [
+        "Volte para os cinco passos e implemente um por vez.",
+        "Rode os testes com a função devolvendo uma lista vazia. Ver o teste falhar mostra o que ele espera."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar `=` no lugar de `===` na comparação.",
+          "why": "`=` atribui valor; `===` compara. A atribuição dentro de um `if` normalmente resulta em condição sempre verdadeira.",
+          "fix": "Em JavaScript, comparação de igualdade é `===`."
+        },
+        {
+          "error": "Esquecer o `return` no fim da função.",
+          "why": "Sem `return`, a função devolve `undefined` e o teste falha mesmo com a lógica correta.",
+          "fix": "Toda função que produz um valor precisa devolvê-lo explicitamente."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pc-pendentes-js-01",
+        "title": "Filtrar pedidos pendentes",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `pedidosPendentes(pedidos)`: recebe uma lista de objetos com o campo `status` e devolve apenas os que têm status exatamente igual a \"pending\", na mesma ordem em que aparecem. Lista vazia devolve lista vazia.",
+        "starter": "function pedidosPendentes(pedidos) {\n  // escreva aqui\n}\n",
+        "expectedResult": "Uma nova lista, contendo somente os pedidos pendentes, na ordem original.",
+        "tests": [
+          {
+            "name": "lista vazia devolve lista vazia",
+            "expression": "pedidosPendentes([])",
+            "expected": []
+          },
+          {
+            "name": "filtra apenas os pendentes",
+            "expression": "pedidosPendentes([{id:1,status:'pending'},{id:2,status:'done'},{id:3,status:'pending'}]).map(p => p.id)",
+            "expected": [1, 3]
+          },
+          {
+            "name": "nenhum pendente devolve lista vazia",
+            "expression": "pedidosPendentes([{id:1,status:'done'}])",
+            "expected": []
+          },
+          {
+            "name": "status parecido nao conta (Pending com maiuscula)",
+            "expression": "pedidosPendentes([{id:1,status:'Pending'}])",
+            "expected": []
+          },
+          {
+            "name": "nao altera a lista recebida",
+            "expression": "(() => { const entrada = [{id:1,status:'pending'},{id:2,status:'done'}]; pedidosPendentes(entrada); return entrada.length })()",
+            "expected": 2
+          }
+        ],
+        "hints": [
+          "Você precisa de três coisas: um lugar para acumular, um percurso pela lista e uma condição.",
+          "Para acessar o campo de um objeto: `pedido.status`.",
+          "Comparação de igualdade em JavaScript é `===`. E não esqueça de devolver o acumulador no fim."
+        ],
+        "solution": "function pedidosPendentes(pedidos) {\n  const saida = []\n  for (const pedido of pedidos) {\n    if (pedido.status === 'pending') {\n      saida.push(pedido)\n    }\n  }\n  return saida\n}\n",
+        "solutionNotes": "Existe uma forma mais curta com `pedidos.filter(p => p.status === 'pending')`. Vale conhecer as duas: a versão com laço é a que aparece quando a condição fica complexa."
+      },
+      "glossary": ["algoritmo"]
+    },
+    {
+      "id": "pc-casos-de-borda-01",
+      "type": "lesson",
+      "title": "Casos de borda: onde o código quebra de verdade",
+      "estimatedMinutes": 9,
+      "tags": ["fundamentos", "qualidade"],
+      "why": "O caminho feliz é fácil. Software quebra em produção no vazio, no nulo, no zero e no texto onde se esperava número.",
+      "goal": "Listar os casos de borda de uma função antes de implementá-la.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Caso de borda é uma entrada válida, mas incomum, que costuma passar longe do teste feito à mão."
+        },
+        {
+          "kind": "text",
+          "text": "A lista que cobre a maior parte das situações:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Vazio: lista sem itens, texto em branco",
+            "Um só: lista com um item (quebra lógica que compara pares)",
+            "Ausente: campo que não existe ou vem nulo",
+            "Zero e negativo: quantidade 0, desconto negativo",
+            "Tipo errado: número que chega como texto",
+            "Repetido: dois registros iguais",
+            "Grande: dez mil itens em vez de dez"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Esta função parece correta e é um incidente esperando acontecer:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def calcular_total(itens):\n    total = 0\n    for item in itens:\n        total += item[\"preco\"] * item[\"quantidade\"]\n    return total",
+          "highlight": [4]
+        },
+        {
+          "kind": "text",
+          "text": "Se `quantidade` vier como `None`, a multiplicação levanta `TypeError`. Se vier como texto `\"2\"`, o resultado em Python é a repetição do texto, e o erro aparece depois, longe da causa."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Risco real",
+          "text": "Um total calculado errado não gera mensagem de erro. Ele gera cobrança errada. Falha silenciosa é pior que exceção."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual decisão é mais adequada quando `quantidade` chega nula num cálculo financeiro?",
+          "choices": [
+            "Tratar como 1, porque o pedido existe",
+            "Ignorar o item silenciosamente",
+            "Falhar com erro claro, informando qual item está inválido",
+            "Tratar como 0 e seguir sem avisar"
+          ],
+          "answerIndex": 2,
+          "explanation": "Em dado financeiro, adivinhar cria prejuízo invisível. Falhar alto expõe o problema onde ele nasceu: nos dados. Em contextos não críticos, um valor padrão documentado pode servir."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva a lista de casos de borda para uma função que recebe um CPF em texto e diz se é válido. Pense em pelo menos cinco.",
+        "expected": "Texto vazio, com pontuação, com letras, com tamanho errado, com todos os dígitos iguais, nulo."
+      },
+      "ifStuck": ["Percorra a lista de sete categorias acima e pergunte, para cada uma: como isso apareceria aqui?"],
+      "commonErrors": [
+        {
+          "error": "Testar somente com dados bonitos que você mesmo digitou.",
+          "why": "Dado real vem de formulário, importação e integração. Vem sujo.",
+          "fix": "Para cada entrada, escreva um caso vazio, um nulo e um de tipo errado antes de considerar pronto."
+        }
+      ],
+      "exercise": {
+        "id": "ex-pc-total-seguro-01",
+        "title": "Total que não engole erro",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `calcularTotal(itens)`. Cada item tem `preco` e `quantidade`. Regras: lista vazia devolve 0; se algum item tiver `preco` ou `quantidade` que não seja número finito, lance um `Error` cuja mensagem contenha a palavra \"inválido\". Não arredonde.",
+        "starter": "function calcularTotal(itens) {\n  // escreva aqui\n}\n",
+        "expectedResult": "Número com a soma de preco * quantidade, ou um Error quando algum item está inválido.",
+        "tests": [
+          { "name": "lista vazia", "expression": "calcularTotal([])", "expected": 0 },
+          {
+            "name": "soma simples",
+            "expression": "calcularTotal([{preco:10,quantidade:2},{preco:5.5,quantidade:2}])",
+            "expected": 31
+          },
+          {
+            "name": "quantidade nula lanca erro",
+            "expression": "calcularTotal([{preco:10,quantidade:null}])",
+            "expected": null,
+            "expectThrows": true
+          },
+          {
+            "name": "quantidade como texto lanca erro",
+            "expression": "calcularTotal([{preco:10,quantidade:'2'}])",
+            "expected": null,
+            "expectThrows": true
+          },
+          {
+            "name": "campo ausente lanca erro",
+            "expression": "calcularTotal([{preco:10}])",
+            "expected": null,
+            "expectThrows": true
+          },
+          {
+            "name": "mensagem do erro diz o que aconteceu",
+            "expression": "(() => { try { calcularTotal([{preco:'x',quantidade:1}]) } catch (e) { return /inv[áa]lido/i.test(e.message) } return false })()",
+            "expected": true
+          }
+        ],
+        "hints": [
+          "`typeof valor === 'number'` não basta: `NaN` também é number.",
+          "`Number.isFinite(valor)` cobre nulo, texto, undefined e NaN de uma vez.",
+          "Valide antes de multiplicar, e inclua na mensagem qual item falhou."
+        ],
+        "solution": "function calcularTotal(itens) {\n  let total = 0\n  for (const [indice, item] of itens.entries()) {\n    const { preco, quantidade } = item\n    if (!Number.isFinite(preco) || !Number.isFinite(quantidade)) {\n      throw new Error(`item ${indice} inválido: preco=${preco} quantidade=${quantidade}`)\n    }\n    total += preco * quantidade\n  }\n  return total\n}\n",
+        "solutionNotes": "A mensagem inclui o índice e os valores recebidos. Numa investigação em produção, essa diferença economiza meia hora."
+      },
+      "glossary": ["Exceção", "Teste unitário"]
+    },
+    {
+      "id": "pc-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 4,
+      "tags": ["fundamentos"],
+      "summary": "Você passou pela parte que não muda quando muda a linguagem: instrução exata, decomposição, abstração, tradução do algoritmo e casos de borda.",
+      "learned": [
+        "O computador executa o que está escrito, não a intenção",
+        "Demanda grande se resolve quebrada em partes com fim observável",
+        "Abstração é dar nome ao resultado, não ao mecanismo",
+        "O mesmo algoritmo funciona em qualquer linguagem; o resto é sintaxe",
+        "Caso de borda é vazio, nulo, zero, tipo errado, repetido e grande"
+      ],
+      "nextUp": "Python: a partir daqui você escreve código de verdade, com ambiente, funções e testes."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-pc-fundamentos",
+      "title": "Pensamento computacional",
+      "format": "alternativa",
+      "summary": "Cinco situações parecidas com as que aparecem no trabalho. Verifica se você consegue usar o raciocínio, não se decorou definição.",
+      "estimatedMinutes": 8,
+      "topics": ["decomposição", "abstração", "casos de borda", "investigação"],
+      "afterItemId": "pc-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-pc-investigacao-01",
+          "kind": "situacao",
+          "prompt": "O suporte avisa que \"o sistema está fora do ar\". Você abre a aplicação e ela carrega normalmente. Qual é o próximo passo mais útil?",
+          "choices": [
+            "Responder que está funcionando e fechar o chamado",
+            "Reiniciar o servidor de aplicação para garantir",
+            "Descobrir o que exatamente a pessoa fez, em qual tela, em que horário e o que apareceu",
+            "Abrir os logs do último mês e ler tudo"
+          ],
+          "answerIndex": 2,
+          "explanation": "\"Fora do ar\" é um sintoma descrito por quem não tem vocabulário técnico. Sem reproduzir, você não tem problema para resolver. As perguntas específicas transformam a reclamação em algo verificável.",
+          "wrongExplanations": {
+            "0": "O relato pode estar correto para um caminho específico que você não testou.",
+            "1": "Reiniciar pode esconder o problema e destruir a evidência.",
+            "3": "Sem delimitar horário e tela, o volume de log inviabiliza a leitura."
+          },
+          "topics": ["investigação"]
+        },
+        {
+          "id": "q-pc-decomposicao-02",
+          "kind": "situacao",
+          "prompt": "Você recebeu uma demanda que levaria uns três dias. Só tem 20 minutos hoje. Qual escolha mantém o trabalho avançando?",
+          "choices": [
+            "Não começar: 20 minutos não dá para nada",
+            "Começar a implementar a parte mais difícil, para render depois",
+            "Fazer a primeira parte pequena e com fim observável, como listar os critérios de aceite e as dúvidas para quem pediu",
+            "Ler a documentação inteira da biblioteca que você vai usar"
+          ],
+          "answerIndex": 2,
+          "explanation": "Parte pequena com fim observável é a única que sobrevive à interrupção. Começar pela parte difícil em 20 minutos costuma produzir código que você não lembra amanhã.",
+          "topics": ["decomposição"]
+        },
+        {
+          "id": "q-pc-borda-03",
+          "kind": "codigo",
+          "prompt": "Qual entrada tem maior chance de expor um defeito nesta função?",
+          "code": {
+            "language": "python",
+            "code": "def media(valores):\n    return sum(valores) / len(valores)"
+          },
+          "choices": [
+            "[10, 20, 30]",
+            "[]",
+            "[5]",
+            "[1.5, 2.5]"
+          ],
+          "answerIndex": 1,
+          "explanation": "Lista vazia faz `len(valores)` valer 0 e a divisão levanta ZeroDivisionError. É o caso de borda mais clássico e o mais esquecido.",
+          "wrongExplanations": {
+            "2": "Um item funciona: soma 5 dividido por 1.",
+            "3": "Decimais funcionam normalmente."
+          },
+          "topics": ["casos de borda"]
+        },
+        {
+          "id": "q-pc-abstracao-04",
+          "kind": "conceitual",
+          "prompt": "Uma função chamada `salvarPedido` também envia email de confirmação. Qual é o problema principal?",
+          "choices": [
+            "Nenhum: salvar e avisar acontecem juntos mesmo",
+            "O nome esconde um efeito importante, e quem chama não espera que um email seja enviado",
+            "Enviar email é sempre responsabilidade do frontend",
+            "O problema é apenas de performance"
+          ],
+          "answerIndex": 1,
+          "explanation": "O nome é contrato. Quando ele esconde um efeito, aparecem surpresas: um teste que dispara email real, um reprocessamento que avisa o cliente duas vezes.",
+          "topics": ["abstração"]
+        },
+        {
+          "id": "q-pc-comparacao-05",
+          "kind": "debugging",
+          "prompt": "Este filtro não devolve nada, embora existam usuários com email cadastrado em maiúsculas. Qual é a causa mais provável?",
+          "code": {
+            "language": "javascript",
+            "code": "const encontrado = usuarios.filter(u => u.email === busca)"
+          },
+          "choices": [
+            "`filter` não funciona com objetos",
+            "A comparação é literal: \"ANA@X.COM\" e \"ana@x.com\" são textos diferentes",
+            "Falta `await` antes de `usuarios.filter`",
+            "`===` não compara textos, só números"
+          ],
+          "answerIndex": 1,
+          "explanation": "Email costuma ser tratado sem diferenciar maiúsculas. A correção é normalizar os dois lados na comparação, e de preferência também na gravação.",
+          "topics": ["casos de borda", "investigação"]
+        }
+      ]
+    }
+  ]
+}

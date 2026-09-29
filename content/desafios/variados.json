@@ -1,0 +1,482 @@
+{
+  "challenges": [
+    {
+      "id": "des-agrupar-por-faixa",
+      "title": "Agrupar pedidos por faixa de valor",
+      "category": "logica",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 15,
+      "stack": ["javascript"],
+      "context": "O time comercial quer saber como os pedidos se distribuem por faixa de valor para decidir onde colocar o frete grátis.",
+      "objective": "Implementar `agruparPorFaixa(pedidos)` que devolve a contagem por faixa: 'ate-50', '50-200', '200-500', 'acima-500'. Os limites inferiores são inclusivos e os superiores exclusivos, exceto a última faixa.",
+      "constraints": ["Uma única passagem pela lista", "Todas as faixas aparecem no resultado, mesmo com zero"],
+      "acceptance": [
+        "Lista vazia devolve as quatro faixas zeradas",
+        "Valor exatamente 50 cai em '50-200'",
+        "Valor exatamente 200 cai em '200-500'",
+        "Pedido sem valor numérico é ignorado"
+      ],
+      "starter": "function agruparPorFaixa(pedidos) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "lista vazia devolve faixas zeradas",
+          "expression": "agruparPorFaixa([])",
+          "expected": { "ate-50": 0, "50-200": 0, "200-500": 0, "acima-500": 0 }
+        },
+        {
+          "name": "distribui corretamente",
+          "expression": "agruparPorFaixa([{valor:10},{valor:100},{valor:300},{valor:900}])",
+          "expected": { "ate-50": 1, "50-200": 1, "200-500": 1, "acima-500": 1 }
+        },
+        { "name": "limite 50 vai para a segunda faixa", "expression": "agruparPorFaixa([{valor:50}])['50-200']", "expected": 1 },
+        { "name": "limite 200 vai para a terceira faixa", "expression": "agruparPorFaixa([{valor:200}])['200-500']", "expected": 1 },
+        { "name": "limite 500 vai para a ultima faixa", "expression": "agruparPorFaixa([{valor:500}])['acima-500']", "expected": 1 },
+        { "name": "ignora valor invalido", "expression": "agruparPorFaixa([{valor:'x'},{valor:null},{valor:10}])['ate-50']", "expected": 1 }
+      ],
+      "hints": [
+        "Comece com o objeto de contagem já com as quatro chaves em zero.",
+        "Uma cadeia de if/else if resolve a classificação.",
+        "Number.isFinite descarta texto, null e undefined de uma vez."
+      ],
+      "solution": "function agruparPorFaixa(pedidos) {\n  const faixas = { 'ate-50': 0, '50-200': 0, '200-500': 0, 'acima-500': 0 }\n\n  for (const pedido of pedidos) {\n    const valor = pedido?.valor\n    if (!Number.isFinite(valor)) continue\n\n    if (valor < 50) faixas['ate-50'] += 1\n    else if (valor < 200) faixas['50-200'] += 1\n    else if (valor < 500) faixas['200-500'] += 1\n    else faixas['acima-500'] += 1\n  }\n\n  return faixas\n}\n",
+      "solutionNotes": "Inicializar todas as faixas garante que o gráfico não fique com buracos quando uma faixa não tem nenhum pedido."
+    },
+    {
+      "id": "des-bug-desconto-acumulado",
+      "title": "O desconto que some",
+      "category": "debugging",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 15,
+      "stack": ["javascript"],
+      "context": "O suporte relatou que alguns clientes recebem desconto menor que o esperado quando têm mais de um cupom. A função abaixo aplica os cupons na ordem em que chegam.",
+      "objective": "Encontrar o defeito e corrigir `aplicarCupons(total, cupons)`. Cada cupom tem `tipo` ('percentual' ou 'fixo') e `valor`. Percentual aplica sobre o total corrente; fixo subtrai. O total nunca pode ficar negativo.",
+      "constraints": ["Manter a assinatura da função", "O total nunca fica negativo"],
+      "acceptance": [
+        "Sem cupons, devolve o total original",
+        "Percentual aplica sobre o total corrente",
+        "Desconto maior que o total resulta em zero",
+        "A ordem dos cupons é respeitada"
+      ],
+      "starter": "function aplicarCupons(total, cupons) {\n  for (const cupom of cupons) {\n    if (cupom.tipo === 'percentual') {\n      total - total * (cupom.valor / 100)\n    } else {\n      total = total - cupom.valor\n    }\n  }\n  return total\n}\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "sem cupons", "expression": "aplicarCupons(100, [])", "expected": 100 },
+        { "name": "cupom fixo", "expression": "aplicarCupons(100, [{tipo:'fixo', valor:30}])", "expected": 70 },
+        { "name": "cupom percentual", "expression": "aplicarCupons(100, [{tipo:'percentual', valor:10}])", "expected": 90 },
+        {
+          "name": "dois cupons em sequencia",
+          "expression": "aplicarCupons(200, [{tipo:'percentual', valor:50}, {tipo:'fixo', valor:20}])",
+          "expected": 80
+        },
+        { "name": "nao fica negativo", "expression": "aplicarCupons(50, [{tipo:'fixo', valor:80}])", "expected": 0 },
+        {
+          "name": "percentual depois de zerar continua zero",
+          "expression": "aplicarCupons(50, [{tipo:'fixo', valor:80}, {tipo:'percentual', valor:10}])",
+          "expected": 0
+        }
+      ],
+      "hints": [
+        "Leia a linha do caso percentual com atenção: o resultado do cálculo vai para algum lugar?",
+        "Expressão sem atribuição é calculada e descartada.",
+        "O piso em zero precisa ser aplicado dentro do laço, não só no retorno."
+      ],
+      "solution": "function aplicarCupons(total, cupons) {\n  for (const cupom of cupons) {\n    if (cupom.tipo === 'percentual') {\n      total = total - total * (cupom.valor / 100)\n    } else {\n      total = total - cupom.valor\n    }\n    total = Math.max(0, total)\n  }\n  return total\n}\n",
+      "solutionNotes": "O defeito original é silencioso: nenhum erro, nenhum aviso, só um desconto que não acontece. É o tipo de bug que sobrevive meses em produção."
+    },
+    {
+      "id": "des-paginacao-cursor",
+      "title": "Paginação que não pula registro",
+      "category": "backend",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 25,
+      "stack": ["javascript", "api"],
+      "context": "A listagem usa página e limite. Quando novos registros entram durante a navegação, itens aparecem duas vezes ou somem entre uma página e outra. O time decidiu migrar para paginação por cursor.",
+      "objective": "Implementar `paginarPorCursor(registros, cursor, limite)`. Os registros vêm ordenados do mais recente para o mais antigo, cada um com `id` e `criadoEm`. Devolva { itens, proximoCursor }. O cursor é o `id` do último item da página anterior; quando nulo, começa do início. `proximoCursor` é null quando não há mais páginas.",
+      "constraints": ["Não usar índice numérico de posição para decidir a página", "Limite máximo de 100 itens"],
+      "acceptance": [
+        "Sem cursor, devolve os primeiros itens",
+        "Com cursor, devolve os itens seguintes ao cursor",
+        "proximoCursor é null na última página",
+        "Cursor inexistente devolve lista vazia",
+        "Limite acima de 100 é reduzido para 100"
+      ],
+      "starter": "function paginarPorCursor(registros, cursor, limite) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "primeira pagina",
+          "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], null, 2).itens.map(r => r.id)",
+          "expected": ["a", "b"]
+        },
+        {
+          "name": "proximo cursor aponta para o ultimo item",
+          "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], null, 2).proximoCursor",
+          "expected": "b"
+        },
+        {
+          "name": "segunda pagina continua do cursor",
+          "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], 'b', 2).itens.map(r => r.id)",
+          "expected": ["c"]
+        },
+        {
+          "name": "ultima pagina tem cursor nulo",
+          "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], 'b', 2).proximoCursor",
+          "expected": null
+        },
+        {
+          "name": "cursor inexistente devolve vazio",
+          "expression": "paginarPorCursor([{id:'a'},{id:'b'}], 'zzz', 2).itens",
+          "expected": []
+        },
+        {
+          "name": "limite acima do teto e reduzido",
+          "expression": "paginarPorCursor(Array.from({length: 150}, (_, i) => ({id: 'i' + i})), null, 500).itens.length",
+          "expected": 100
+        }
+      ],
+      "hints": [
+        "Encontre a posição do cursor e comece a fatia logo depois dela.",
+        "Cursor não encontrado precisa devolver lista vazia, e não a primeira página.",
+        "proximoCursor só existe quando ainda sobraram registros depois da fatia."
+      ],
+      "solution": "function paginarPorCursor(registros, cursor, limite) {\n  const tamanho = Math.min(Math.max(1, limite || 20), 100)\n\n  let inicio = 0\n  if (cursor !== null && cursor !== undefined) {\n    const posicao = registros.findIndex((registro) => registro.id === cursor)\n    if (posicao === -1) return { itens: [], proximoCursor: null }\n    inicio = posicao + 1\n  }\n\n  const itens = registros.slice(inicio, inicio + tamanho)\n  const temMais = inicio + tamanho < registros.length\n\n  return {\n    itens,\n    proximoCursor: temMais && itens.length > 0 ? itens[itens.length - 1].id : null,\n  }\n}\n",
+      "solutionNotes": "No banco, o equivalente é `WHERE (criado_em, id) < (:cursor_data, :cursor_id) ORDER BY criado_em DESC, id DESC LIMIT :limite`. O par data e id desempata registros com o mesmo instante."
+    },
+    {
+      "id": "des-mascarar-dado-sensivel",
+      "title": "Mascarar dado sensível no log",
+      "category": "seguranca",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 20,
+      "stack": ["javascript", "seguranca"],
+      "context": "Uma auditoria encontrou senhas e tokens gravados no log da aplicação. O time vai passar todo objeto por uma função de mascaramento antes de registrar.",
+      "objective": "Implementar `mascarar(objeto)` que devolve uma cópia com os valores dos campos sensíveis substituídos por '***'. São sensíveis, sem diferenciar maiúsculas: senha, password, token, authorization, apiKey, secret, cpf. A função precisa funcionar em objetos aninhados e listas.",
+      "constraints": ["Não alterar o objeto recebido", "Preservar a estrutura e os campos não sensíveis"],
+      "acceptance": [
+        "Campo sensível no primeiro nível é mascarado",
+        "Campo sensível dentro de objeto aninhado é mascarado",
+        "Campo sensível dentro de lista de objetos é mascarado",
+        "Nome do campo em maiúsculas também é reconhecido",
+        "O objeto original permanece intacto"
+      ],
+      "starter": "function mascarar(objeto) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "campo no primeiro nivel",
+          "expression": "mascarar({usuario:'ana', senha:'123'})",
+          "expected": { "usuario": "ana", "senha": "***" }
+        },
+        {
+          "name": "campo aninhado",
+          "expression": "mascarar({dados:{token:'abc', nome:'x'}})",
+          "expected": { "dados": { "token": "***", "nome": "x" } }
+        },
+        {
+          "name": "dentro de lista",
+          "expression": "mascarar({usuarios:[{cpf:'111'},{cpf:'222'}]})",
+          "expected": { "usuarios": [{ "cpf": "***" }, { "cpf": "***" }] }
+        },
+        {
+          "name": "nome em maiusculas",
+          "expression": "mascarar({Authorization:'Bearer x'})",
+          "expected": { "Authorization": "***" }
+        },
+        {
+          "name": "nao altera o original",
+          "expression": "(() => { const o = {senha:'123'}; mascarar(o); return o.senha })()",
+          "expected": "123"
+        },
+        {
+          "name": "preserva tipos nao sensiveis",
+          "expression": "mascarar({id:7, ativo:true, tags:['a','b']})",
+          "expected": { "id": 7, "ativo": true, "tags": ["a", "b"] }
+        }
+      ],
+      "hints": [
+        "A função precisa se chamar recursivamente para objetos e listas.",
+        "Compare o nome do campo em minúsculas com a lista de sensíveis.",
+        "Array também é object em JavaScript: trate a lista antes do objeto."
+      ],
+      "solution": "const SENSIVEIS = new Set(['senha', 'password', 'token', 'authorization', 'apikey', 'secret', 'cpf'])\n\nfunction mascarar(valor) {\n  if (Array.isArray(valor)) {\n    return valor.map((item) => mascarar(item))\n  }\n\n  if (valor === null || typeof valor !== 'object') {\n    return valor\n  }\n\n  const saida = {}\n  for (const [chave, conteudo] of Object.entries(valor)) {\n    saida[chave] = SENSIVEIS.has(chave.toLowerCase()) ? '***' : mascarar(conteudo)\n  }\n  return saida\n}\n",
+      "solutionNotes": "Lista de campos sensíveis sempre fica incompleta. Em sistemas com dado crítico, o padrão inverso é mais seguro: registrar apenas os campos explicitamente permitidos."
+    },
+    {
+      "id": "des-consulta-lenta-indice",
+      "title": "Escolher o índice certo",
+      "category": "banco",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 20,
+      "stack": ["sql"],
+      "context": "A tela de acompanhamento roda esta consulta a cada 30 segundos e está levando 3,8 segundos sobre 4 milhões de linhas:\n\nSELECT id, titulo, criado_em\nFROM ticket\nWHERE empresa_id = :empresa AND status = 'aberto'\nORDER BY criado_em DESC\nLIMIT 50;",
+      "objective": "Escrever o CREATE INDEX que atende essa consulta, com as colunas na ordem correta, e explicar a ordem escolhida num comentário.",
+      "constraints": ["Um único índice", "A ordem das colunas precisa ser justificada em comentário"],
+      "acceptance": [
+        "O índice cobre os dois filtros de igualdade",
+        "A coluna de ordenação aparece por último, na direção da consulta",
+        "Há um comentário explicando a ordem"
+      ],
+      "starter": "-- escreva o índice e explique a ordem\n",
+      "language": "sql",
+      "checks": [
+        { "name": "cria indice", "type": "regex", "value": "CREATE\\s+INDEX", "hint": "O entregável é um CREATE INDEX." },
+        { "name": "na tabela ticket", "type": "regex", "value": "ON\\s+ticket", "hint": "A consulta é sobre ticket." },
+        { "name": "inclui empresa_id", "type": "contains", "value": "empresa_id", "hint": "É um dos filtros de igualdade." },
+        { "name": "inclui status", "type": "contains", "value": "status", "hint": "É o outro filtro de igualdade." },
+        { "name": "inclui a coluna de ordenacao", "type": "contains", "value": "criado_em", "hint": "O ORDER BY também pode ser atendido pelo índice." },
+        { "name": "ordenacao descendente", "type": "regex", "value": "criado_em\\s+DESC", "hint": "A consulta ordena do mais recente para o mais antigo." },
+        { "name": "colunas de igualdade antes da ordenacao", "type": "regex", "value": "\\(\\s*(empresa_id\\s*,\\s*status|status\\s*,\\s*empresa_id)\\s*,\\s*criado_em", "hint": "Igualdade primeiro; ordenação por último." },
+        { "name": "tem comentario", "type": "contains", "value": "--", "hint": "O enunciado pede a justificativa em comentário." }
+      ],
+      "hints": [
+        "Colunas usadas com igualdade vêm primeiro no índice composto.",
+        "A coluna do ORDER BY vem depois, e a direção importa.",
+        "Com a ordem certa, o banco encontra o grupo e já lê na ordem pedida, sem ordenar depois."
+      ],
+      "solution": "-- Ordem: primeiro as colunas comparadas por igualdade (empresa_id, status),\n-- que reduzem o conjunto; por último criado_em DESC, que atende o ORDER BY.\n-- Assim o banco localiza o grupo e já lê na ordem final, sem passo de ordenação,\n-- e o LIMIT 50 interrompe a leitura logo no início.\nCREATE INDEX idx_ticket_empresa_status_criado\n  ON ticket (empresa_id, status, criado_em DESC);\n",
+      "solutionNotes": "Com criado_em na frente, o banco percorreria a tabela em ordem de data filtrando empresa e status linha a linha — que é exatamente o comportamento lento original."
+    },
+    {
+      "id": "des-git-desfazer",
+      "title": "Desfazer sem perder trabalho",
+      "category": "git",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 15,
+      "stack": ["git"],
+      "context": "Você commitou na branch errada: três commits que deveriam estar em `feat/relatorio` foram parar em `main` local. Nada foi enviado ao remoto ainda. O trabalho não pode ser perdido.",
+      "objective": "Escrever a sequência de comandos que move os três commits para uma nova branch e devolve a main ao estado do remoto, sem perder nenhuma alteração.",
+      "constraints": ["Nenhum comando pode descartar o trabalho", "Explique cada comando em comentário"],
+      "acceptance": [
+        "Os três commits terminam na branch de feature",
+        "A main local volta ao estado de origin/main",
+        "Nenhum comando destrutivo é usado sobre o trabalho a preservar",
+        "Cada comando tem explicação"
+      ],
+      "starter": "# escreva a sequência de comandos, com comentários\n",
+      "language": "bash",
+      "checks": [
+        { "name": "cria a branch a partir do estado atual", "type": "regex", "value": "git (switch -c|checkout -b|branch)\\s+feat/relatorio", "hint": "A branch nova precisa apontar para os commits atuais." },
+        { "name": "volta a main ao remoto", "type": "regex", "value": "reset[\\s\\S]*origin/main", "hint": "A main local precisa voltar ao estado de origin/main." },
+        { "name": "explica os comandos", "type": "contains", "value": "#", "hint": "O enunciado pede comentários." },
+        { "name": "nao descarta trabalho na branch de feature", "type": "regex", "value": "^(?![\\s\\S]*reset --hard\\s+HEAD~3)[\\s\\S]*$", "hint": "reset --hard sobre os commits perderia o trabalho." }
+      ],
+      "hints": [
+        "Primeiro garanta que os commits existam em algum lugar seguro: crie a branch antes de mexer na main.",
+        "Criar a branch a partir da main atual faz os três commits pertencerem às duas.",
+        "Depois disso, a main pode voltar ao estado do remoto sem perder nada — os commits continuam na outra branch."
+      ],
+      "solution": "# 1. Cria a branch de feature apontando para o estado atual da main.\n#    Os três commits passam a existir também nesta branch.\ngit switch -c feat/relatorio\n\n# 2. Volta para a main.\ngit switch main\n\n# 3. Traz a referência atualizada do remoto.\ngit fetch origin\n\n# 4. Devolve a main local ao estado do remoto.\n#    É seguro porque os commits estão preservados em feat/relatorio.\ngit reset --hard origin/main\n\n# 5. Confere: a main está igual ao remoto e a feature tem os três commits.\ngit log --oneline -3 main\ngit log --oneline -3 feat/relatorio\n",
+      "solutionNotes": "A ordem é o que torna a operação segura: criar a branch primeiro faz o reset --hard perder apenas a referência, nunca o trabalho."
+    },
+    {
+      "id": "des-estado-formulario",
+      "title": "Formulário que não perde o que foi digitado",
+      "category": "frontend",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 20,
+      "stack": ["javascript"],
+      "context": "O formulário de cadastro limpa todos os campos quando o servidor devolve erro de validação. As pessoas preenchem oito campos e perdem tudo por causa de um CEP inválido.",
+      "objective": "Implementar `mesclarErros(valores, erros)`, que prepara o estado do formulário após a resposta do servidor. Devolva um objeto com `valores` (os digitados, preservados), `erros` (mapa campo → mensagem) e `primeiroCampoComErro` (nome do primeiro campo com erro, na ordem em que aparecem nos valores).",
+      "constraints": ["Não alterar os objetos recebidos", "Campos sem erro não aparecem no mapa de erros"],
+      "acceptance": [
+        "Todos os valores digitados são preservados",
+        "O mapa de erros contém apenas os campos com problema",
+        "primeiroCampoComErro respeita a ordem dos campos do formulário",
+        "Sem erros, primeiroCampoComErro é null"
+      ],
+      "starter": "function mesclarErros(valores, erros) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "sem erros preserva tudo",
+          "expression": "mesclarErros({nome:'Ana', cep:'01000'}, [])",
+          "expected": { "valores": { "nome": "Ana", "cep": "01000" }, "erros": {}, "primeiroCampoComErro": null }
+        },
+        {
+          "name": "preserva valores mesmo com erro",
+          "expression": "mesclarErros({nome:'Ana', cep:'x'}, [{campo:'cep', mensagem:'CEP inválido'}]).valores.nome",
+          "expected": "Ana"
+        },
+        {
+          "name": "monta o mapa de erros",
+          "expression": "mesclarErros({cep:'x'}, [{campo:'cep', mensagem:'CEP inválido'}]).erros",
+          "expected": { "cep": "CEP inválido" }
+        },
+        {
+          "name": "primeiro campo com erro segue a ordem do formulario",
+          "expression": "mesclarErros({nome:'', email:'', cep:''}, [{campo:'cep',mensagem:'a'},{campo:'nome',mensagem:'b'}]).primeiroCampoComErro",
+          "expected": "nome"
+        },
+        {
+          "name": "nao altera o objeto recebido",
+          "expression": "(() => { const v = {cep:'x'}; mesclarErros(v, [{campo:'cep',mensagem:'a'}]); return Object.keys(v).length })()",
+          "expected": 1
+        },
+        {
+          "name": "erro de campo inexistente nao quebra",
+          "expression": "mesclarErros({nome:'Ana'}, [{campo:'fantasma', mensagem:'x'}]).primeiroCampoComErro",
+          "expected": null
+        }
+      ],
+      "hints": [
+        "A ordem dos campos vem das chaves de `valores`, não da lista de erros.",
+        "Object.keys preserva a ordem de inserção para chaves de texto.",
+        "Erro apontando para campo que não existe no formulário não pode virar foco."
+      ],
+      "solution": "function mesclarErros(valores, erros) {\n  const mapa = {}\n  for (const erro of erros ?? []) {\n    if (erro?.campo) mapa[erro.campo] = erro.mensagem\n  }\n\n  const ordem = Object.keys(valores ?? {})\n  const primeiro = ordem.find((campo) => campo in mapa) ?? null\n\n  return {\n    valores: { ...valores },\n    erros: mapa,\n    primeiroCampoComErro: primeiro,\n  }\n}\n",
+      "solutionNotes": "Mover o foco para o primeiro campo com erro, na ordem visual, é o que evita a pessoa procurar o problema numa tela longa."
+    },
+    {
+      "id": "des-retentativa-limite",
+      "title": "Retentativa que não derruba o serviço",
+      "category": "api",
+      "difficulty": "avancado",
+      "estimatedMinutes": 25,
+      "stack": ["javascript", "api"],
+      "context": "Uma integração repete chamadas com falha imediatamente e sem limite. Quando o serviço externo fica instável, a repetição piora a situação dos dois lados.",
+      "objective": "Implementar `planejarTentativas(statusSequencia, maxTentativas)`. Recebe a sequência de respostas simuladas (números de status ou a string 'timeout') e o número máximo de tentativas. Devolva { tentativas, resultado, esperas }. Repita apenas em 'timeout', 429 e 5xx. `esperas` traz o intervalo em ms antes de cada nova tentativa, crescendo: 1000, 2000, 4000. `resultado` é 'ok' (2xx), 'falha-permanente' (4xx que não é 429) ou 'esgotou'.",
+      "constraints": ["Nunca ultrapassar maxTentativas", "Não repetir erro permanente"],
+      "acceptance": [
+        "Sucesso na primeira tentativa não gera espera",
+        "Erro 4xx (exceto 429) não é repetido",
+        "Timeout e 5xx são repetidos até o limite",
+        "As esperas crescem de forma exponencial",
+        "Esgotar as tentativas devolve 'esgotou'"
+      ],
+      "starter": "function planejarTentativas(statusSequencia, maxTentativas) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "sucesso de primeira",
+          "expression": "planejarTentativas([200], 3)",
+          "expected": { "tentativas": 1, "resultado": "ok", "esperas": [] }
+        },
+        {
+          "name": "erro permanente nao repete",
+          "expression": "planejarTentativas([400, 200], 3)",
+          "expected": { "tentativas": 1, "resultado": "falha-permanente", "esperas": [] }
+        },
+        {
+          "name": "repete timeout e depois ok",
+          "expression": "planejarTentativas(['timeout', 200], 3)",
+          "expected": { "tentativas": 2, "resultado": "ok", "esperas": [1000] }
+        },
+        {
+          "name": "esperas crescem",
+          "expression": "planejarTentativas([500, 500, 200], 3).esperas",
+          "expected": [1000, 2000]
+        },
+        {
+          "name": "esgota o limite",
+          "expression": "planejarTentativas([500, 500, 500], 3)",
+          "expected": { "tentativas": 3, "resultado": "esgotou", "esperas": [1000, 2000] }
+        },
+        {
+          "name": "429 e repetido",
+          "expression": "planejarTentativas([429, 200], 3).resultado",
+          "expected": "ok"
+        }
+      ],
+      "hints": [
+        "Percorra a sequência de status até o limite de tentativas.",
+        "A espera é registrada antes de cada nova tentativa, então há sempre uma espera a menos que o número de tentativas.",
+        "2xx encerra com ok; 4xx que não é 429 encerra com falha-permanente."
+      ],
+      "solution": "function planejarTentativas(statusSequencia, maxTentativas) {\n  const esperas = []\n  let tentativas = 0\n\n  for (let indice = 0; indice < maxTentativas; indice += 1) {\n    const status = statusSequencia[indice]\n    tentativas += 1\n\n    const transitorio = status === 'timeout' || status === 429 || (typeof status === 'number' && status >= 500)\n\n    if (!transitorio) {\n      const sucesso = typeof status === 'number' && status >= 200 && status < 300\n      return { tentativas, resultado: sucesso ? 'ok' : 'falha-permanente', esperas }\n    }\n\n    if (indice < maxTentativas - 1) {\n      esperas.push(1000 * 2 ** indice)\n    }\n  }\n\n  return { tentativas, resultado: 'esgotou', esperas }\n}\n",
+      "solutionNotes": "Em produção, some um valor aleatório a cada espera. Sem isso, todos os clientes que falharam juntos voltam juntos, e o serviço recebe outra onda no mesmo instante."
+    },
+    {
+      "id": "des-arquitetura-camadas",
+      "title": "Separar o que está misturado",
+      "category": "arquitetura",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 25,
+      "stack": ["javascript"],
+      "context": "Esta função faz tudo: decide a regra, formata a saída e conhece o formato do banco. Ela precisa ganhar uma regra nova na próxima semana e não tem nenhum teste.",
+      "objective": "Extrair a decisão de negócio para uma função pura `classificarRisco(diasAtraso, valor, clienteVip)` que devolve 'baixo', 'medio' ou 'alto'. Regras, nesta ordem: cliente VIP com até 30 dias de atraso é sempre 'baixo'; acima de 60 dias é 'alto'; acima de 30 dias ou valor acima de 10000 é 'medio'; caso contrário 'baixo'.",
+      "constraints": ["A função não pode acessar banco, data atual nem formatar saída", "A ordem das regras precisa ser respeitada"],
+      "acceptance": [
+        "A função recebe tudo por parâmetro",
+        "A ordem das regras produz o resultado correto nos casos de sobreposição",
+        "É testável sem nenhuma infraestrutura"
+      ],
+      "starter": "function classificarRisco(diasAtraso, valor, clienteVip) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "sem atraso e valor baixo", "expression": "classificarRisco(0, 100, false)", "expected": "baixo" },
+        { "name": "atraso alto", "expression": "classificarRisco(61, 100, false)", "expected": "alto" },
+        { "name": "atraso medio", "expression": "classificarRisco(31, 100, false)", "expected": "medio" },
+        { "name": "valor alto sem atraso", "expression": "classificarRisco(0, 20000, false)", "expected": "medio" },
+        { "name": "vip com atraso pequeno", "expression": "classificarRisco(30, 50000, true)", "expected": "baixo" },
+        { "name": "vip com atraso grande nao escapa", "expression": "classificarRisco(61, 100, true)", "expected": "alto" },
+        { "name": "limite de 60 dias ainda e medio", "expression": "classificarRisco(60, 100, false)", "expected": "medio" }
+      ],
+      "hints": [
+        "A regra do VIP vem primeiro e tem uma condição de atraso junto.",
+        "Atenção aos limites: 60 dias ainda é 'medio'; 'alto' é acima de 60.",
+        "Escreva as condições na ordem exata do enunciado."
+      ],
+      "solution": "function classificarRisco(diasAtraso, valor, clienteVip) {\n  if (clienteVip && diasAtraso <= 30) return 'baixo'\n  if (diasAtraso > 60) return 'alto'\n  if (diasAtraso > 30 || valor > 10000) return 'medio'\n  return 'baixo'\n}\n",
+      "solutionNotes": "Com a regra isolada assim, a regra nova da próxima semana entra com um teste, e não com medo."
+    },
+    {
+      "id": "des-medir-antes-de-otimizar",
+      "title": "Achar o gargalo real",
+      "category": "performance",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 20,
+      "stack": ["javascript"],
+      "context": "Uma rotina de fechamento leva 3 minutos. O time quer otimizar, mas ninguém sabe onde o tempo é gasto. Antes de mexer no código, é preciso instrumentar.",
+      "objective": "Implementar `resumirMedicoes(medicoes)`. Recebe uma lista de { etapa, ms } e devolve { total, porEtapa, gargalo, percentualDoGargalo }. `porEtapa` soma os tempos por etapa; `gargalo` é a etapa com maior soma; `percentualDoGargalo` é a participação dela no total, arredondada para inteiro.",
+      "constraints": ["Uma passagem pela lista para somar", "Lista vazia não pode quebrar"],
+      "acceptance": [
+        "Etapas repetidas são somadas",
+        "O gargalo é a etapa com maior tempo total",
+        "Lista vazia devolve total 0 e gargalo null",
+        "O percentual é inteiro"
+      ],
+      "starter": "function resumirMedicoes(medicoes) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "lista vazia",
+          "expression": "resumirMedicoes([])",
+          "expected": { "total": 0, "porEtapa": {}, "gargalo": null, "percentualDoGargalo": 0 }
+        },
+        {
+          "name": "soma etapas repetidas",
+          "expression": "resumirMedicoes([{etapa:'banco', ms:100},{etapa:'banco', ms:200},{etapa:'render', ms:50}]).porEtapa",
+          "expected": { "banco": 300, "render": 50 }
+        },
+        {
+          "name": "identifica o gargalo",
+          "expression": "resumirMedicoes([{etapa:'banco', ms:300},{etapa:'render', ms:50}]).gargalo",
+          "expected": "banco"
+        },
+        {
+          "name": "percentual do gargalo",
+          "expression": "resumirMedicoes([{etapa:'banco', ms:300},{etapa:'render', ms:100}]).percentualDoGargalo",
+          "expected": 75
+        },
+        {
+          "name": "total correto",
+          "expression": "resumirMedicoes([{etapa:'a', ms:10},{etapa:'b', ms:15}]).total",
+          "expected": 25
+        },
+        {
+          "name": "ignora medicao invalida",
+          "expression": "resumirMedicoes([{etapa:'a', ms:'x'},{etapa:'b', ms:10}]).total",
+          "expected": 10
+        }
+      ],
+      "hints": [
+        "Acumule num objeto por etapa enquanto soma o total.",
+        "Depois do laço, percorra as somas para achar a maior.",
+        "Cuidado com divisão por zero no cálculo do percentual."
+      ],
+      "solution": "function resumirMedicoes(medicoes) {\n  const porEtapa = {}\n  let total = 0\n\n  for (const medicao of medicoes ?? []) {\n    const ms = medicao?.ms\n    if (!Number.isFinite(ms)) continue\n    const etapa = medicao.etapa\n    porEtapa[etapa] = (porEtapa[etapa] ?? 0) + ms\n    total += ms\n  }\n\n  let gargalo = null\n  let maior = -1\n  for (const [etapa, soma] of Object.entries(porEtapa)) {\n    if (soma > maior) {\n      maior = soma\n      gargalo = etapa\n    }\n  }\n\n  return {\n    total,\n    porEtapa,\n    gargalo,\n    percentualDoGargalo: total === 0 ? 0 : Math.round((maior / total) * 100),\n  }\n}\n",
+      "solutionNotes": "Saber que uma etapa consome 80% do tempo muda completamente onde vale investir. Esse número é o que transforma \"está lento\" em tarefa."
+    }
+  ]
+}

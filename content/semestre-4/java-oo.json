@@ -1,0 +1,621 @@
+{
+  "id": "java-oo",
+  "semester": 4,
+  "order": 2,
+  "title": "Java e orientação a objetos",
+  "summary": "Tipagem estática, interfaces, composição e exceções. Java aqui serve para entender OO de verdade e ler o código corporativo que existe por aí.",
+  "outcome": "Você lê e escreve classes com responsabilidade clara, prefere composição a herança quando faz sentido e entende o que a tipagem estática garante.",
+  "tags": [
+    "java",
+    "oo",
+    "arquitetura"
+  ],
+  "stack": [
+    "java"
+  ],
+  "items": [
+    {
+      "id": "java-classes-interfaces-01",
+      "type": "lesson",
+      "title": "Classe, interface e o contrato",
+      "estimatedMinutes": 10,
+      "tags": [
+        "java",
+        "oo"
+      ],
+      "why": "Interface é o que permite trocar a implementação sem tocar em quem usa. É a base de código testável em qualquer linguagem.",
+      "goal": "Escrever uma interface e duas implementações, e entender o que isso permite.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "public interface RepositorioTickets {\n    Optional<Ticket> buscarPorId(long id);\n    List<Ticket> listarPorStatus(String status, int limite);\n    Ticket salvar(Ticket ticket);\n}"
+        },
+        {
+          "kind": "text",
+          "text": "A interface descreve o que existe, não como funciona. Quem depende dela não sabe se por baixo há PostgreSQL, arquivo ou uma lista em memória."
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "public class ServicoTickets {\n    private final RepositorioTickets repositorio;\n\n    // a dependência entra pelo construtor: é o que permite trocar no teste\n    public ServicoTickets(RepositorioTickets repositorio) {\n        this.repositorio = repositorio;\n    }\n\n    public Ticket reabrir(long id, Usuario usuario) {\n        Ticket ticket = repositorio.buscarPorId(id)\n            .orElseThrow(() -> new TicketNaoEncontrado(id));\n\n        if (!ticket.podeSerReabertoPor(usuario)) {\n            throw new SemPermissao(\"reabrir ticket\");\n        }\n\n        return repositorio.salvar(ticket.reabrir());\n    }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "No teste, entra uma implementação em memória. Sem banco, sem configuração, milissegundos por caso."
+        },
+        {
+          "kind": "text",
+          "text": "`Optional` no retorno comunica que o valor pode não existir. É o contrário de devolver null e esperar que quem chamou lembre de verificar."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O que a tipagem estática entrega",
+          "text": "Erros de contrato aparecem na compilação, não em produção. Trocar a assinatura de um método mostra imediatamente todos os pontos afetados — o que torna refatoração grande viável."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que receber a dependência pelo construtor, em vez de instanciá-la dentro da classe?",
+          "choices": [
+            "Por convenção da linguagem",
+            "Porque permite substituir a implementação no teste e trocar a tecnologia sem alterar a classe",
+            "Porque melhora o desempenho",
+            "Porque reduz o uso de memória"
+          ],
+          "answerIndex": 1,
+          "explanation": "Instanciar dentro fixa a dependência: para testar, seria preciso ter o banco de verdade. É a diferença entre teste de milissegundos e teste de minutos.",
+          "topics": [
+            "oo"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma interface para o repositório do seu projeto e uma implementação em memória, com lista. Depois use-a num teste.",
+        "expected": "O teste roda sem banco."
+      },
+      "ifStuck": [
+        "A implementação em memória guarda os objetos num Map e devolve cópias."
+      ],
+      "commonErrors": [
+        {
+          "error": "Devolver null em vez de Optional.",
+          "why": "Quem chama esquece de verificar e a falha aparece como NullPointerException longe da origem.",
+          "fix": "Optional no retorno quando a ausência é possível e prevista."
+        }
+      ],
+      "exercise": {
+        "id": "ex-java-interface-01",
+        "title": "Assinatura de repositório",
+        "kind": "structural",
+        "language": "java",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva a interface `RepositorioPedidos` com: buscar por id (pode não existir), listar por status com limite, e salvar. Use tipos que comuniquem ausência.",
+        "starter": "public interface RepositorioPedidos {\n\n}\n",
+        "checks": [
+          {
+            "name": "declara interface",
+            "type": "contains",
+            "value": "interface",
+            "hint": "É uma interface, não uma classe."
+          },
+          {
+            "name": "busca por id comunica ausencia",
+            "type": "contains",
+            "value": "Optional",
+            "hint": "O que devolver quando o pedido não existe?"
+          },
+          {
+            "name": "listagem devolve colecao",
+            "type": "regex",
+            "value": "List<|Collection<",
+            "hint": "Listar devolve vários."
+          },
+          {
+            "name": "listagem tem limite",
+            "type": "regex",
+            "value": "int\\s+limite|int\\s+limit",
+            "hint": "Listagem sem limite quebra quando a tabela cresce."
+          },
+          {
+            "name": "tem metodo de salvar",
+            "type": "regex",
+            "value": "salvar|save",
+            "hint": "Faltou a operação de gravar."
+          }
+        ],
+        "hints": [
+          "São três métodos.",
+          "Optional<Pedido> para a busca por id."
+        ],
+        "solution": "public interface RepositorioPedidos {\n    Optional<Pedido> buscarPorId(long id);\n\n    List<Pedido> listarPorStatus(String status, int limite);\n\n    Pedido salvar(Pedido pedido);\n}\n"
+      },
+      "glossary": [
+        "Teste unitário",
+        "Refatoração",
+        "orm"
+      ]
+    },
+    {
+      "id": "java-composicao-excecoes-01",
+      "type": "lesson",
+      "title": "Composição, herança e exceções",
+      "estimatedMinutes": 10,
+      "tags": [
+        "java",
+        "oo"
+      ],
+      "why": "Herança mal usada cria hierarquias que ninguém consegue alterar. Composição resolve a maior parte dos casos com menos acoplamento.",
+      "goal": "Escolher entre herança e composição e definir exceções úteis.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Herança é \"é um\". Composição é \"tem um\". A pergunta que decide: a subclasse pode ser usada em qualquer lugar onde a superclasse é esperada, sem surpresa?"
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "// herança forçada: um relatório não é uma conexão de banco\nclass RelatorioVendas extends ConexaoBanco { }\n\n// composição: o relatório TEM uma fonte de dados\nclass RelatorioVendas {\n    private final RepositorioVendas repositorio;\n\n    RelatorioVendas(RepositorioVendas repositorio) {\n        this.repositorio = repositorio;\n    }\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O custo da herança",
+          "text": "A subclasse depende de detalhes internos da superclasse. Uma mudança lá quebra todas as filhas, às vezes de forma silenciosa. Composição mantém a dependência explícita e limitada ao que foi combinado."
+        },
+        {
+          "kind": "text",
+          "text": "Exceções: crie as suas quando o chamador pode decidir algo diferente para cada caso."
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "public class TicketNaoEncontrado extends RuntimeException {\n    private final long id;\n\n    public TicketNaoEncontrado(long id) {\n        super(\"ticket \" + id + \" não encontrado\");\n        this.id = id;\n    }\n\n    public long getId() { return id; }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Na borda da aplicação, cada exceção vira um status HTTP. É aí que o tipo da exceção passa a valer: `TicketNaoEncontrado` vira 404, `SemPermissao` vira 403, o resto vira 500."
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "// nunca faça isto\ntry {\n    processar();\n} catch (Exception e) {\n    // silêncio\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Capturar tudo e não fazer nada transforma uma falha em comportamento imprevisível. Se não sabe tratar, deixe subir: alguém acima sabe, nem que seja o log."
+        },
+        {
+          "kind": "quiz",
+          "question": "Quando herança é preferível a composição?",
+          "choices": [
+            "Sempre que houver código repetido entre duas classes",
+            "Quando a subclasse realmente é um tipo da superclasse e pode substituí-la em qualquer uso, sem alterar o comportamento esperado",
+            "Quando se quer reaproveitar métodos privados",
+            "Quando a linguagem não tem interfaces"
+          ],
+          "answerIndex": 1,
+          "explanation": "Reaproveitar código não é motivo suficiente: para isso existe composição. Herança é sobre substituição, e quebrar essa expectativa gera bug difícil de achar.",
+          "topics": [
+            "oo"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue duas classes do seu projeto que compartilham código. Decida se o caso é herança ou composição, e escreva por quê em uma frase.",
+        "expected": "A justificativa usa \"é um\" ou \"tem um\", não \"tem código repetido\"."
+      },
+      "ifStuck": [
+        "Teste a frase: \"todo X é um Y\". Se soar estranho, é composição."
+      ],
+      "commonErrors": [
+        {
+          "error": "catch (Exception e) genérico no meio do código.",
+          "why": "Captura inclusive erros de programação, escondendo defeito real.",
+          "fix": "Capture os tipos que você sabe tratar. Deixe o resto subir até a borda."
+        }
+      ],
+      "glossary": [
+        "Exceção",
+        "status-code",
+        "Refatoração"
+      ]
+    },
+    {
+      "id": "java-colecoes-01",
+      "type": "lesson",
+      "title": "Coleções: List, Set e Map",
+      "estimatedMinutes": 10,
+      "tags": [
+        "java",
+        "estrutura-dados"
+      ],
+      "why": "Em Java a escolha da coleção é explícita no tipo. Isso obriga a decidir na hora de declarar — e é a mesma decisão de estrutura de dados, só que visível no código.",
+      "goal": "Escolher entre List, Set e Map e entender por que o tipo declarado deve ser a interface.",
+      "blocks": [
+        {
+          "kind": "table",
+          "headers": [
+            "Interface",
+            "Garante",
+            "Implementação comum"
+          ],
+          "rows": [
+            [
+              "List",
+              "ordem e repetição",
+              "ArrayList"
+            ],
+            [
+              "Set",
+              "sem repetição",
+              "HashSet, LinkedHashSet"
+            ],
+            [
+              "Map",
+              "pares chave/valor",
+              "HashMap, LinkedHashMap"
+            ]
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "// declare a interface, instancie a implementação\nList<Pedido> pedidos = new ArrayList<>();\nSet<String> skusAtivos = new HashSet<>();\nMap<Long, Cliente> clientesPorId = new HashMap<>();"
+        },
+        {
+          "kind": "text",
+          "text": "Declarar a interface à esquerda não é formalidade: quem usa a variável passa a depender do contrato, e trocar `ArrayList` por `LinkedList` deixa de afetar o resto do código."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "HashSet e HashMap não guardam ordem",
+          "text": "A ordem em que os itens saem não é a de inserção nem a alfabética — e pode mudar entre execuções. Se a ordem importa na tela, use LinkedHashSet, ou ordene ao exibir."
+        },
+        {
+          "kind": "text",
+          "text": "Para `Set` e `Map` funcionarem com objetos seus, é preciso `equals` e `hashCode`. Sem eles, a comparação é por identidade:"
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "// record já gera equals e hashCode pelo conteúdo\nrecord Sku(String valor) {}\n\nSet<Sku> vistos = new HashSet<>();\nvistos.add(new Sku(\"A1\"));\nvistos.contains(new Sku(\"A1\"));   // true\n\n// classe comum sem equals/hashCode: false,\n// porque são dois objetos diferentes na memória"
+        },
+        {
+          "kind": "text",
+          "text": "O uso mais comum no dia a dia é o mesmo de qualquer linguagem: indexar por id antes de percorrer, em vez de buscar dentro do laço."
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "Map<Long, Cliente> porId = clientes.stream()\n    .collect(Collectors.toMap(Cliente::id, cliente -> cliente));\n\nfor (Pedido pedido : pedidos) {\n    Cliente cliente = porId.get(pedido.clienteId());\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "toMap explode com chave repetida",
+          "text": "Se dois clientes tiverem o mesmo id, `Collectors.toMap` lança IllegalStateException em produção. Com dado vindo de fora, passe a função que resolve o conflito."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa guardar os SKUs já processados numa importação de 200 mil linhas, para não repetir. Qual coleção?",
+          "choices": [
+            "ArrayList, verificando com contains antes de adicionar",
+            "HashSet, cujo contains é direto",
+            "LinkedList, porque a inserção é mais barata",
+            "Map com o SKU como valor"
+          ],
+          "answerIndex": 1,
+          "explanation": "`ArrayList.contains` percorre a lista a cada verificação: com 200 mil linhas, são bilhões de comparações. `HashSet.contains` é direto e a estrutura existe exatamente para isso."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma classe sua usada dentro de um Set ou como chave de Map e verifique se ela tem equals e hashCode. Se não tiver, descubra o que acontece hoje.",
+        "expected": "Sem equals/hashCode, dois objetos com o mesmo conteúdo são tratados como diferentes."
+      },
+      "ifStuck": [
+        "Se a pergunta é \"já vi isso?\", é Set.",
+        "Se a pergunta é \"qual o valor dessa chave?\", é Map.",
+        "Se a ordem importa e pode repetir, é List."
+      ],
+      "commonErrors": [
+        {
+          "error": "Alterar um objeto depois de usá-lo como chave de Map.",
+          "why": "O hashCode muda e a chave some: o objeto continua no mapa, mas não é mais encontrado.",
+          "fix": "Use chave imutável — record ou tipo primitivo."
+        }
+      ],
+      "exercise": {
+        "id": "ex-java-colecao-01",
+        "title": "Escolher a coleção certa",
+        "kind": "structural",
+        "language": "java",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva a declaração de três campos de uma classe de importação: os SKUs já processados (sem repetição), os clientes indexados por id (long) e as linhas rejeitadas em ordem. Declare as interfaces à esquerda e instancie as implementações.",
+        "starter": "public class ImportacaoDeProdutos {\n\n}\n",
+        "checks": [
+          {
+            "name": "usa Set para os SKUs",
+            "type": "regex",
+            "value": "Set<String>",
+            "hint": "Sem repetição e verificação rápida: Set."
+          },
+          {
+            "name": "usa Map para os clientes por id",
+            "type": "regex",
+            "value": "Map<Long,\\s*\\w+>",
+            "hint": "Busca por id é Map, com a chave do tipo do id."
+          },
+          {
+            "name": "usa List para as rejeitadas",
+            "type": "regex",
+            "value": "List<",
+            "hint": "Ordem importa e pode repetir: List."
+          },
+          {
+            "name": "instancia implementacoes concretas",
+            "type": "regex",
+            "value": "new (HashSet|LinkedHashSet)<>\\(\\)",
+            "hint": "A interface fica à esquerda; a implementação, no new."
+          },
+          {
+            "name": "nao declara a implementacao a esquerda",
+            "type": "regex",
+            "value": "^(?![\\s\\S]*(ArrayList|HashMap|HashSet)\\s+\\w+\\s*=)[\\s\\S]*$",
+            "hint": "Declarar ArrayList à esquerda amarra quem usa à implementação."
+          }
+        ],
+        "hints": [
+          "São três campos privados.",
+          "Formato: `private final Set<String> nome = new HashSet<>();`"
+        ],
+        "solution": "public class ImportacaoDeProdutos {\n\n    private final Set<String> skusProcessados = new HashSet<>();\n\n    private final Map<Long, Cliente> clientesPorId = new HashMap<>();\n\n    private final List<LinhaRejeitada> rejeitadas = new ArrayList<>();\n}\n",
+        "solutionNotes": "Esta verificação lê o código e confere padrões: ela não compila nada. O `final` nos campos é um extra que vale o hábito — impede que a coleção inteira seja trocada por engano."
+      },
+      "glossary": [
+        "Complexidade",
+        "Big O",
+        "indice"
+      ]
+    },
+    {
+      "id": "java-testes-01",
+      "type": "lesson",
+      "title": "Testes em Java",
+      "estimatedMinutes": 9,
+      "tags": [
+        "java",
+        "testes"
+      ],
+      "why": "O ferramental muda, a ideia é a mesma de qualquer linguagem. Saber ler um teste em JUnit é o que permite entrar num projeto Java existente.",
+      "goal": "Escrever teste com JUnit, verificar exceção e substituir dependência sem biblioteca extra.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "class CalculadoraDeTotalTest {\n\n    @Test\n    void listaVaziaSomaZero() {\n        assertEquals(0, CalculadoraDeTotal.calcular(List.of()));\n    }\n\n    @Test\n    void somaPrecoVezesQuantidade() {\n        var itens = List.of(new Item(10, 2), new Item(5, 1));\n        assertEquals(25, CalculadoraDeTotal.calcular(itens));\n    }\n}"
+        },
+        {
+          "kind": "text",
+          "text": "O nome do método é a documentação: `listaVaziaSomaZero` diz a regra. `teste1` não diz nada — e é o que você vai ler daqui a seis meses."
+        },
+        {
+          "kind": "text",
+          "text": "Para verificar que algo falha como deveria:"
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "@Test\nvoid quantidadeInvalidaEhRecusada() {\n    var itens = List.of(new Item(10, -1));\n\n    var erro = assertThrows(\n        IllegalArgumentException.class,\n        () -> CalculadoraDeTotal.calcular(itens)\n    );\n\n    assertTrue(erro.getMessage().contains(\"quantidade\"));\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Verifique a mensagem, não só o tipo",
+          "text": "`assertThrows(Exception.class, ...)` passa para qualquer falha, inclusive um NullPointerException que você não esperava. Verificar a mensagem garante que falhou pelo motivo certo."
+        },
+        {
+          "kind": "text",
+          "text": "E a parte que mais importa: testar regra sem subir banco. Como a dependência entra pelo construtor, o teste passa uma implementação em memória."
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "// implementação de teste, escrita à mão: nenhuma biblioteca envolvida\nclass RepositorioEmMemoria implements RepositorioTickets {\n\n    private final Map<Long, Ticket> tickets = new HashMap<>();\n\n    @Override\n    public Optional<Ticket> buscarPorId(long id) {\n        return Optional.ofNullable(tickets.get(id));\n    }\n\n    @Override\n    public Ticket salvar(Ticket ticket) {\n        tickets.put(ticket.id(), ticket);\n        return ticket;\n    }\n}"
+        },
+        {
+          "kind": "code",
+          "language": "java",
+          "code": "@Test\nvoid naoReabreTicketDepoisDoPrazo() {\n    var repositorio = new RepositorioEmMemoria();\n    repositorio.salvar(ticketFechadoHa(40));\n\n    var servico = new ServicoTickets(repositorio);\n\n    assertThrows(PrazoExpirado.class, () -> servico.reabrir(1L, autor()));\n}"
+        },
+        {
+          "kind": "text",
+          "text": "Esse teste roda em milissegundos, não depende de ambiente e falha pelo motivo certo. É o mesmo princípio dos testes em Python: a regra não conhece o banco."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que escrever a implementação de teste à mão, em vez de usar uma biblioteca de simulação?",
+          "choices": [
+            "Porque bibliotecas de simulação são sempre ruins",
+            "Porque para um contrato pequeno a implementação à mão é mais legível, se comporta como o objeto real e não quebra quando a assinatura muda",
+            "Porque Java não tem bibliotecas para isso",
+            "Porque é mais rápido de executar"
+          ],
+          "answerIndex": 1,
+          "explanation": "Simulação configurada em cada teste espalha o comportamento por todos eles. Uma implementação em memória guarda o comportamento num lugar só e se comporta como o repositório de verdade. Para contratos grandes, a biblioteca ainda compensa."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma regra de negócio do seu projeto e escreva dois testes: o caminho comum e um caso de borda. Sem banco, sem servidor.",
+        "expected": "Os dois rodam em milissegundos."
+      },
+      "ifStuck": [
+        "Se o teste precisa de banco para rodar, a regra ainda está acoplada ao acesso a dados.",
+        "Comece pela assinatura que você gostaria de chamar no teste, e depois ajuste o código."
+      ],
+      "commonErrors": [
+        {
+          "error": "assertThrows com Exception.class.",
+          "why": "Passa para qualquer falha, inclusive erro de programação.",
+          "fix": "Use o tipo específico e verifique a mensagem."
+        }
+      ],
+      "exercise": {
+        "id": "ex-java-teste-excecao-01",
+        "title": "Teste que verifica a exceção certa",
+        "kind": "structural",
+        "language": "java",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva um teste JUnit chamado quantidadeNegativaEhRecusada: chama CalculadoraDeTotal.calcular com um item de quantidade -1, verifica que lança IllegalArgumentException e que a mensagem menciona quantidade.",
+        "starter": "class CalculadoraDeTotalTest {\n\n}\n",
+        "checks": [
+          {
+            "name": "marca o metodo como teste",
+            "type": "contains",
+            "value": "@Test",
+            "hint": "O JUnit descobre os testes pela anotação."
+          },
+          {
+            "name": "usa o nome pedido",
+            "type": "contains",
+            "value": "quantidadeNegativaEhRecusada",
+            "hint": "O enunciado define o nome do método."
+          },
+          {
+            "name": "verifica a excecao",
+            "type": "contains",
+            "value": "assertThrows",
+            "hint": "Como se verifica que uma exceção foi lançada?"
+          },
+          {
+            "name": "usa o tipo especifico",
+            "type": "contains",
+            "value": "IllegalArgumentException.class",
+            "hint": "Exception.class passaria para qualquer falha."
+          },
+          {
+            "name": "verifica a mensagem",
+            "type": "regex",
+            "value": "getMessage\\(\\)",
+            "hint": "Só o tipo não garante que falhou pelo motivo certo."
+          }
+        ],
+        "hints": [
+          "A estrutura é: var erro = assertThrows(Tipo.class, () -> chamada());",
+          "Depois: assertTrue(erro.getMessage().contains(\"quantidade\"));"
+        ],
+        "solution": "class CalculadoraDeTotalTest {\n\n    @Test\n    void quantidadeNegativaEhRecusada() {\n        var itens = List.of(new Item(10, -1));\n\n        var erro = assertThrows(\n            IllegalArgumentException.class,\n            () -> CalculadoraDeTotal.calcular(itens)\n        );\n\n        assertTrue(erro.getMessage().contains(\"quantidade\"));\n    }\n}\n"
+      },
+      "glossary": [
+        "Teste unitário",
+        "Exceção",
+        "Refatoração"
+      ]
+    },
+    {
+      "id": "java-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "java"
+      ],
+      "summary": "Os conceitos aqui valem para qualquer linguagem com objetos: contrato, injeção de dependência, composição e exceção com significado.",
+      "learned": [
+        "Interface descreve o que existe; a implementação fica trocável",
+        "Dependência pelo construtor é o que torna o código testável",
+        "Optional comunica ausência melhor que null",
+        "Herança é substituição, não reaproveitamento de código",
+        "Exceção específica vira status HTTP na borda",
+        "catch genérico sem tratamento esconde defeito"
+      ],
+      "nextUp": "Processamento de dados com Python."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-java-oo",
+      "title": "Orientação a objetos",
+      "format": "alternativa",
+      "summary": "Quatro decisões de projeto de classes.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "oo",
+        "exceções",
+        "testabilidade"
+      ],
+      "afterItemId": "java-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-java-di-01",
+          "kind": "situacao",
+          "prompt": "Uma classe instancia o repositório de banco dentro do próprio construtor. Qual é a consequência para os testes?",
+          "choices": [
+            "Nenhuma, basta usar um banco de testes",
+            "Não é possível testar as regras sem um banco disponível, o que torna o teste lento e dependente de ambiente",
+            "Os testes passam a ser mais confiáveis",
+            "A classe fica mais rápida"
+          ],
+          "answerIndex": 1,
+          "explanation": "A dependência fixa impede substituição. Recebendo pelo construtor, o teste passa uma implementação em memória.",
+          "topics": [
+            "testabilidade"
+          ]
+        },
+        {
+          "id": "q-java-heranca-02",
+          "kind": "conceitual",
+          "prompt": "Qual é o critério para escolher herança em vez de composição?",
+          "choices": [
+            "Existir código repetido",
+            "A subclasse ser realmente um tipo da superclasse, podendo substituí-la sem alterar expectativas",
+            "A superclasse ter muitos métodos úteis",
+            "A linguagem suportar herança múltipla"
+          ],
+          "answerIndex": 1,
+          "explanation": "Herança acopla a subclasse aos detalhes internos da superclasse. Só compensa quando a relação de substituição é verdadeira.",
+          "topics": [
+            "oo"
+          ]
+        },
+        {
+          "id": "q-java-catch-03",
+          "kind": "codigo",
+          "prompt": "Qual é o problema deste trecho?",
+          "code": {
+            "language": "java",
+            "code": "try {\n    servico.processar(pedido);\n} catch (Exception e) {\n}"
+          },
+          "choices": [
+            "Falta um finally",
+            "Captura qualquer erro e não faz nada: a falha desaparece e o sistema segue em estado desconhecido",
+            "Exception não existe em Java",
+            "Deveria usar throws"
+          ],
+          "answerIndex": 1,
+          "explanation": "Inclusive erros de programação são engolidos. O mínimo aceitável é registrar; o correto é capturar só o que se sabe tratar.",
+          "topics": [
+            "exceções"
+          ]
+        },
+        {
+          "id": "q-java-optional-04",
+          "kind": "conceitual",
+          "prompt": "Qual é a vantagem de devolver Optional em vez de null numa busca por id?",
+          "choices": [
+            "Consome menos memória",
+            "O tipo comunica que a ausência é possível, e quem chama é levado a tratar esse caso",
+            "É mais rápido",
+            "Permite devolver vários valores"
+          ],
+          "answerIndex": 1,
+          "explanation": "Com null, a verificação depende de lembrança. Com Optional, o contrato explicita a possibilidade e a falha aparece mais perto da origem.",
+          "topics": [
+            "oo"
+          ]
+        }
+      ]
+    }
+  ]
+}

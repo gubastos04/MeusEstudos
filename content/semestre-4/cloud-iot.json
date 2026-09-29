@@ -1,0 +1,696 @@
+{
+  "id": "cloud-iot",
+  "semester": 4,
+  "order": 4,
+  "title": "Cloud, IoT e eventos",
+  "summary": "Sistemas que recebem eventos o tempo todo: sensores, webhooks, filas. Ingestão, processamento assíncrono e o que fazer quando a mensagem chega duas vezes.",
+  "outcome": "Você projeta a ingestão de eventos com fila, trata repetição e falha, e sabe quando processar na hora e quando processar depois.",
+  "tags": [
+    "arquitetura",
+    "integracao",
+    "eventos"
+  ],
+  "stack": [
+    "python",
+    "javascript"
+  ],
+  "items": [
+    {
+      "id": "iot-ingestao-01",
+      "type": "lesson",
+      "title": "Ingestão: receber rápido, processar depois",
+      "estimatedMinutes": 10,
+      "tags": [
+        "arquitetura",
+        "eventos"
+      ],
+      "why": "Quem envia evento não espera. Se a sua ingestão demora, você perde mensagem — e normalmente não fica sabendo.",
+      "goal": "Separar recebimento de processamento e escolher o que fazer de forma síncrona.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Um endpoint que recebe evento tem uma responsabilidade: validar o mínimo, gravar e responder. O trabalho pesado vem depois."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "@app.post(\"/eventos\", status_code=202)\ndef receber(evento: EventoSensor):\n    # 1. validação mínima já aconteceu no tipo\n    # 2. grava o evento cru, sem processar\n    fila.publicar(\"eventos.sensor\", evento.model_dump())\n    # 3. responde imediatamente\n    return {\"recebido\": True}"
+        },
+        {
+          "kind": "text",
+          "text": "O status 202 significa \"aceito, será processado\". É diferente de 200 (\"pronto\") e comunica exatamente o que aconteceu."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Processar dentro da requisição",
+          "text": "Se você calcula, chama três serviços e grava em cinco tabelas antes de responder, qualquer lentidão vira timeout no emissor — e o evento se perde ou é reenviado."
+        },
+        {
+          "kind": "text",
+          "text": "O que fica síncrono: autenticação, validação de formato e a gravação. O que vai para a fila: enriquecimento, agregação, notificação e integração."
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Decisão",
+            "Síncrono",
+            "Assíncrono"
+          ],
+          "rows": [
+            [
+              "o emissor precisa do resultado?",
+              "sim",
+              "não"
+            ],
+            [
+              "leva mais de 1 segundo?",
+              "não",
+              "sim"
+            ],
+            [
+              "pode falhar e ser repetido?",
+              "—",
+              "sim"
+            ],
+            [
+              "envolve serviço externo?",
+              "evite",
+              "preferível"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Sobre volume: sensores enviam com frequência fixa, e o volume cresce por multiplicação. Mil sensores a cada 10 segundos são 8,6 milhões de eventos por dia. Guardar todos em linha no banco relacional fica caro rápido."
+        },
+        {
+          "kind": "text",
+          "text": "A saída usual é agregar na ingestão: guardar o dado bruto por pouco tempo e manter agregados por minuto ou hora, que é o que as telas realmente consultam."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um endpoint de webhook processa o evento inteiro antes de responder e começou a receber reenvios do provedor. Qual é a causa provável?",
+          "choices": [
+            "O provedor está com defeito",
+            "O processamento ultrapassa o timeout do provedor, que considera a entrega falha e tenta de novo",
+            "Falta autenticação no endpoint",
+            "O corpo da requisição é grande demais"
+          ],
+          "answerIndex": 1,
+          "explanation": "Provedores esperam resposta rápida, normalmente poucos segundos. Responder primeiro e processar depois elimina o reenvio.",
+          "topics": [
+            "eventos"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um endpoint que faz trabalho pesado e liste o que precisa acontecer antes da resposta e o que poderia ir para segundo plano.",
+        "expected": "A lista síncrona contém apenas validação e gravação."
+      },
+      "ifStuck": [
+        "A pergunta é: se isso falhar, o emissor precisa saber agora?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Enviar email dentro da requisição.",
+          "why": "O serviço de email pode estar lento, e o usuário espera por algo que não interessa a ele naquele instante.",
+          "fix": "Registre a intenção e envie em segundo plano, com retentativa."
+        }
+      ],
+      "exercise": {
+        "id": "ex-iot-agregar-janela-01",
+        "title": "Agregar leituras por janela de tempo",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `agregarPorMinuto(leituras)`. Cada leitura tem `timestamp` (texto ISO como '2026-03-11T14:02:37Z') e `valor` (número). Devolva um objeto com a chave sendo o minuto ('2026-03-11T14:02') e o valor { soma, contagem, media, minimo, maximo }. Leitura com valor não numérico é ignorada.",
+        "starter": "function agregarPorMinuto(leituras) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "agregarPorMinuto([])",
+            "expected": {}
+          },
+          {
+            "name": "uma leitura",
+            "expression": "agregarPorMinuto([{timestamp:'2026-03-11T14:02:37Z', valor:10}])",
+            "expected": {
+              "2026-03-11T14:02": {
+                "soma": 10,
+                "contagem": 1,
+                "media": 10,
+                "minimo": 10,
+                "maximo": 10
+              }
+            }
+          },
+          {
+            "name": "agrupa o mesmo minuto",
+            "expression": "agregarPorMinuto([{timestamp:'2026-03-11T14:02:01Z',valor:10},{timestamp:'2026-03-11T14:02:59Z',valor:20}])['2026-03-11T14:02'].media",
+            "expected": 15
+          },
+          {
+            "name": "separa minutos diferentes",
+            "expression": "Object.keys(agregarPorMinuto([{timestamp:'2026-03-11T14:02:01Z',valor:1},{timestamp:'2026-03-11T14:03:01Z',valor:2}])).length",
+            "expected": 2
+          },
+          {
+            "name": "minimo e maximo",
+            "expression": "(() => { const r = agregarPorMinuto([{timestamp:'2026-03-11T14:02:01Z',valor:5},{timestamp:'2026-03-11T14:02:02Z',valor:-3},{timestamp:'2026-03-11T14:02:03Z',valor:9}])['2026-03-11T14:02']; return [r.minimo, r.maximo] })()",
+            "expected": [
+              -3,
+              9
+            ]
+          },
+          {
+            "name": "ignora valor invalido",
+            "expression": "agregarPorMinuto([{timestamp:'2026-03-11T14:02:01Z',valor:'x'},{timestamp:'2026-03-11T14:02:02Z',valor:4}])['2026-03-11T14:02'].contagem",
+            "expected": 1
+          }
+        ],
+        "hints": [
+          "A chave do minuto são os 16 primeiros caracteres do timestamp ISO.",
+          "Acumule soma, contagem, mínimo e máximo; calcule a média no fim.",
+          "Number.isFinite descarta texto, null e NaN de uma vez."
+        ],
+        "solution": "function agregarPorMinuto(leituras) {\n  const janelas = {}\n\n  for (const leitura of leituras) {\n    const valor = leitura.valor\n    if (!Number.isFinite(valor)) continue\n\n    const minuto = String(leitura.timestamp).slice(0, 16)\n    const atual = janelas[minuto]\n\n    if (!atual) {\n      janelas[minuto] = { soma: valor, contagem: 1, media: valor, minimo: valor, maximo: valor }\n      continue\n    }\n\n    atual.soma += valor\n    atual.contagem += 1\n    atual.media = atual.soma / atual.contagem\n    atual.minimo = Math.min(atual.minimo, valor)\n    atual.maximo = Math.max(atual.maximo, valor)\n  }\n\n  return janelas\n}\n",
+        "solutionNotes": "Guardar soma e contagem, e não só a média, permite combinar janelas depois — exatamente o que se faz ao agregar por minuto e depois por hora."
+      },
+      "glossary": [
+        "fila",
+        "webhook",
+        "status-code",
+        "Latência",
+        "api"
+      ]
+    },
+    {
+      "id": "iot-falha-repeticao-01",
+      "type": "lesson",
+      "title": "Quando a mensagem chega duas vezes",
+      "estimatedMinutes": 9,
+      "tags": [
+        "integracao",
+        "eventos"
+      ],
+      "why": "Em sistema distribuído, entrega repetida é comportamento normal, não exceção. Quem recebe precisa aguentar.",
+      "goal": "Tornar o processamento de eventos idempotente e visível.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A maioria dos sistemas de mensagem garante \"pelo menos uma entrega\". Repetição acontece quando a confirmação se perde: o trabalho foi feito e o emissor não soube."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- a própria chave única é a verificação de repetição\nCREATE TABLE evento_processado (\n  evento_id   TEXT PRIMARY KEY,\n  processado_em TIMESTAMPTZ NOT NULL DEFAULT now()\n);"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def processar(evento):\n    try:\n        banco.executar(\n            \"INSERT INTO evento_processado (evento_id) VALUES (%s)\",\n            (evento.id,),\n        )\n    except ChaveDuplicada:\n        log.info(\"evento repetido ignorado\", evento_id=evento.id)\n        return\n\n    aplicar_efeito(evento)"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Ordem não é garantida",
+          "text": "Eventos podem chegar fora de ordem. Um evento de \"cancelado\" pode chegar antes do \"criado\". Processar cegamente pela ordem de chegada corrompe o estado."
+        },
+        {
+          "kind": "text",
+          "text": "Contra desordem, duas defesas: incluir o momento do evento (não o da chegada) e verificar se o estado atual permite a transição."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "if evento.ocorrido_em < pedido.atualizado_em:\n    # evento mais antigo que o estado atual: ignorar\n    return"
+        },
+        {
+          "kind": "text",
+          "text": "E a terceira peça: o que fazer com o evento que falha sempre. Sem limite, ele volta para a fila para sempre e bloqueia o resto."
+        },
+        {
+          "kind": "text",
+          "text": "A solução usual é uma fila de descarte: depois de N tentativas, o evento sai da fila principal e vai para um lugar onde alguém consegue olhar. O que não pode é sumir em silêncio."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um evento com dado inválido volta para a fila indefinidamente e trava o processamento dos demais. Qual é a correção?",
+          "choices": [
+            "Aumentar o número de processadores",
+            "Limitar as tentativas e mover o evento para uma fila de descarte, com registro do motivo",
+            "Descartar o evento silenciosamente após a primeira falha",
+            "Ignorar erros no processamento"
+          ],
+          "answerIndex": 1,
+          "explanation": "Tentativa infinita transforma um evento ruim em parada geral. Descartar em silêncio perde informação. A fila de descarte preserva o evento para análise.",
+          "topics": [
+            "integração"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Desenhe o fluxo de um webhook de pagamento que pode chegar duas vezes e fora de ordem. Marque onde ficam a verificação de repetição e a de transição de estado.",
+        "expected": "As duas verificações aparecem antes de qualquer efeito colateral."
+      },
+      "ifStuck": [
+        "Comece pela pergunta: se este evento chegar de novo daqui a 5 minutos, o que acontece?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar a hora de chegada como se fosse a hora do evento.",
+          "why": "Atraso na fila muda a ordem aparente e corrompe qualquer lógica temporal.",
+          "fix": "O emissor envia o momento do evento; o receptor usa esse valor."
+        }
+      ],
+      "glossary": [
+        "webhook",
+        "fila",
+        "transacao",
+        "Log",
+        "indice"
+      ]
+    },
+    {
+      "id": "iot-retencao-dados-01",
+      "type": "lesson",
+      "title": "Retenção: dado bruto é caro",
+      "estimatedMinutes": 9,
+      "tags": [
+        "dados",
+        "arquitetura"
+      ],
+      "why": "Telemetria cresce por multiplicação. Guardar tudo para sempre é uma decisão que ninguém toma de propósito — ela acontece por omissão e aparece na fatura.",
+      "goal": "Decidir o que agregar, o que descartar e por quanto tempo guardar cada nível.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Comece pela conta, como em qualquer estimativa:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "500 sensores × 1 leitura a cada 10 s\n= 50 leituras por segundo\n= 4,3 milhões por dia\n= 1,6 bilhão por ano\n\nA 100 bytes por leitura: cerca de 160 GB só de dado bruto."
+        },
+        {
+          "kind": "text",
+          "text": "Agora a pergunta útil: **alguém vai consultar a leitura de um sensor específico de onze meses atrás?** Quase sempre a resposta é não — o que se consulta em dado antigo é tendência, não o valor exato."
+        },
+        {
+          "kind": "text",
+          "text": "Daí vem a estrutura em níveis:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Nível",
+            "Granularidade",
+            "Retenção",
+            "Serve para"
+          ],
+          "rows": [
+            [
+              "bruto",
+              "cada leitura",
+              "7 dias",
+              "investigar incidente"
+            ],
+            [
+              "por minuto",
+              "min, máx, média, contagem",
+              "90 dias",
+              "gráfico recente"
+            ],
+            [
+              "por hora",
+              "min, máx, média, contagem",
+              "2 anos",
+              "tendência"
+            ]
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Guarde contagem e soma, não só a média",
+          "text": "Com soma e contagem dá para combinar janelas depois: os agregados por minuto viram o da hora. Só com a média guardada, a média das médias sai errada quando as janelas têm tamanhos diferentes."
+        },
+        {
+          "kind": "text",
+          "text": "A retenção precisa ser uma rotina, não uma intenção. Uma tarefa agendada que apaga o que passou do prazo:"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "DELETE FROM leitura_bruta\nWHERE registrada_em < now() - INTERVAL '7 days';"
+        },
+        {
+          "kind": "text",
+          "text": "Em tabela grande, apagar tudo de uma vez segura a tabela e trava as escritas. Apague em lotes, ou use particionamento por data — aí descartar o período antigo é remover uma partição inteira, que é quase instantâneo."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você guarda a média por minuto de cada sensor. Para montar o gráfico por hora, pode tirar a média das 60 médias?",
+          "choices": [
+            "Sim, sempre",
+            "Só se todos os minutos tiverem o mesmo número de leituras; por isso vale guardar soma e contagem, não apenas a média",
+            "Não, é preciso voltar ao dado bruto",
+            "Sim, desde que arredonde no fim"
+          ],
+          "answerIndex": 1,
+          "explanation": "Média de médias ignora o peso de cada janela. Um minuto com 2 leituras entra com o mesmo peso de um com 60. Guardando soma e contagem, a média da hora é a soma das somas dividida pela soma das contagens."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Para uma tabela que só cresce no seu sistema, escreva: por quanto tempo o dado bruto é útil, o que seria suficiente depois disso, e quem apaga o resto.",
+        "expected": "Se a resposta do \"quem apaga\" for ninguém, você encontrou a decisão tomada por omissão."
+      },
+      "ifStuck": [
+        "Pergunte quem consulta o dado com mais de um mês e para quê.",
+        "Se a resposta é \"ver a tendência\", o agregado basta."
+      ],
+      "commonErrors": [
+        {
+          "error": "Guardar só a média no agregado.",
+          "why": "Impede combinar janelas depois e esconde o pico, que costuma ser o que interessa.",
+          "fix": "Guarde soma, contagem, mínimo e máximo. É pouco espaço a mais e preserva a informação."
+        }
+      ],
+      "exercise": {
+        "id": "ex-iot-combinar-janelas-01",
+        "title": "Combinar janelas sem errar a média",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `combinarJanelas(janelas)`. Cada janela tem `soma`, `contagem`, `minimo` e `maximo`. Devolva uma única janela combinada, com `media` calculada como soma total dividida pela contagem total, arredondada para duas casas. Lista vazia devolve null. Janelas com contagem 0 são ignoradas.",
+        "starter": "function combinarJanelas(janelas) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "combinarJanelas([])",
+            "expected": null
+          },
+          {
+            "name": "uma janela",
+            "expression": "combinarJanelas([{soma: 100, contagem: 10, minimo: 5, maximo: 20}])",
+            "expected": {
+              "soma": 100,
+              "contagem": 10,
+              "minimo": 5,
+              "maximo": 20,
+              "media": 10
+            }
+          },
+          {
+            "name": "media ponderada pela contagem",
+            "expression": "combinarJanelas([{soma: 100, contagem: 2, minimo: 40, maximo: 60}, {soma: 100, contagem: 98, minimo: 0, maximo: 2}]).media",
+            "expected": 2
+          },
+          {
+            "name": "minimo e maximo do conjunto",
+            "expression": "(() => { const r = combinarJanelas([{soma: 10, contagem: 1, minimo: 10, maximo: 10}, {soma: 4, contagem: 2, minimo: -3, maximo: 7}]); return [r.minimo, r.maximo] })()",
+            "expected": [
+              -3,
+              10
+            ]
+          },
+          {
+            "name": "ignora janela vazia",
+            "expression": "combinarJanelas([{soma: 0, contagem: 0, minimo: 0, maximo: 0}, {soma: 50, contagem: 5, minimo: 5, maximo: 15}]).contagem",
+            "expected": 5
+          },
+          {
+            "name": "todas vazias devolvem null",
+            "expression": "combinarJanelas([{soma: 0, contagem: 0, minimo: 0, maximo: 0}])",
+            "expected": null
+          },
+          {
+            "name": "arredonda para duas casas",
+            "expression": "combinarJanelas([{soma: 10, contagem: 3, minimo: 1, maximo: 5}]).media",
+            "expected": 3.33
+          }
+        ],
+        "hints": [
+          "Filtre as janelas com contagem maior que zero antes de qualquer conta.",
+          "Some as somas e as contagens; a média sai da divisão no fim.",
+          "Mínimo e máximo são o menor e o maior entre as janelas válidas."
+        ],
+        "solution": "function combinarJanelas(janelas) {\n  const validas = (janelas ?? []).filter((janela) => janela.contagem > 0)\n  if (validas.length === 0) return null\n\n  let soma = 0\n  let contagem = 0\n  let minimo = Infinity\n  let maximo = -Infinity\n\n  for (const janela of validas) {\n    soma += janela.soma\n    contagem += janela.contagem\n    minimo = Math.min(minimo, janela.minimo)\n    maximo = Math.max(maximo, janela.maximo)\n  }\n\n  return { soma, contagem, minimo, maximo, media: Math.round((soma / contagem) * 100) / 100 }\n}\n",
+        "solutionNotes": "Repare no terceiro teste: a média das duas médias daria 25,5, e a correta é 2. É exatamente o erro que aparece num gráfico por hora montado a partir de médias por minuto."
+      },
+      "glossary": [
+        "fila",
+        "indice",
+        "Performance",
+        "Cache"
+      ]
+    },
+    {
+      "id": "iot-comando-para-dispositivo-01",
+      "type": "lesson",
+      "title": "Mandar comando para quem pode estar offline",
+      "estimatedMinutes": 9,
+      "tags": [
+        "arquitetura",
+        "integracao"
+      ],
+      "why": "Dispositivo em campo perde conexão o tempo todo. Um comando que assume que ele está online falha em silêncio — ou, pior, é executado horas depois, quando já não faz sentido.",
+      "goal": "Desenhar o envio de comando com confirmação e prazo de validade.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O erro de partida é tratar comando como chamada de função: mandar e assumir que aconteceu."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "API → dispositivo: \"desligue a bomba\"\nAPI → usuário:     \"pronto!\"\n\nO dispositivo estava offline. A bomba continua ligada\ne a tela diz que desligou."
+        },
+        {
+          "kind": "text",
+          "text": "Comando para dispositivo é um registro com estado, igual a uma tarefa:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "pendente → entregue → confirmado\n                   ↘ expirado\n                   ↘ falhou"
+        },
+        {
+          "kind": "text",
+          "text": "O dispositivo busca os comandos pendentes quando consegue se conectar, executa e confirma. A confirmação é o que fecha o ciclo — sem ela, o sistema só sabe que enviou."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Comando antigo é perigoso",
+          "text": "\"Abrir a válvula por 30 segundos\" executado seis horas depois pode causar dano real. Todo comando precisa de prazo, e o dispositivo deve recusar o que chegou vencido."
+        },
+        {
+          "kind": "code",
+          "language": "json",
+          "code": "{\n  \"id\": \"cmd_8812\",\n  \"tipo\": \"desligar_bomba\",\n  \"criado_em\": \"2026-03-11T14:02:00Z\",\n  \"expira_em\": \"2026-03-11T14:07:00Z\",\n  \"estado\": \"pendente\"\n}"
+        },
+        {
+          "kind": "text",
+          "text": "A validação do prazo acontece nos dois lados: o servidor não entrega comando vencido, e o dispositivo confere de novo antes de executar — porque pode ter ficado parado na fila dele."
+        },
+        {
+          "kind": "text",
+          "text": "E como a entrega pode se repetir, o dispositivo precisa reconhecer comando já executado pelo id. É a mesma idempotência do webhook, na direção contrária."
+        },
+        {
+          "kind": "quiz",
+          "question": "A tela mostra \"comando enviado com sucesso\" assim que a API grava o pedido. Qual é o problema?",
+          "choices": [
+            "Nenhum: o comando foi mesmo registrado",
+            "\"Enviado\" e \"executado\" são estados diferentes, e a tela está prometendo o segundo enquanto só o primeiro aconteceu",
+            "A API deveria devolver 201 em vez de 200",
+            "Faltou autenticar o dispositivo"
+          ],
+          "answerIndex": 1,
+          "explanation": "O registro do comando é um fato; a execução é outro. A tela deve mostrar \"aguardando o dispositivo\" e só depois \"executado\", quando a confirmação chegar. Prometer execução que não aconteceu é o que gera desconfiança no sistema."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Desenhe os estados de um comando do seu sistema e marque quem faz cada transição: o servidor, o dispositivo ou o tempo.",
+        "expected": "Pelo menos uma transição pertence ao tempo — é a expiração."
+      },
+      "ifStuck": [
+        "Comece pelo que o usuário vê: quando ele pode dizer que o comando funcionou?",
+        "Se nenhuma mensagem volta do dispositivo, o sistema nunca sabe."
+      ],
+      "commonErrors": [
+        {
+          "error": "Comando sem prazo de validade.",
+          "why": "Ele fica pendente indefinidamente e executa quando o dispositivo voltar, fora de contexto.",
+          "fix": "Todo comando carrega expira_em, verificado no servidor e no dispositivo."
+        }
+      ],
+      "exercise": {
+        "id": "ex-iot-entregar-comando-01",
+        "title": "Decidir o que entregar ao dispositivo",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `comandosParaEntregar(comandos, agora, jaExecutados)`. Devolva os comandos em estado 'pendente', não expirados (`expiraEm` maior que `agora`) e cujo id não esteja em `jaExecutados`, mantendo a ordem de entrada. `expiraEm` e `agora` são textos ISO.",
+        "starter": "function comandosParaEntregar(comandos, agora, jaExecutados) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "comandosParaEntregar([], '2026-03-11T14:00:00Z', [])",
+            "expected": []
+          },
+          {
+            "name": "pendente e no prazo",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'pendente', expiraEm:'2026-03-11T14:05:00Z'}], '2026-03-11T14:00:00Z', []).map(c => c.id)",
+            "expected": [
+              "c1"
+            ]
+          },
+          {
+            "name": "expirado nao entrega",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'pendente', expiraEm:'2026-03-11T13:00:00Z'}], '2026-03-11T14:00:00Z', []).map(c => c.id)",
+            "expected": []
+          },
+          {
+            "name": "ja confirmado nao entrega",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'confirmado', expiraEm:'2026-03-11T14:05:00Z'}], '2026-03-11T14:00:00Z', []).map(c => c.id)",
+            "expected": []
+          },
+          {
+            "name": "id ja executado nao entrega de novo",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'pendente', expiraEm:'2026-03-11T14:05:00Z'}], '2026-03-11T14:00:00Z', ['c1']).map(c => c.id)",
+            "expected": []
+          },
+          {
+            "name": "preserva a ordem",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'pendente', expiraEm:'2026-03-11T15:00:00Z'}, {id:'c2', estado:'pendente', expiraEm:'2026-03-11T15:00:00Z'}], '2026-03-11T14:00:00Z', []).map(c => c.id)",
+            "expected": [
+              "c1",
+              "c2"
+            ]
+          },
+          {
+            "name": "expiracao exata nao entrega",
+            "expression": "comandosParaEntregar([{id:'c1', estado:'pendente', expiraEm:'2026-03-11T14:00:00Z'}], '2026-03-11T14:00:00Z', []).map(c => c.id)",
+            "expected": []
+          }
+        ],
+        "hints": [
+          "São três condições combinadas num filter.",
+          "Um Set com os ids já executados evita percorrer a lista a cada comando.",
+          "A expiração é estritamente maior: no instante exato, o comando já venceu."
+        ],
+        "solution": "function comandosParaEntregar(comandos, agora, jaExecutados) {\n  const executados = new Set(jaExecutados ?? [])\n  const instante = new Date(agora).getTime()\n\n  return (comandos ?? []).filter((comando) => {\n    if (comando.estado !== 'pendente') return false\n    if (executados.has(comando.id)) return false\n    return new Date(comando.expiraEm).getTime() > instante\n  })\n}\n",
+        "solutionNotes": "`jaExecutados` vem do próprio dispositivo na hora de buscar: é assim que a entrega repetida deixa de virar execução repetida."
+      },
+      "glossary": [
+        "fila",
+        "webhook",
+        "api",
+        "status-code",
+        "Log"
+      ]
+    },
+    {
+      "id": "iot-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "arquitetura"
+      ],
+      "summary": "Você sabe receber eventos sem perder mensagem e processar sem duplicar efeito.",
+      "learned": [
+        "Ingestão valida, grava e responde; o resto vai para a fila",
+        "202 comunica \"aceito, será processado\"",
+        "Volume de sensores cresce por multiplicação: agregue cedo",
+        "Entrega repetida é normal: chave única resolve",
+        "Ordem não é garantida: use o momento do evento e verifique a transição",
+        "Tentativa com limite e fila de descarte, nunca descarte silencioso"
+      ],
+      "nextUp": "Desenvolvimento de software seguro."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-iot-eventos",
+      "title": "Eventos e integração",
+      "format": "alternativa",
+      "summary": "Quatro situações de sistema que recebe eventos.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "eventos",
+        "integração"
+      ],
+      "afterItemId": "iot-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-iot-timeout-01",
+          "kind": "debugging",
+          "prompt": "Seu webhook processa tudo antes de responder e o provedor passou a reenviar eventos. Qual é a causa?",
+          "choices": [
+            "Assinatura inválida",
+            "O processamento ultrapassa o timeout do provedor, que trata como falha e repete a entrega",
+            "O endpoint não aceita HTTPS",
+            "O JSON está mal formado"
+          ],
+          "answerIndex": 1,
+          "explanation": "Receber, gravar e responder; processar depois. É o padrão esperado por qualquer provedor de webhook.",
+          "topics": [
+            "eventos"
+          ]
+        },
+        {
+          "id": "q-iot-idempotente-02",
+          "kind": "situacao",
+          "prompt": "Como garantir que um evento processado duas vezes não produza efeito duplicado?",
+          "choices": [
+            "Comparar o conteúdo do evento com os últimos processados",
+            "Registrar o id do evento numa tabela com chave única e ignorar quando a inserção falhar por duplicidade",
+            "Confiar que o provedor não repete",
+            "Processar apenas eventos recebidos em horário comercial"
+          ],
+          "answerIndex": 1,
+          "explanation": "A restrição de unicidade do banco faz a verificação de forma atômica, inclusive com vários processadores em paralelo.",
+          "topics": [
+            "integração"
+          ]
+        },
+        {
+          "id": "q-iot-ordem-03",
+          "kind": "conceitual",
+          "prompt": "Por que usar a hora de chegada do evento em vez da hora em que ele ocorreu é problema?",
+          "choices": [
+            "Porque consome mais espaço",
+            "Porque atraso na fila altera a ordem aparente, e eventos antigos podem sobrescrever estado mais recente",
+            "Porque não é possível gravar timestamp",
+            "Porque a hora de chegada é sempre igual à de ocorrência"
+          ],
+          "answerIndex": 1,
+          "explanation": "A hora do evento vem do emissor e não depende do caminho percorrido. É ela que permite descartar evento atrasado.",
+          "topics": [
+            "eventos"
+          ]
+        },
+        {
+          "id": "q-iot-dlq-04",
+          "kind": "situacao",
+          "prompt": "Um evento malformado falha sempre e volta para a fila indefinidamente. Qual é a solução adequada?",
+          "choices": [
+            "Aumentar o tempo entre as tentativas",
+            "Limitar as tentativas e mover para uma fila de descarte com o motivo registrado",
+            "Apagar o evento após a primeira falha",
+            "Processar a fila em ordem inversa"
+          ],
+          "answerIndex": 1,
+          "explanation": "A fila de descarte tira o bloqueio da fila principal e preserva o evento para análise, que é como se descobre o defeito na origem.",
+          "topics": [
+            "integração"
+          ]
+        }
+      ]
+    }
+  ]
+}

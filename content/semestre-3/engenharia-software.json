@@ -1,0 +1,385 @@
+{
+  "id": "engenharia-software",
+  "semester": 3,
+  "order": 5,
+  "title": "Engenharia de software",
+  "summary": "O trabalho em si: Git no dia a dia, branch, commit, pull request, code review, CI e refatoração com segurança.",
+  "outcome": "Você consegue receber uma tarefa, abrir branch, commitar de forma legível, abrir um pull request que alguém consegue revisar, responder a review e refatorar sem quebrar.",
+  "tags": ["git", "processo", "qualidade"],
+  "stack": ["bash", "yaml"],
+  "items": [
+    {
+      "id": "eng-git-dia-a-dia-01",
+      "type": "lesson",
+      "title": "Git no dia a dia: os três lugares",
+      "estimatedMinutes": 10,
+      "tags": ["git"],
+      "why": "Quase todo problema com Git vem de não saber em qual dos três lugares o arquivo está. Com isso claro, o resto é comando.",
+      "goal": "Saber onde cada alteração está e mover entre os três estados com segurança.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "diretório de trabalho  →  área de preparação  →  histórico\n   (você editou)            (git add)              (git commit)"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ git status          # em qual lugar está cada arquivo",
+            "$ git diff            # mudanças ainda não preparadas",
+            "$ git diff --staged   # mudanças preparadas, ainda não commitadas",
+            "$ git log --oneline -5"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "`git status` e `git diff` antes de cada commit evitam a maior parte dos acidentes, especialmente o segredo que entra sem ninguém ver."
+        },
+        {
+          "kind": "text",
+          "text": "O fluxo de uma tarefa:"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ git switch main && git pull",
+            "$ git switch -c fix/total-quantidade-nula",
+            "# ... edita, testa ...",
+            "$ git add src/pedidos/total.py tests/test_total.py",
+            "$ git commit",
+            "$ git push -u origin fix/total-quantidade-nula"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Mensagem de commit: primeira linha curta no imperativo, linha em branco, e o porquê. O diff já mostra o que mudou; a mensagem existe para o motivo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "trata quantidade nula no cálculo do total\n\nA importação da planilha de março trouxe linhas sem quantidade.\nO total era calculado com None e a exceção só aparecia na tela\nde fechamento, longe da causa. Agora o item inválido falha na\nvalidação, com o índice da linha na mensagem."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Segredo commitado",
+          "text": "Remover no commit seguinte não resolve: o valor continua no histórico e em qualquer clone. A única resposta correta é revogar a chave."
+        },
+        {
+          "kind": "text",
+          "text": "Para desfazer, saiba o que está desfazendo:"
+        },
+        {
+          "kind": "table",
+          "headers": ["Situação", "Comando", "Perde trabalho?"],
+          "rows": [
+            ["tirar da preparação", "git restore --staged arquivo", "não"],
+            ["descartar edição", "git restore arquivo", "sim"],
+            ["desfazer commit, manter mudanças", "git reset --soft HEAD~1", "não"],
+            ["desfazer commit já enviado", "git revert <hash>", "não"]
+          ]
+        },
+        {
+          "kind": "quiz",
+          "question": "Você commitou por engano um arquivo .env com a senha do banco e já fez push. Qual é a ação necessária?",
+          "choices": [
+            "Apagar o arquivo e fazer um novo commit",
+            "Trocar a senha do banco, porque o valor antigo continua no histórico e em qualquer clone",
+            "Tornar o repositório privado",
+            "Usar git revert no commit"
+          ],
+          "answerIndex": 1,
+          "explanation": "Limpar o histórico é possível, mas não desfaz o vazamento: quem clonou já tem o valor. Rotacionar o segredo é a única medida efetiva."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Num repositório de teste, edite dois arquivos, adicione só um ao stage e rode git status, git diff e git diff --staged. Confirme que você entende cada saída.",
+        "expected": "Você sabe dizer, sem olhar o comando, onde está cada alteração."
+      },
+      "ifStuck": ["git status sugere o comando para cada situação. Leia a saída inteira."],
+      "commonErrors": [
+        {
+          "error": "git add . commitando arquivos que não deveriam entrar.",
+          "why": "O ponto adiciona tudo que mudou, inclusive arquivo temporário e configuração local.",
+          "fix": "Adicione por caminho, e mantenha o .gitignore atualizado."
+        }
+      ],
+      "exercise": {
+        "id": "ex-eng-commit-msg-01",
+        "title": "Escrever mensagem de commit",
+        "kind": "structural",
+        "language": "text",
+        "estimatedMinutes": 6,
+        "prompt": "Você corrigiu uma consulta que trazia todos os pedidos e travava a tela do suporte com mais de 5 mil registros. Escreva a mensagem de commit: primeira linha curta no imperativo, linha em branco e o motivo.",
+        "starter": "",
+        "checks": [
+          { "name": "tem mais de uma linha", "type": "minLines", "value": "3", "hint": "Assunto, linha em branco e corpo." },
+          { "name": "primeira linha nao termina com ponto", "type": "regex", "value": "^[^\\n.]{10,72}\\n", "hint": "Assunto curto, sem ponto final." },
+          { "name": "explica o motivo", "type": "regex", "value": "porque|pois|causa|travava|lenta|limite", "hint": "O corpo responde por quê." },
+          { "name": "nao e mensagem generica", "type": "notContains", "value": "ajustes", "hint": "\"ajustes\" não informa nada." }
+        ],
+        "hints": [
+          "Imperativo: \"limita\", \"corrige\", \"adiciona\" — como se completasse \"este commit ...\".",
+          "O corpo deve responder: por que isso era um problema?"
+        ],
+        "solution": "limita e pagina a listagem de pedidos\n\nA consulta trazia todos os pedidos sem limite. Com mais de 5 mil\nregistros a tela do suporte travava por segundos e às vezes\nestourava a memória do navegador.\n\nAgora a listagem devolve no máximo 50 registros por página, com\nfiltro aplicado no banco e índice em (status, criado_em).",
+        "solutionNotes": "Meses depois, essa mensagem é a única coisa que explica por que o limite existe — e evita alguém \"melhorar\" removendo-o."
+      },
+      "glossary": ["git", "commit", "branch", "repositorio", "variavel-de-ambiente"]
+    },
+    {
+      "id": "eng-pull-request-01",
+      "type": "lesson",
+      "title": "Pull request e code review",
+      "estimatedMinutes": 10,
+      "tags": ["git", "processo"],
+      "why": "O pull request é como seu trabalho é avaliado no dia a dia. PR bem escrito é revisado de verdade; PR gigante recebe aprovação sem leitura.",
+      "goal": "Abrir um PR revisável e responder a comentários de review.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Um PR precisa responder quatro perguntas, e o revisor não deveria precisar perguntar nenhuma delas:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "## O que muda\nA listagem de pedidos passa a filtrar por status e período no banco,\ncom paginação de 50 registros.\n\n## Por que\nO suporte não conseguia localizar pedidos antigos: a tela carregava\ntodos os registros e travava acima de 5 mil.\n\n## Como testei\n- Testes novos em test_filtro_pedidos.py (6 casos, incluindo filtro inválido)\n- Manualmente com 60 mil pedidos em base local: 180ms\n- Verifiquei o plano: usa idx_pedido_status_criado\n\n## O que ficou de fora\nExportação para CSV, que estava no pedido original. Abri a issue #214."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Tamanho é a variável mais importante",
+          "text": "PR de até ~400 linhas recebe revisão atenta. Acima disso, a atenção cai e defeitos passam. Se a tarefa é grande, divida em PRs sequenciais."
+        },
+        {
+          "kind": "text",
+          "text": "Ao revisar, separe o que é defeito do que é preferência, e diga o motivo:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Ruim:  \"isso está errado\"\nRuim:  \"eu faria diferente\"\n\nBom:   \"Se `itens` vier vazio, este `itens[0]` levanta IndexError.\n        Vale tratar antes ou garantir no chamador.\"\n\nBom:   \"Opcional: extrair isso numa função deixaria o fluxo mais\n        direto. Não bloqueia.\""
+        },
+        {
+          "kind": "text",
+          "text": "Ao receber review: comentário sobre código não é comentário sobre você. Quando discordar, responda com o motivo técnico; quando o revisor estiver certo, corrija e agradeça sem cerimônia."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você recebeu um comentário apontando um caso não tratado que você acha improvável. Qual é a melhor resposta?",
+          "choices": [
+            "Ignorar e fazer o merge: o caso é improvável",
+            "Responder com o motivo técnico de considerar improvável e propor o que fazer — tratar agora, ou deixar registrado por que não",
+            "Corrigir tudo sem discutir, para não criar atrito",
+            "Pedir outro revisor"
+          ],
+          "answerIndex": 1,
+          "explanation": "Review é conversa técnica. Concordar por reflexo esconde informação; ignorar desperdiça a revisão. Registrar a decisão é o que ajuda quem ler depois."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva a descrição de PR da última coisa que você programou, com as quatro seções. Depois releia como se fosse o revisor: falta alguma informação?",
+        "expected": "Um revisor consegue entender o que mudou e por que, sem abrir o código."
+      },
+      "ifStuck": ["Se você não consegue descrever o PR em poucas linhas, provavelmente ele está fazendo coisas demais."],
+      "commonErrors": [
+        {
+          "error": "PR com refatoração e correção de bug juntos.",
+          "why": "O revisor não distingue o que é mudança de comportamento do que é reorganização, e a revisão perde eficácia.",
+          "fix": "Separe: um PR refatora, outro corrige."
+        }
+      ],
+      "exercise": {
+        "id": "ex-eng-review-01",
+        "title": "Escrever um comentário de review",
+        "kind": "reflection",
+        "language": "text",
+        "estimatedMinutes": 7,
+        "prompt": "Você está revisando este trecho:\n\ndef primeiro_item(pedido):\n    return pedido[\"itens\"][0]\n\nEscreva um comentário de review: aponte o problema, explique a consequência e sugira caminho. Sem julgar quem escreveu.",
+        "starter": "",
+        "expectedResult": "Um comentário que a pessoa lê e sabe exatamente o que fazer.",
+        "hints": [
+          "Qual entrada faz esse código quebrar?",
+          "Diga onde o erro vai aparecer para o usuário, não só que existe."
+        ],
+        "solution": "Se `itens` vier vazio (pedido criado e ainda sem item, ou importação incompleta), o índice [0] levanta IndexError. Como esta função é chamada na montagem da listagem, o erro derruba a tela inteira em vez de afetar só aquele pedido.\n\nDuas opções: devolver None quando a lista estiver vazia e tratar na exibição, ou validar antes e não permitir pedido sem item. A primeira é menor; a segunda resolve na origem.",
+        "solutionNotes": "O que torna o comentário útil é a consequência: \"derruba a tela inteira\" é diferente de \"pode dar erro\"."
+      },
+      "glossary": ["pull-request", "code-review", "Refatoração", "merge", "branch"]
+    },
+    {
+      "id": "eng-refatorar-01",
+      "type": "lesson",
+      "title": "Refatorar sem quebrar",
+      "estimatedMinutes": 9,
+      "tags": ["qualidade", "testes"],
+      "why": "Todo código que dura precisa ser reorganizado em algum momento. Fazer isso sem rede de segurança é como trocar o pneu andando.",
+      "goal": "Refatorar com teste antes, em passos pequenos, sem misturar mudança de comportamento.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Refatorar é mudar a estrutura mantendo o comportamento. A condição para fazer com segurança é poder verificar que o comportamento não mudou."
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Escreva testes do comportamento atual, mesmo que o código seja feio",
+            "Rode os testes e veja passar",
+            "Refatore em passos pequenos, rodando os testes a cada passo",
+            "Não mude comportamento no mesmo commit"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Teste antes, não depois",
+          "text": "Se você escrever o teste depois de refatorar, ele vai testar o código novo. Não serve como rede: você não sabe se o comportamento era esse antes."
+        },
+        {
+          "kind": "text",
+          "text": "O que vale extrair: bloco com nome próprio evidente, condição composta difícil de ler, código repetido três vezes."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# antes\nif pedido.status == \"pending\" and pedido.criado_em < limite and not pedido.bloqueado:\n    processar(pedido)\n\n# depois\nif pedido.pode_ser_processado(limite):\n    processar(pedido)"
+        },
+        {
+          "kind": "text",
+          "text": "O segundo trecho não é mais curto por acaso: o nome substitui o comentário que alguém teria escrito ali."
+        },
+        {
+          "kind": "text",
+          "text": "E o que NÃO fazer: extrair por regra de tamanho. Função de 40 linhas com um fluxo linear e claro é melhor que seis funções de 6 linhas que você precisa perseguir para entender."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você vai adicionar uma funcionalidade num código confuso e sem testes. Qual é a ordem mais segura?",
+          "choices": [
+            "Adicionar a funcionalidade e refatorar depois, com mais contexto",
+            "Escrever testes do comportamento atual, refatorar, e só então adicionar a funcionalidade",
+            "Reescrever tudo do zero",
+            "Adicionar a funcionalidade e refatorar no mesmo commit, para economizar tempo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Os testes documentam o que existe hoje e avisam se a refatoração muda algo. Depois disso, a funcionalidade nova entra em código organizado, e o commit dela fica isolado.",
+          "topics": ["refatoração"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue a função mais confusa que você já escreveu. Escreva dois testes do comportamento atual. Depois extraia uma parte e confirme que os testes continuam passando.",
+        "expected": "Os dois testes passam antes e depois, sem alteração."
+      },
+      "ifStuck": ["Comece testando a entrada mais comum e uma de borda. Não precisa cobrir tudo para começar."],
+      "commonErrors": [
+        {
+          "error": "Refatoração que \"melhora um detalhe de comportamento\" no caminho.",
+          "why": "Quando um teste quebra, você não sabe se foi a reorganização ou a melhoria.",
+          "fix": "Dois commits. Refatore primeiro, mude o comportamento depois."
+        }
+      ],
+      "glossary": ["Refatoração", "Teste unitário", "code-review", "commit"]
+    },
+    {
+      "id": "eng-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["processo"],
+      "summary": "Isto é o trabalho: branch, commit legível, PR revisável, resposta a review e refatoração com rede de segurança.",
+      "learned": [
+        "Três lugares no Git: trabalho, preparação, histórico",
+        "Mensagem de commit explica o porquê; o diff mostra o quê",
+        "Segredo commitado precisa ser revogado, não apagado",
+        "PR pequeno é revisado de verdade",
+        "Review separa defeito de preferência e explica o motivo",
+        "Teste antes de refatorar; refatoração e comportamento em commits separados"
+      ],
+      "nextUp": "Quarto semestre: complexidade, Java e orientação a objetos, dados em escala e software seguro."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-eng-processo",
+      "title": "Processo de desenvolvimento",
+      "format": "alternativa",
+      "summary": "Cinco situações de Git, review e refatoração.",
+      "estimatedMinutes": 8,
+      "topics": ["git", "review", "refatoração"],
+      "afterItemId": "eng-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-eng-segredo-01",
+          "kind": "situacao",
+          "prompt": "Uma chave de API foi commitada e enviada há três dias. Qual é a ação necessária?",
+          "choices": [
+            "Apagar a linha num novo commit",
+            "Revogar a chave e gerar outra: o valor continua no histórico e em qualquer clone",
+            "Reescrever o histórico e considerar resolvido",
+            "Adicionar o arquivo ao .gitignore"
+          ],
+          "answerIndex": 1,
+          "explanation": "Reescrever o histórico ajuda a limpar, mas não desfaz o acesso de quem já clonou. Rotacionar é a única medida efetiva.",
+          "topics": ["git"]
+        },
+        {
+          "id": "q-eng-pr-02",
+          "kind": "conceitual",
+          "prompt": "Por que um PR de 2.000 linhas é problema, mesmo com código bom?",
+          "choices": [
+            "Porque o Git tem limite de linhas por PR",
+            "Porque a atenção do revisor cai com o tamanho, e defeitos passam por revisão superficial",
+            "Porque demora mais para fazer merge",
+            "Porque consome muito espaço no repositório"
+          ],
+          "answerIndex": 1,
+          "explanation": "Revisão é atividade humana com limite de atenção. PR grande costuma receber aprovação sem leitura efetiva, o que anula o propósito.",
+          "topics": ["review"]
+        },
+        {
+          "id": "q-eng-refator-03",
+          "kind": "situacao",
+          "prompt": "Um teste quebrou depois de um commit que refatorou uma função e mudou uma regra de arredondamento. Qual é a dificuldade?",
+          "choices": [
+            "Nenhuma: basta ajustar o teste",
+            "Não é possível saber se a quebra veio da reorganização ou da mudança de regra, porque as duas estão no mesmo commit",
+            "O teste está mal escrito",
+            "Faltou rodar os testes antes"
+          ],
+          "answerIndex": 1,
+          "explanation": "Separar refatoração de mudança de comportamento existe justamente para essa situação: cada commit tem uma causa possível.",
+          "topics": ["refatoração"]
+        },
+        {
+          "id": "q-eng-review-04",
+          "kind": "situacao",
+          "prompt": "Qual comentário de review é mais útil?",
+          "choices": [
+            "\"Esse código está confuso.\"",
+            "\"Se `itens` vier vazio, `itens[0]` levanta IndexError e derruba a listagem inteira. Vale tratar antes.\"",
+            "\"Eu faria com list comprehension.\"",
+            "\"Aprovado, só isso mesmo?\""
+          ],
+          "answerIndex": 1,
+          "explanation": "Aponta a entrada que causa o problema, a consequência e o caminho. Os outros não permitem ação nem explicam o motivo.",
+          "topics": ["review"]
+        },
+        {
+          "id": "q-eng-reset-05",
+          "kind": "conceitual",
+          "prompt": "Qual comando desfaz o último commit mantendo as alterações nos arquivos?",
+          "choices": [
+            "git reset --hard HEAD~1",
+            "git reset --soft HEAD~1",
+            "git revert HEAD",
+            "git restore ."
+          ],
+          "answerIndex": 1,
+          "explanation": "--soft desfaz o commit e mantém as mudanças preparadas. --hard descarta o trabalho. revert cria um commit inverso, adequado quando já houve push.",
+          "topics": ["git"]
+        }
+      ]
+    }
+  ]
+}

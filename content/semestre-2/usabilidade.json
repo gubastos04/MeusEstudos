@@ -1,0 +1,345 @@
+{
+  "id": "usabilidade",
+  "semester": 2,
+  "order": 1,
+  "title": "Engenharia de usabilidade",
+  "summary": "Os estados que faltam na maioria das telas, formulários que não irritam, acessibilidade e mensagens de erro que resolvem.",
+  "outcome": "Você consegue revisar uma tela e apontar o que falta: estado vazio, erro compreensível, foco visível, alvo de toque adequado e texto que diz o que fazer.",
+  "tags": ["ux", "acessibilidade", "frontend"],
+  "stack": ["html", "css", "javascript"],
+  "items": [
+    {
+      "id": "ux-estados-da-tela-01",
+      "type": "lesson",
+      "title": "Os cinco estados de qualquer tela",
+      "estimatedMinutes": 9,
+      "tags": ["ux"],
+      "why": "Tela pronta é tela que funciona quando não há dado, quando a rede cai e quando o servidor devolve erro. Só o caminho de sucesso é metade do trabalho.",
+      "goal": "Listar e escrever os cinco estados de uma tela com dados.",
+      "blocks": [
+        {
+          "kind": "table",
+          "headers": ["Estado", "O que mostrar", "O que evitar"],
+          "rows": [
+            ["Carregando", "indicação de progresso no lugar do conteúdo", "tela em branco"],
+            ["Vazio", "por que está vazio e o que fazer", "tabela sem linhas, sem texto"],
+            ["Erro", "o que falhou e uma ação para tentar de novo", "\"erro inesperado\" sozinho"],
+            ["Parcial", "o que carregou, marcando o que faltou", "descartar tudo por uma falha"],
+            ["Sucesso", "o conteúdo", "—"]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O estado vazio é o mais negligenciado e o mais fácil de acertar. Ele tem três partes: o que não existe, por quê e o próximo passo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Ruim:\n  (tabela vazia)\n\nRuim:\n  Nenhum resultado.\n\nBom:\n  Nenhum pedido com status \"pendente\" nos últimos 30 dias.\n  Tente ampliar o período ou limpar o filtro de status."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Vazio não é vermelho",
+          "text": "Lista sem resultado é informação, não falha. Vermelho ali faz a pessoa achar que quebrou algo."
+        },
+        {
+          "kind": "text",
+          "text": "Mensagem de erro útil responde três perguntas: o que aconteceu, se a culpa é de quem lê, e o que fazer agora."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Ruim:  Erro 500\nRuim:  Falha ao processar sua solicitação\nBom:   Não foi possível salvar agora. Suas alterações continuam na tela.\n       Tentar de novo.",
+          "caption": "A última informação — que o trabalho não foi perdido — é a que mais importa."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma busca sem resultados mostra um alerta vermelho \"Erro: nada encontrado\". Qual é o problema?",
+          "choices": [
+            "Nenhum, é bom destacar",
+            "Trata resultado como falha, faz a pessoa achar que o sistema quebrou e gera chamado de suporte",
+            "A cor vermelha tem contraste ruim",
+            "Falta um ícone"
+          ],
+          "answerIndex": 1,
+          "explanation": "Vermelho é reservado para erro real, risco e falha de validação. Busca sem resultado é um resultado."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma tela que você já fez e escreva os textos dos cinco estados. Depois force cada um (desligue a rede, filtre por algo inexistente).",
+        "expected": "Cinco textos escritos e testados na tela de verdade."
+      },
+      "ifStuck": ["Para forçar erro: na aba de rede do navegador, escolha o modo offline."],
+      "commonErrors": [
+        {
+          "error": "Tela em branco durante o carregamento.",
+          "why": "Sem indicação, a pessoa não sabe se a tela travou ou está trabalhando.",
+          "fix": "Mostre estrutura de espera no lugar do conteúdo, mantendo o layout estável."
+        }
+      ],
+      "exercise": {
+        "id": "ex-ux-mensagem-erro-01",
+        "title": "Reescrever uma mensagem de erro",
+        "kind": "reflection",
+        "language": "text",
+        "estimatedMinutes": 5,
+        "prompt": "A tela mostra \"Erro ao salvar (código 500)\". Reescreva essa mensagem respondendo: o que aconteceu, se o trabalho foi perdido e o que fazer agora. Máximo três linhas, sem culpar quem lê.",
+        "starter": "",
+        "expectedResult": "Uma mensagem que uma pessoa sem conhecimento técnico entende e sabe o que fazer depois de ler.",
+        "hints": [
+          "O código 500 não ajuda quem lê. Guarde-o no log, com um identificador para o suporte.",
+          "A informação mais valiosa é se os dados digitados continuam ali."
+        ],
+        "solution": "Não foi possível salvar agora. O que você digitou continua na tela.\nTente novamente em alguns segundos. Se continuar, registre o código 7f3a no suporte.",
+        "solutionNotes": "Manter um identificador curto permite ao suporte achar o log sem expor detalhe técnico a quem lê."
+      },
+      "glossary": ["status-code", "Log"]
+    },
+    {
+      "id": "ux-formulario-01",
+      "type": "lesson",
+      "title": "Formulário que não irrita",
+      "estimatedMinutes": 9,
+      "tags": ["ux", "formulario"],
+      "why": "Formulário é onde o trabalho da pessoa pode ser destruído. Validar no momento errado ou apagar o que foi digitado custa caro.",
+      "goal": "Aplicar as regras de validação, rótulo e recuperação de erro num formulário.",
+      "blocks": [
+        {
+          "kind": "list",
+          "items": [
+            "Valide ao sair do campo, não a cada tecla: erro enquanto se digita é ruído",
+            "Nunca apague o que foi preenchido ao mostrar erro",
+            "Mensagem junto do campo, não só no topo",
+            "Diga o formato esperado antes, não depois de errar",
+            "Rótulo sempre visível: placeholder desaparece ao digitar",
+            "Um campo por linha no celular"
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "html",
+          "code": "<label for=\"cpf\">CPF</label>\n<input\n  id=\"cpf\"\n  name=\"cpf\"\n  inputmode=\"numeric\"\n  aria-describedby=\"cpf-ajuda cpf-erro\"\n  aria-invalid=\"true\"\n/>\n<p id=\"cpf-ajuda\">Somente números, 11 dígitos.</p>\n<p id=\"cpf-erro\" role=\"alert\">CPF deve ter 11 dígitos. Você digitou 9.</p>"
+        },
+        {
+          "kind": "text",
+          "text": "`aria-describedby` liga a ajuda e o erro ao campo, então o leitor de tela anuncia os dois. `role=\"alert\"` faz a mensagem nova ser lida na hora."
+        },
+        {
+          "kind": "text",
+          "text": "A mensagem diz o que se esperava e o que veio. \"Campo inválido\" obriga a pessoa a adivinhar."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Erro não pode depender só da cor",
+          "text": "Borda vermelha sozinha não é lida por quem não distingue cores. Sempre acompanhe de texto e, quando útil, de ícone."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um formulário longo apaga todos os campos quando a validação do servidor falha. Qual é o impacto?",
+          "choices": [
+            "Nenhum: é o comportamento padrão do navegador",
+            "A pessoa perde o trabalho e a chance de corrigir, e muitas abandonam a tarefa",
+            "Só atrapalha em telas pequenas",
+            "Melhora a segurança"
+          ],
+          "answerIndex": 1,
+          "explanation": "Perda de trabalho é o pior defeito de usabilidade em formulário. Devolva os valores preenchidos junto com a mensagem de erro."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um formulário com três campos e faça o servidor devolver erro em um deles. Confirme que os outros dois continuam preenchidos.",
+        "expected": "Nada digitado é perdido ao mostrar erro."
+      },
+      "ifStuck": ["No servidor, devolva os valores recebidos junto com a lista de erros e repopule os campos."],
+      "commonErrors": [
+        {
+          "error": "Usar placeholder como rótulo.",
+          "why": "Ele desaparece ao digitar, e quem se distrai não sabe mais o que o campo pede.",
+          "fix": "Rótulo visível sempre; placeholder só para exemplo de formato."
+        }
+      ],
+      "exercise": {
+        "id": "ex-ux-form-erro-01",
+        "title": "Campo com erro acessível",
+        "kind": "structural",
+        "language": "html",
+        "estimatedMinutes": 7,
+        "prompt": "Escreva o HTML de um campo de email em estado de erro: rótulo visível, texto de ajuda com o formato, mensagem de erro ligada ao campo e sinalização que não dependa apenas de cor.",
+        "starter": "",
+        "checks": [
+          { "name": "tem label com for", "type": "regex", "value": "<label[^>]*for=", "hint": "O rótulo precisa estar ligado ao campo." },
+          { "name": "input tem id", "type": "regex", "value": "<input[^>]*id=", "hint": "O for da label aponta para o id." },
+          { "name": "usa aria-describedby", "type": "contains", "value": "aria-describedby", "hint": "Liga a ajuda e o erro ao campo." },
+          { "name": "marca o campo como invalido", "type": "contains", "value": "aria-invalid", "hint": "Como um leitor de tela sabe que o campo está inválido?" },
+          { "name": "mensagem de erro em texto", "type": "regex", "value": "role=\"alert\"|role='alert'", "hint": "A mensagem nova precisa ser anunciada." },
+          { "name": "type adequado", "type": "regex", "value": "type=\"email\"|type='email'", "hint": "O tipo ajusta o teclado do celular." }
+        ],
+        "hints": [
+          "São quatro elementos: label, input, parágrafo de ajuda e parágrafo de erro.",
+          "aria-describedby aceita mais de um id, separados por espaço."
+        ],
+        "solution": "<label for=\"email\">Email</label>\n<input\n  id=\"email\"\n  name=\"email\"\n  type=\"email\"\n  value=\"ana@\"\n  aria-describedby=\"email-ajuda email-erro\"\n  aria-invalid=\"true\"\n/>\n<p id=\"email-ajuda\">Exemplo: nome@empresa.com.br</p>\n<p id=\"email-erro\" role=\"alert\">Falta o domínio depois do @.</p>\n"
+      },
+      "glossary": ["requisicao"]
+    },
+    {
+      "id": "ux-acessibilidade-01",
+      "type": "lesson",
+      "title": "Acessibilidade: o mínimo que muda tudo",
+      "estimatedMinutes": 9,
+      "tags": ["acessibilidade"],
+      "why": "Quatro correções resolvem a maioria dos problemas reais, e todas melhoram a tela para quem não tem deficiência também.",
+      "goal": "Verificar teclado, contraste, foco e alvo de toque numa tela existente.",
+      "blocks": [
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Navegação por teclado: tudo que clica precisa ser alcançável por Tab e acionável por Enter",
+            "Foco visível: nunca remova o contorno sem colocar outro no lugar",
+            "Contraste: 4.5:1 para texto normal, 3:1 para texto grande",
+            "Alvo de toque: pelo menos 44px de altura em controles"
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "css",
+          "code": "/* nunca faça isto sozinho */\n:focus { outline: none; }\n\n/* faça isto */\n:focus-visible {\n  outline: 2px solid currentColor;\n  outline-offset: 2px;\n}"
+        },
+        {
+          "kind": "text",
+          "text": "`:focus-visible` mostra o contorno para quem navega por teclado e não para quem clica com o mouse. Resolve a objeção estética sem tirar a acessibilidade."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "outline: none sem substituto",
+          "text": "Quem navega por teclado perde a única indicação de onde está. A tela continua bonita e fica impossível de usar."
+        },
+        {
+          "kind": "text",
+          "text": "Sobre cor: nunca comunique só por cor. Um status \"vermelho = atrasado, verde = ok\" precisa de texto ou forma também."
+        },
+        {
+          "kind": "code",
+          "language": "html",
+          "code": "<!-- só cor -->\n<span class=\"bolinha vermelha\"></span>\n\n<!-- cor + texto -->\n<span class=\"bolinha vermelha\" aria-hidden=\"true\"></span>\n<span>Atrasado</span>"
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual verificação de acessibilidade você consegue fazer em 30 segundos, sem ferramenta nenhuma?",
+          "choices": [
+            "Medir o contraste de todas as cores a olho",
+            "Percorrer a tela só com Tab e Enter, e ver se dá para fazer tudo e se você sabe onde está",
+            "Ler o HTML procurando por aria",
+            "Abrir num navegador antigo"
+          ],
+          "answerIndex": 1,
+          "explanation": "O teste de teclado encontra controle inalcançável, foco invisível e ordem de navegação confusa de uma vez. É o retorno mais alto por tempo gasto."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Abra a tela mais complexa que você já fez e tente concluir a tarefa principal usando só o teclado. Anote cada ponto onde travou.",
+        "expected": "Uma lista de problemas concretos, cada um com o controle que não responde."
+      },
+      "ifStuck": ["Se o Tab não chega em algo clicável, provavelmente é uma div com onclick."],
+      "commonErrors": [
+        {
+          "error": "Modal que não prende o foco.",
+          "why": "O Tab continua percorrendo a página atrás do modal, e quem usa teclado se perde.",
+          "fix": "Mova o foco para dentro ao abrir, mantenha-o preso e devolva ao fechar."
+        }
+      ],
+      "glossary": ["XSS"]
+    },
+    {
+      "id": "ux-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["ux"],
+      "summary": "Você tem uma lista de verificação aplicável a qualquer tela, sua ou de outra pessoa.",
+      "learned": [
+        "Cinco estados: carregando, vazio, erro, parcial, sucesso",
+        "Vazio é informação, não falha: nada de vermelho",
+        "Erro diz o que aconteceu, se o trabalho foi perdido e o que fazer",
+        "Formulário nunca apaga o que foi digitado",
+        "Rótulo visível, ajuda antes do erro, mensagem junto do campo",
+        "Teclado, foco visível, contraste e alvo de toque"
+      ],
+      "nextUp": "UML e modelagem: como descrever o sistema antes de escrevê-lo."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-ux-revisao-tela",
+      "title": "Revisão de tela",
+      "format": "alternativa",
+      "summary": "Quatro situações de revisão de interface.",
+      "estimatedMinutes": 7,
+      "topics": ["estados", "formulário", "acessibilidade"],
+      "afterItemId": "ux-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-ux-vazio-01",
+          "kind": "situacao",
+          "prompt": "Uma tabela de pedidos aparece completamente vazia quando o filtro não encontra nada, sem nenhum texto. Qual é a consequência mais provável?",
+          "choices": [
+            "Nenhuma: a pessoa entende que não há resultados",
+            "A pessoa acha que a tela quebrou ou que o filtro não funcionou, e abre chamado no suporte",
+            "A tabela fica desalinhada",
+            "O navegador mostra um aviso automático"
+          ],
+          "answerIndex": 1,
+          "explanation": "Ausência de conteúdo sem explicação é indistinguível de falha. Estado vazio precisa dizer o que não existe e o que fazer.",
+          "topics": ["estados"]
+        },
+        {
+          "id": "q-ux-focus-02",
+          "kind": "codigo",
+          "prompt": "Qual é o problema deste CSS?",
+          "code": { "language": "css", "code": "button:focus { outline: none; }" },
+          "choices": [
+            "Nenhum: remove um contorno feio",
+            "Quem navega por teclado perde a indicação de onde está, e a tela fica inutilizável sem mouse",
+            "O seletor está errado",
+            "Deveria ser outline: 0"
+          ],
+          "answerIndex": 1,
+          "explanation": "Se o contorno padrão não agrada, substitua usando :focus-visible, que aparece só na navegação por teclado.",
+          "topics": ["acessibilidade"]
+        },
+        {
+          "id": "q-ux-form-03",
+          "kind": "conceitual",
+          "prompt": "Quando é o melhor momento para validar um campo de formulário?",
+          "choices": [
+            "A cada tecla digitada",
+            "Ao sair do campo, e de novo no envio",
+            "Só no envio",
+            "Antes de a pessoa começar a digitar"
+          ],
+          "answerIndex": 1,
+          "explanation": "A cada tecla mostra erro enquanto a pessoa ainda está escrevendo. Só no envio faz descobrir tudo no fim. Ao sair do campo é o equilíbrio.",
+          "topics": ["formulário"]
+        },
+        {
+          "id": "q-ux-cor-04",
+          "kind": "situacao",
+          "prompt": "Um painel indica situação de entregas apenas por cor: verde, amarelo e vermelho. Qual ajuste é necessário?",
+          "choices": [
+            "Aumentar a saturação das cores",
+            "Acrescentar texto ou forma, porque cor sozinha não é acessível a quem não a distingue",
+            "Trocar para tons de azul",
+            "Nenhum, se as cores tiverem bom contraste"
+          ],
+          "answerIndex": 1,
+          "explanation": "Cerca de 8% dos homens têm alguma deficiência na percepção de cores. E cor sozinha também falha em impressão e sob luz forte.",
+          "topics": ["acessibilidade"]
+        }
+      ]
+    }
+  ]
+}

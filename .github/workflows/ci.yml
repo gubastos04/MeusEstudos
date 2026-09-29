@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      # O conteudo e validado antes de tudo: arquivo invalido em /content
+      # quebraria os testes mais adiante com mensagem pior.
+      - run: npm run content:validate
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      # O build pega o erro que so aparece na compilacao de producao — e que,
+      # sem isto, apareceria na hora do deploy.
+      - run: npm run build
+        env:
+          DATABASE_URL: file:./ci.db
+          APP_SECRET: segredo-apenas-para-build-de-ci-com-32-chars

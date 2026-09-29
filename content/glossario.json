@@ -1,0 +1,1271 @@
+{
+  "terms": [
+    {
+      "id": "algoritmo",
+      "term": "Algoritmo",
+      "short": "Sequência de passos bem definidos que resolve um problema.",
+      "explanation": "Um algoritmo é a descrição de como chegar de uma entrada até um resultado, passo a passo, sem ambiguidade. Existe antes do código: você pode escrever um algoritmo em português e depois traduzir para qualquer linguagem. No trabalho, a discussão sobre 'como vamos resolver isso' é uma discussão sobre algoritmo; a linguagem vem depois.",
+      "example": {
+        "language": "text",
+        "code": "1. receber a lista de pedidos\n2. para cada pedido, verificar se o status é \"pending\"\n3. se for, guardar numa lista de saída\n4. devolver a lista de saída"
+      },
+      "whereItAppears": [
+        "Planejamento de uma função",
+        "Entrevistas técnicas",
+        "Discussão de solução antes de codar"
+      ],
+      "related": [
+        "Complexidade",
+        "Big O"
+      ],
+      "tags": [
+        "fundamentos",
+        "logica"
+      ]
+    },
+    {
+      "id": "api",
+      "term": "API",
+      "short": "Conjunto de regras que permite um sistema conversar com outro.",
+      "explanation": "API é o contrato de uso de um sistema: quais operações existem, o que cada uma recebe e o que devolve. Na web, quase sempre significa endpoints HTTP que recebem e devolvem JSON. O ponto central é que quem chama não precisa saber como a coisa funciona por dentro; precisa apenas respeitar o contrato.",
+      "example": {
+        "language": "bash",
+        "code": "GET /pedidos?status=pending\n\n200 OK\n[{ \"id\": 12, \"status\": \"pending\" }]"
+      },
+      "whereItAppears": [
+        "Integração entre frontend e backend",
+        "Integração com serviços de terceiros",
+        "Aplicativo de celular consumindo o servidor"
+      ],
+      "related": [
+        "REST",
+        "Endpoint",
+        "HTTP",
+        "JSON"
+      ],
+      "tags": [
+        "api",
+        "backend",
+        "http"
+      ]
+    },
+    {
+      "id": "autenticacao",
+      "term": "Autenticação",
+      "short": "Provar quem você é.",
+      "explanation": "Autenticação responde à pergunta 'quem é essa pessoa?'. Login com email e senha é autenticação. Não confunda com autorização, que responde 'o que essa pessoa pode fazer?'. Um sistema pode autenticar você corretamente e ainda assim negar acesso a uma tela.",
+      "whereItAppears": [
+        "Tela de login",
+        "Token em requisição de API",
+        "Middleware que protege rotas"
+      ],
+      "related": [
+        "Autorização",
+        "Sessão",
+        "JWT",
+        "Hash"
+      ],
+      "tags": [
+        "seguranca",
+        "backend"
+      ]
+    },
+    {
+      "id": "autorizacao",
+      "term": "Autorização",
+      "short": "Decidir o que uma pessoa autenticada pode fazer.",
+      "explanation": "Autorização acontece depois da autenticação. É a checagem de permissão: este usuário pode ver este pedido? pode apagar este registro? A regra de ouro é verificar no servidor. Esconder um botão no frontend não é autorização: qualquer pessoa pode chamar a API direto.",
+      "example": {
+        "language": "python",
+        "code": "pedido = repo.buscar(pedido_id)\n\n# sem esta linha, qualquer usuário lê o pedido de qualquer outro\nif pedido.usuario_id != usuario_atual.id:\n    raise SemPermissao()"
+      },
+      "whereItAppears": [
+        "Regras de acesso por perfil",
+        "Isolamento de dados entre usuários",
+        "Revisão de segurança"
+      ],
+      "related": [
+        "Autenticação",
+        "Sessão"
+      ],
+      "tags": [
+        "seguranca",
+        "backend"
+      ]
+    },
+    {
+      "id": "big-o",
+      "term": "Big O",
+      "short": "Notação que descreve como o custo de um algoritmo cresce com a entrada.",
+      "explanation": "Big O ignora constantes e descreve a tendência: O(n) cresce proporcional ao tamanho da entrada, O(n²) cresce ao quadrado, O(log n) cresce devagar. Serve para prever o que acontece quando a tabela passa de mil para um milhão de linhas. É por isso que uma consulta que roda bem em desenvolvimento pode derrubar a produção.",
+      "whereItAppears": [
+        "Escolha entre lista e dicionário",
+        "Consulta lenta em tabela grande",
+        "Entrevista técnica"
+      ],
+      "related": [
+        "Complexidade",
+        "Índice",
+        "Algoritmo"
+      ],
+      "tags": [
+        "algoritmos",
+        "performance"
+      ]
+    },
+    {
+      "id": "branch",
+      "term": "Branch",
+      "short": "Linha de trabalho paralela num repositório Git.",
+      "explanation": "Branch é um ponteiro para uma sequência de commits. Criar uma branch permite trabalhar numa alteração sem afetar o código que está em produção. O fluxo comum em empresa: criar branch a partir da principal, commitar, abrir pull request, revisar, integrar.",
+      "example": {
+        "language": "bash",
+        "code": "git switch -c feat/filtro-pedidos\n# ... edita, testa ...\ngit commit -m \"adiciona filtro por status\"\ngit push -u origin feat/filtro-pedidos"
+      },
+      "whereItAppears": [
+        "Início de qualquer tarefa",
+        "Pull request",
+        "Correção urgente em produção"
+      ],
+      "related": [
+        "Commit",
+        "Git",
+        "Pull request",
+        "Merge"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "cache",
+      "term": "Cache",
+      "short": "Guardar um resultado pronto para não recalcular depois.",
+      "explanation": "Cache troca memória (ou disco) por tempo. Você guarda o resultado de algo caro e devolve a cópia nas próximas vezes. O problema difícil do cache não é guardar, é invalidar: saber quando a cópia ficou velha. Um cache mal invalidado mostra dado errado, o que costuma ser pior que uma tela lenta.",
+      "whereItAppears": [
+        "Consulta pesada de relatório",
+        "Resposta de API externa",
+        "Arquivos estáticos no navegador"
+      ],
+      "related": [
+        "Latência",
+        "Performance"
+      ],
+      "tags": [
+        "performance",
+        "backend"
+      ]
+    },
+    {
+      "id": "chave-estrangeira",
+      "term": "Chave estrangeira",
+      "short": "Coluna que aponta para a chave primária de outra tabela.",
+      "explanation": "A chave estrangeira é o que liga duas tabelas e permite ao banco garantir que a ligação existe de verdade. Sem ela, nada impede um pedido apontar para um cliente que foi apagado, e o sistema passa a ter dado órfão. É uma garantia estrutural: não depende de o código lembrar de verificar.",
+      "example": {
+        "language": "sql",
+        "code": "CREATE TABLE pedido (\n  id SERIAL PRIMARY KEY,\n  cliente_id INT NOT NULL REFERENCES cliente(id)\n);"
+      },
+      "whereItAppears": [
+        "Modelagem de banco",
+        "Migration",
+        "Erro de integridade referencial"
+      ],
+      "related": [
+        "Normalização",
+        "Migration",
+        "SQL"
+      ],
+      "tags": [
+        "banco",
+        "modelagem"
+      ]
+    },
+    {
+      "id": "code-review",
+      "term": "Code review",
+      "short": "Revisão do código de outra pessoa antes de integrar.",
+      "explanation": "Code review é leitura de código com objetivo: encontrar problema, entender a decisão, espalhar conhecimento. Uma boa revisão separa o que é defeito do que é preferência, aponta o motivo e sugere caminho. Receber revisão não é ser corrigido; é a forma normal de trabalhar em time.",
+      "whereItAppears": [
+        "Pull request",
+        "Rotina diária de time",
+        "Onboarding em projeto novo"
+      ],
+      "related": [
+        "Pull request",
+        "Refatoração",
+        "Git"
+      ],
+      "tags": [
+        "processo",
+        "qualidade"
+      ]
+    },
+    {
+      "id": "commit",
+      "term": "Commit",
+      "short": "Registro de uma alteração no histórico do Git.",
+      "explanation": "Um commit guarda o estado dos arquivos mais a mensagem que explica a intenção. Commit bom é pequeno e coeso: uma ideia por commit. A mensagem descreve o porquê, não o que o diff já mostra. Meses depois, essa mensagem é a única coisa que explica a decisão.",
+      "example": {
+        "language": "bash",
+        "code": "git add src/pedidos/filtro.py\ngit commit -m \"filtra pedidos por status no servidor\n\nA filtragem no cliente trazia todos os pedidos e travava\na tela do suporte com mais de 5 mil registros.\""
+      },
+      "whereItAppears": [
+        "Todo dia",
+        "Investigação de quando um bug entrou",
+        "Pull request"
+      ],
+      "related": [
+        "Branch",
+        "Git",
+        "Pull request"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "complexidade",
+      "term": "Complexidade",
+      "short": "Quanto tempo ou memória um algoritmo consome conforme a entrada cresce.",
+      "explanation": "Complexidade é a análise do custo. Interessa a tendência, não o valor exato: dobrar a entrada dobra o tempo, ou multiplica por quatro? Na prática, ela explica por que um laço dentro de outro laço vira problema quando os dados crescem, e por que buscar num dicionário é diferente de buscar numa lista.",
+      "whereItAppears": [
+        "Escolha de estrutura de dados",
+        "Otimização de rotina lenta",
+        "Revisão de código"
+      ],
+      "related": [
+        "Big O",
+        "Algoritmo"
+      ],
+      "tags": [
+        "algoritmos",
+        "performance"
+      ]
+    },
+    {
+      "id": "cookie",
+      "term": "Cookie",
+      "short": "Pequeno dado que o navegador guarda e reenvia ao servidor.",
+      "explanation": "O cookie existe porque HTTP não tem memória entre requisições. O servidor manda um valor, o navegador guarda e devolve nas próximas requisições do mesmo domínio. Cookie de sessão precisa de HttpOnly (JavaScript não lê), Secure (só em HTTPS) e SameSite (limita envio a partir de outros sites).",
+      "example": {
+        "language": "text",
+        "code": "Set-Cookie: sessao=abc123; HttpOnly; Secure; SameSite=Lax; Path=/"
+      },
+      "whereItAppears": [
+        "Login",
+        "Manter usuário conectado",
+        "Proteção contra CSRF"
+      ],
+      "related": [
+        "Sessão",
+        "CSRF",
+        "HTTP"
+      ],
+      "tags": [
+        "web",
+        "seguranca"
+      ]
+    },
+    {
+      "id": "cors",
+      "term": "CORS",
+      "short": "Regra do navegador que controla requisições entre origens diferentes.",
+      "explanation": "Por padrão, o navegador impede que uma página em um domínio leia a resposta de outro domínio. CORS é o mecanismo pelo qual o servidor autoriza origens específicas, respondendo com cabeçalhos próprios. Erro de CORS quase sempre é configuração do servidor, não bug do frontend: o pedido chegou, a resposta veio, e o navegador se recusou a entregá-la ao JavaScript.",
+      "example": {
+        "language": "text",
+        "code": "Access-Control-Allow-Origin: https://app.exemplo.com\nAccess-Control-Allow-Credentials: true"
+      },
+      "whereItAppears": [
+        "Frontend em domínio diferente da API",
+        "Ambiente local chamando API de staging",
+        "Integração com serviço externo"
+      ],
+      "related": [
+        "HTTP",
+        "Requisição",
+        "API"
+      ],
+      "tags": [
+        "web",
+        "http",
+        "seguranca"
+      ]
+    },
+    {
+      "id": "csrf",
+      "term": "CSRF",
+      "short": "Ataque que faz o navegador da vítima enviar uma ação sem que ela queira.",
+      "explanation": "CSRF explora o fato de o navegador enviar cookies automaticamente. Um site malicioso dispara um POST para o seu sistema e o navegador anexa a sessão da vítima. As defesas usuais são token anti-CSRF por formulário, cookie com SameSite e verificação do cabeçalho Origin nas requisições que alteram dado.",
+      "whereItAppears": [
+        "Formulários que alteram dados",
+        "APIs que usam cookie de sessão",
+        "Revisão de segurança"
+      ],
+      "related": [
+        "Cookie",
+        "Sessão",
+        "XSS"
+      ],
+      "tags": [
+        "seguranca",
+        "web"
+      ]
+    },
+    {
+      "id": "debug",
+      "term": "Debug",
+      "short": "Processo de encontrar a causa de um comportamento errado.",
+      "explanation": "Debug é investigação, não adivinhação. O método que funciona: reproduzir o problema, reduzir ao caso mínimo, formular hipóteses, e eliminar uma por vez com evidência (log, breakpoint, teste). Trocar linhas até funcionar resolve o sintoma e deixa a causa no lugar.",
+      "whereItAppears": [
+        "Bug relatado pelo suporte",
+        "Teste que falha às vezes",
+        "Erro em produção"
+      ],
+      "related": [
+        "Log",
+        "Stack trace",
+        "Teste unitário"
+      ],
+      "tags": [
+        "processo",
+        "debugging"
+      ]
+    },
+    {
+      "id": "dependencia",
+      "term": "Dependência",
+      "short": "Biblioteca externa que o projeto usa para funcionar.",
+      "explanation": "Cada dependência é código de terceiro que entra no seu produto, com os bugs e as falhas de segurança dele. Vale escolher pouco e escolher bem: manutenção ativa, propósito claro, tamanho razoável. Versões ficam registradas em arquivo de lock para que todos instalem exatamente o mesmo.",
+      "whereItAppears": [
+        "package.json e requirements.txt",
+        "Alerta de vulnerabilidade",
+        "Build quebrando após atualização"
+      ],
+      "related": [
+        "Framework",
+        "Deploy"
+      ],
+      "tags": [
+        "processo",
+        "seguranca"
+      ]
+    },
+    {
+      "id": "deploy",
+      "term": "Deploy",
+      "short": "Colocar uma versão da aplicação em funcionamento num ambiente.",
+      "explanation": "Deploy é o passo em que o código sai da sua máquina e passa a atender gente. Envolve build, variáveis de ambiente, migrations de banco e uma forma de voltar atrás se algo der errado. Deploy chato e repetível é sinal de saúde; deploy que exige heroísmo é sinal de problema.",
+      "whereItAppears": [
+        "Publicar um projeto de portfólio",
+        "Pipeline de CI/CD",
+        "Correção urgente"
+      ],
+      "related": [
+        "Variável de ambiente",
+        "Migration",
+        "Docker"
+      ],
+      "tags": [
+        "devops",
+        "processo"
+      ]
+    },
+    {
+      "id": "docker",
+      "term": "Docker",
+      "short": "Ferramenta que empacota a aplicação com o ambiente dela.",
+      "explanation": "Docker resolve o 'na minha máquina funciona': a imagem descreve sistema, dependências e comando de execução, e roda igual em qualquer lugar. Em desenvolvimento, serve para subir banco e serviços sem instalar nada no sistema. Em produção, é a unidade que a maioria das plataformas sabe executar.",
+      "example": {
+        "language": "bash",
+        "code": "docker run --name pg -e POSTGRES_PASSWORD=dev -p 5432:5432 -d postgres:16"
+      },
+      "whereItAppears": [
+        "Ambiente de desenvolvimento",
+        "Pipeline de CI",
+        "Deploy em servidor"
+      ],
+      "related": [
+        "Deploy",
+        "Variável de ambiente"
+      ],
+      "tags": [
+        "devops",
+        "ambiente"
+      ]
+    },
+    {
+      "id": "endpoint",
+      "term": "Endpoint",
+      "short": "Endereço de uma operação específica de uma API.",
+      "explanation": "Um endpoint é a combinação de método HTTP e caminho: GET /pedidos lista, POST /pedidos cria, GET /pedidos/12 busca um. Cada endpoint tem contrato próprio de entrada, saída e códigos de status. Nomear endpoints por recurso, e não por ação, é o que mantém a API previsível.",
+      "whereItAppears": [
+        "Documentação de API",
+        "Integração frontend e backend",
+        "Teste de integração"
+      ],
+      "related": [
+        "API",
+        "REST",
+        "HTTP",
+        "Rota"
+      ],
+      "tags": [
+        "api",
+        "backend"
+      ]
+    },
+    {
+      "id": "excecao",
+      "term": "Exceção",
+      "short": "Mecanismo que interrompe o fluxo normal quando algo dá errado.",
+      "explanation": "Exceção sinaliza uma situação que o código atual não sabe tratar, e transfere a decisão para quem chamou. Capturar tudo e seguir em silêncio é o pior padrão possível: o erro desaparece e o dado fica inconsistente. Capture o que você sabe tratar, registre o resto e deixe subir.",
+      "example": {
+        "language": "python",
+        "code": "try:\n    pedido = repo.buscar(pedido_id)\nexcept PedidoNaoEncontrado:\n    return resposta_404()\n# qualquer outro erro sobe: o log registra e o monitoramento avisa"
+      },
+      "whereItAppears": [
+        "Chamada de API externa",
+        "Acesso a banco",
+        "Validação de entrada"
+      ],
+      "related": [
+        "Log",
+        "Stack trace",
+        "Status code"
+      ],
+      "tags": [
+        "fundamentos",
+        "backend"
+      ]
+    },
+    {
+      "id": "fila",
+      "term": "Fila",
+      "short": "Estrutura onde tarefas esperam para ser processadas fora da requisição.",
+      "explanation": "Fila serve para trabalho que não precisa acontecer enquanto o usuário espera: processar arquivo, enviar email, gerar relatório. A requisição só registra a tarefa e responde rápido; um processo separado consome a fila. Isso exige pensar em status, repetição e falha, porque o resultado vem depois.",
+      "whereItAppears": [
+        "Upload com processamento",
+        "Envio de email",
+        "Integração que pode falhar"
+      ],
+      "related": [
+        "Webhook",
+        "Latência",
+        "Log"
+      ],
+      "tags": [
+        "backend",
+        "arquitetura"
+      ]
+    },
+    {
+      "id": "framework",
+      "term": "Framework",
+      "short": "Estrutura pronta que define como organizar e executar sua aplicação.",
+      "explanation": "Um framework traz decisões já tomadas: onde ficam as rotas, como tratar requisição, como conectar no banco. Você ganha velocidade e perde liberdade — e isso normalmente é um bom negócio. A diferença em relação a uma biblioteca é quem chama quem: você chama a biblioteca; o framework chama o seu código.",
+      "whereItAppears": [
+        "FastAPI, Next.js, Spring",
+        "Escolha de stack de projeto",
+        "Vaga de emprego"
+      ],
+      "related": [
+        "Dependência",
+        "Rota",
+        "Middleware"
+      ],
+      "tags": [
+        "fundamentos",
+        "backend",
+        "frontend"
+      ]
+    },
+    {
+      "id": "git",
+      "term": "Git",
+      "short": "Sistema de controle de versão distribuído.",
+      "explanation": "Git guarda o histórico do projeto em snapshots e permite trabalhar em paralelo sem sobrescrever o trabalho de outra pessoa. É a ferramenta que todo time usa, e saber usar bem significa entender três coisas: o que está no seu diretório, o que está preparado para commit e o que já está no histórico.",
+      "example": {
+        "language": "bash",
+        "code": "git status      # o que mudou\ngit diff        # o que exatamente mudou\ngit log --oneline -5"
+      },
+      "whereItAppears": [
+        "Todo projeto profissional",
+        "GitHub",
+        "Investigação de regressão"
+      ],
+      "related": [
+        "Commit",
+        "Branch",
+        "Pull request",
+        "Repositório"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "hash",
+      "term": "Hash",
+      "short": "Função que transforma um dado em um valor de tamanho fixo, sem volta.",
+      "explanation": "Hash é caminho de mão única: dá para calcular a partir do dado, mas não para recuperar o dado a partir dele. Senha nunca é guardada; guarda-se o hash, feito com função lenta e projetada para isso (bcrypt, argon2, scrypt), com um valor aleatório por usuário chamado salt. Hash rápido como SHA-256 é adequado para integridade, não para senha.",
+      "whereItAppears": [
+        "Armazenamento de senha",
+        "Verificação de integridade de arquivo",
+        "Índices e dicionários"
+      ],
+      "related": [
+        "Autenticação",
+        "Sessão"
+      ],
+      "tags": [
+        "seguranca",
+        "fundamentos"
+      ]
+    },
+    {
+      "id": "http",
+      "term": "HTTP",
+      "short": "Protocolo de pedido e resposta usado na web.",
+      "explanation": "HTTP funciona em ciclos independentes: o cliente manda uma requisição com método, caminho, cabeçalhos e às vezes corpo; o servidor responde com status, cabeçalhos e corpo. Cada ciclo é isolado — o servidor não lembra do anterior. Daí a necessidade de cookie, sessão ou token para manter contexto.",
+      "example": {
+        "language": "text",
+        "code": "POST /pedidos HTTP/1.1\nContent-Type: application/json\n\n{ \"produto_id\": 9, \"quantidade\": 2 }\n\n201 Created\nLocation: /pedidos/57"
+      },
+      "whereItAppears": [
+        "Toda requisição de navegador ou app",
+        "Integração de API",
+        "Análise de erro em produção"
+      ],
+      "related": [
+        "Requisição",
+        "Resposta",
+        "Status code",
+        "Cookie"
+      ],
+      "tags": [
+        "web",
+        "http",
+        "fundamentos"
+      ]
+    },
+    {
+      "id": "https",
+      "term": "HTTPS",
+      "short": "HTTP com o tráfego criptografado.",
+      "explanation": "HTTPS usa TLS para cifrar o que vai e volta, garantindo que ninguém no caminho leia ou altere o conteúdo, e que o servidor é quem diz ser. Sem HTTPS, senha e token viajam legíveis em qualquer rede compartilhada. Hoje é padrão mínimo: cookie de sessão só deve ser enviado por conexão segura.",
+      "whereItAppears": [
+        "Qualquer site em produção",
+        "Cookie com flag Secure",
+        "Certificado expirado derrubando o acesso"
+      ],
+      "related": [
+        "HTTP",
+        "Cookie",
+        "Autenticação"
+      ],
+      "tags": [
+        "seguranca",
+        "web"
+      ]
+    },
+    {
+      "id": "indice",
+      "term": "Índice",
+      "short": "Estrutura extra no banco que acelera a busca por certas colunas.",
+      "explanation": "Sem índice, o banco percorre a tabela inteira para achar as linhas que interessam. O índice funciona como o índice de um livro: leva direto à página. O custo é espaço em disco e escrita um pouco mais lenta, porque o índice também precisa ser atualizado. Índice serve para as colunas que aparecem em filtro, junção e ordenação.",
+      "example": {
+        "language": "sql",
+        "code": "-- consulta que roda a cada abertura da tela de suporte\nSELECT * FROM pedido WHERE status = 'pending' ORDER BY criado_em DESC;\n\nCREATE INDEX idx_pedido_status_criado ON pedido (status, criado_em DESC);"
+      },
+      "whereItAppears": [
+        "Consulta lenta",
+        "Modelagem de tabela grande",
+        "Análise de plano de execução"
+      ],
+      "related": [
+        "Query",
+        "SQL",
+        "Big O",
+        "Normalização"
+      ],
+      "tags": [
+        "banco",
+        "performance"
+      ]
+    },
+    {
+      "id": "injecao-sql",
+      "term": "Injeção de SQL",
+      "short": "Falha em que a entrada do usuário passa a ser interpretada como comando SQL.",
+      "explanation": "Acontece quando o código monta a consulta concatenando texto. Um valor como ' OR 1=1 -- muda o sentido do comando e pode expor ou apagar dados. A correção não é filtrar caracteres: é usar consulta parametrizada, em que o banco recebe o comando e os valores separadamente e trata o valor sempre como dado.",
+      "example": {
+        "language": "python",
+        "code": "# vulnerável\ncursor.execute(f\"SELECT * FROM usuario WHERE email = '{email}'\")\n\n# correto: o valor nunca vira comando\ncursor.execute(\"SELECT * FROM usuario WHERE email = %s\", (email,))"
+      },
+      "whereItAppears": [
+        "Qualquer consulta com dado de entrada",
+        "Revisão de segurança",
+        "OWASP Top 10"
+      ],
+      "related": [
+        "SQL",
+        "Query",
+        "XSS"
+      ],
+      "tags": [
+        "seguranca",
+        "banco"
+      ]
+    },
+    {
+      "id": "json",
+      "term": "JSON",
+      "short": "Formato de texto para representar dados estruturados.",
+      "explanation": "JSON tem objetos, listas, textos, números, booleanos e nulo. É o formato padrão de troca em APIs porque qualquer linguagem lê e escreve. Cuidado com dois detalhes: chave sempre entre aspas duplas, e nada de vírgula sobrando no último item — é a causa mais comum de erro de parsing.",
+      "example": {
+        "language": "json",
+        "code": "{\n  \"id\": 12,\n  \"status\": \"pending\",\n  \"itens\": [{ \"produto\": \"café\", \"quantidade\": 2 }],\n  \"cancelado_em\": null\n}"
+      },
+      "whereItAppears": [
+        "Resposta de API",
+        "Arquivo de configuração",
+        "Corpo de requisição"
+      ],
+      "related": [
+        "API",
+        "HTTP",
+        "REST"
+      ],
+      "tags": [
+        "api",
+        "fundamentos"
+      ]
+    },
+    {
+      "id": "jwt",
+      "term": "JWT",
+      "short": "Token assinado que carrega informações sobre quem está autenticado.",
+      "explanation": "Um JWT tem cabeçalho, dados e assinatura. Qualquer pessoa consegue LER o conteúdo — ele é codificado, não criptografado —, mas só quem tem a chave consegue gerar uma assinatura válida. Por isso não se coloca dado sensível dentro, e por isso revogar um JWT antes do vencimento exige estrutura extra.",
+      "whereItAppears": [
+        "API sem cookie de sessão",
+        "Aplicativo móvel",
+        "Comunicação entre serviços"
+      ],
+      "related": [
+        "Autenticação",
+        "Sessão",
+        "Hash"
+      ],
+      "tags": [
+        "seguranca",
+        "api"
+      ]
+    },
+    {
+      "id": "latencia",
+      "term": "Latência",
+      "short": "Tempo entre pedir algo e receber a resposta.",
+      "explanation": "Latência é percebida pelo usuário como lentidão. Ela se acumula: cada chamada de rede, cada consulta ao banco, cada espera por serviço externo soma. Otimizar geralmente é reduzir o número de idas e voltas, não deixar cada ida mais rápida. Uma tela que faz 40 requisições sequenciais é lenta mesmo com banco rápido.",
+      "whereItAppears": [
+        "Tela que demora a carregar",
+        "Consulta em laço (problema N+1)",
+        "Integração com serviço externo"
+      ],
+      "related": [
+        "Cache",
+        "Query",
+        "Paginação"
+      ],
+      "tags": [
+        "performance",
+        "backend"
+      ]
+    },
+    {
+      "id": "log",
+      "term": "Log",
+      "short": "Registro do que o sistema fez, para consultar depois.",
+      "explanation": "Log é a memória do sistema em produção, onde você não pode abrir o depurador. Log útil tem momento, nível, identificador para correlacionar a requisição e contexto suficiente para entender o que aconteceu. Log inútil diz 'erro'. E log nunca deve conter senha, token ou dado pessoal desnecessário.",
+      "example": {
+        "language": "text",
+        "code": "2026-03-11T14:02:11Z ERROR req=8f21 usuario=482 rota=/relatorios\n  consulta excedeu 5s (5231ms) filtro=status=pending"
+      },
+      "whereItAppears": [
+        "Investigação de incidente",
+        "Monitoramento",
+        "Auditoria"
+      ],
+      "related": [
+        "Debug",
+        "Stack trace",
+        "Exceção"
+      ],
+      "tags": [
+        "devops",
+        "debugging"
+      ]
+    },
+    {
+      "id": "merge",
+      "term": "Merge",
+      "short": "Juntar o trabalho de duas branches.",
+      "explanation": "Merge combina históricos. Quando as duas branches mudaram linhas diferentes, o Git resolve sozinho; quando mudaram a mesma linha, aparece conflito e alguém precisa decidir. Conflito não é erro: é o Git avisando que a decisão é humana. Branch de vida curta gera menos conflito.",
+      "whereItAppears": [
+        "Fim de um pull request",
+        "Atualizar sua branch com a principal",
+        "Conflito de código"
+      ],
+      "related": [
+        "Branch",
+        "Commit",
+        "Pull request",
+        "Git"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "middleware",
+      "term": "Middleware",
+      "short": "Código executado durante o processamento de uma requisição, antes do próximo estágio.",
+      "explanation": "Middleware fica no caminho entre a chegada da requisição e o código que responde. Serve para o que é transversal: autenticar, registrar log, medir tempo, validar cabeçalho, tratar erro. Cada middleware pode passar a requisição adiante ou interromper ali mesmo — é assim que uma rota protegida devolve 401 sem nunca executar o restante.",
+      "example": {
+        "language": "python",
+        "code": "@app.middleware(\"http\")\nasync def exige_sessao(request, chamar_proximo):\n    if request.url.path.startswith(\"/api/\") and not tem_sessao(request):\n        return JSONResponse({\"erro\": \"sem sessão\"}, status_code=401)\n    return await chamar_proximo(request)"
+      },
+      "whereItAppears": [
+        "Autenticação de rotas",
+        "Log de requisição",
+        "CORS",
+        "Rate limiting"
+      ],
+      "related": [
+        "HTTP",
+        "API",
+        "Autenticação",
+        "Framework",
+        "Rota"
+      ],
+      "tags": [
+        "backend",
+        "api",
+        "http"
+      ]
+    },
+    {
+      "id": "migration",
+      "term": "Migration",
+      "short": "Alteração versionada na estrutura do banco de dados.",
+      "explanation": "Migration é o equivalente do commit para o banco: um arquivo que descreve a mudança de estrutura e entra no histórico do projeto. Assim todos os ambientes chegam ao mesmo esquema na mesma ordem. Alterar o banco à mão em produção é como editar código direto no servidor: funciona uma vez e some.",
+      "whereItAppears": [
+        "Adicionar coluna ou tabela",
+        "Deploy",
+        "Entrada de nova pessoa no projeto"
+      ],
+      "related": [
+        "ORM",
+        "Deploy",
+        "Chave estrangeira",
+        "SQL"
+      ],
+      "tags": [
+        "banco",
+        "devops"
+      ]
+    },
+    {
+      "id": "normalizacao",
+      "term": "Normalização",
+      "short": "Organizar as tabelas para evitar dado repetido e inconsistente.",
+      "explanation": "Normalizar é guardar cada informação em um só lugar, e referenciá-la onde for necessária. Se o nome do fornecedor está copiado em mil linhas de produto, corrigir um erro de digitação passa a ser um problema. Há casos em que se duplica de propósito, por desempenho, mas isso é decisão consciente, com custo conhecido.",
+      "whereItAppears": [
+        "Modelagem inicial",
+        "Dado divergente entre telas",
+        "Revisão de esquema"
+      ],
+      "related": [
+        "Chave estrangeira",
+        "SQL",
+        "Índice"
+      ],
+      "tags": [
+        "banco",
+        "modelagem"
+      ]
+    },
+    {
+      "id": "orm",
+      "term": "ORM",
+      "short": "Camada que traduz entre objetos do código e tabelas do banco.",
+      "explanation": "O ORM deixa você trabalhar com objetos e gerar SQL por baixo. Ganha-se produtividade e proteção contra injeção; perde-se visibilidade do que é executado. Quem usa ORM precisa saber ler o SQL gerado — a maior parte dos problemas de desempenho aparece aí, tipicamente como uma consulta por item dentro de um laço.",
+      "whereItAppears": [
+        "Prisma, SQLAlchemy, Hibernate",
+        "Consulta lenta inesperada",
+        "Migration"
+      ],
+      "related": [
+        "SQL",
+        "Query",
+        "Migration",
+        "Latência"
+      ],
+      "tags": [
+        "banco",
+        "backend"
+      ]
+    },
+    {
+      "id": "paginacao",
+      "term": "Paginação",
+      "short": "Devolver os dados em pedaços em vez de tudo de uma vez.",
+      "explanation": "Listagem sem limite é uma bomba de efeito retardado: funciona com 50 registros e derruba a tela com 50 mil. Paginar significa devolver um pedaço por vez, com informação suficiente para pedir o próximo. Vale desde o primeiro dia, porque adicionar paginação depois muda o contrato da API.",
+      "example": {
+        "language": "bash",
+        "code": "GET /pedidos?status=pending&limite=20&pagina=3"
+      },
+      "whereItAppears": [
+        "Listagem de API",
+        "Tabela na interface",
+        "Relatório grande"
+      ],
+      "related": [
+        "API",
+        "Latência",
+        "Query"
+      ],
+      "tags": [
+        "api",
+        "performance"
+      ]
+    },
+    {
+      "id": "pull-request",
+      "term": "Pull request",
+      "short": "Pedido para integrar o trabalho de uma branch, aberto para revisão.",
+      "explanation": "O pull request é onde a alteração é explicada e discutida antes de entrar. Um PR útil diz o que muda, por quê, como foi testado e o que ficou de fora. PR pequeno é revisado de verdade; PR de 40 arquivos recebe 'aprovado' sem leitura. Este é o artefato pelo qual seu trabalho é avaliado no dia a dia.",
+      "whereItAppears": [
+        "Fluxo diário de time",
+        "Code review",
+        "GitHub"
+      ],
+      "related": [
+        "Branch",
+        "Commit",
+        "Code review",
+        "Merge"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "query",
+      "term": "Query",
+      "short": "Consulta enviada ao banco de dados.",
+      "explanation": "Query é a pergunta que você faz ao banco. A mesma pergunta pode ser escrita de várias formas, com custos muito diferentes. Duas coisas importam sempre: quais linhas o banco precisa examinar para responder, e quantas vezes essa consulta é executada. Consulta dentro de laço é o problema de desempenho mais comum em aplicação web.",
+      "whereItAppears": [
+        "Todo acesso a dado",
+        "Investigação de lentidão",
+        "Relatório"
+      ],
+      "related": [
+        "SQL",
+        "Índice",
+        "ORM",
+        "Latência"
+      ],
+      "tags": [
+        "banco",
+        "performance"
+      ]
+    },
+    {
+      "id": "refatoracao",
+      "term": "Refatoração",
+      "short": "Melhorar a estrutura do código sem mudar o comportamento.",
+      "explanation": "Refatorar é reorganizar para que o código fique mais fácil de entender e alterar, mantendo o que ele faz. A condição para refatorar com segurança é ter como verificar que nada mudou — normalmente testes. Refatoração misturada com mudança de comportamento no mesmo commit é a receita para não saber o que quebrou.",
+      "whereItAppears": [
+        "Antes de adicionar funcionalidade em código confuso",
+        "Code review",
+        "Manutenção"
+      ],
+      "related": [
+        "Teste unitário",
+        "Code review",
+        "Commit"
+      ],
+      "tags": [
+        "qualidade",
+        "processo"
+      ]
+    },
+    {
+      "id": "repositorio",
+      "term": "Repositório",
+      "short": "Pasta do projeto com todo o histórico do Git.",
+      "explanation": "O repositório contém os arquivos e o histórico completo. Ele é local na sua máquina e normalmente tem uma cópia remota (GitHub), usada para compartilhar. Como o histórico é integral, tudo que já foi commitado continua lá: segredo commitado por engano não desaparece ao ser apagado no commit seguinte.",
+      "whereItAppears": [
+        "Início de projeto",
+        "Clonar código existente",
+        "Portfólio no GitHub"
+      ],
+      "related": [
+        "Git",
+        "Commit",
+        "Branch",
+        "Variável de ambiente"
+      ],
+      "tags": [
+        "git",
+        "processo"
+      ]
+    },
+    {
+      "id": "requisicao",
+      "term": "Requisição",
+      "short": "Pedido enviado do cliente ao servidor.",
+      "explanation": "A requisição tem método (GET, POST, PUT, DELETE), caminho, cabeçalhos e, às vezes, corpo. Ler uma requisição é a primeira coisa a fazer quando algo não funciona: o que foi enviado, para onde, com quais cabeçalhos. A aba de rede do navegador mostra tudo isso e resolve boa parte dos problemas de integração.",
+      "whereItAppears": [
+        "Aba de rede do navegador",
+        "Log do servidor",
+        "Depuração de API"
+      ],
+      "related": [
+        "HTTP",
+        "Resposta",
+        "Endpoint",
+        "CORS"
+      ],
+      "tags": [
+        "web",
+        "http"
+      ]
+    },
+    {
+      "id": "resposta",
+      "term": "Resposta",
+      "short": "O que o servidor devolve para uma requisição.",
+      "explanation": "A resposta tem código de status, cabeçalhos e normalmente um corpo. O status é a primeira informação a checar: 2xx deu certo, 4xx o pedido estava errado, 5xx o servidor falhou. Responder 200 com uma mensagem de erro dentro do corpo confunde quem consome e atrapalha monitoramento.",
+      "whereItAppears": [
+        "Integração de API",
+        "Tratamento de erro no frontend",
+        "Monitoramento"
+      ],
+      "related": [
+        "HTTP",
+        "Requisição",
+        "Status code",
+        "JSON"
+      ],
+      "tags": [
+        "web",
+        "http"
+      ]
+    },
+    {
+      "id": "rota",
+      "term": "Rota",
+      "short": "Regra que liga um caminho de URL ao código que responde.",
+      "explanation": "A rota é o mapa entre endereço e comportamento. No servidor, define qual função trata cada caminho; no frontend, qual tela aparece. Rotas com parâmetro (/pedidos/:id) permitem uma regra atender muitos endereços. Ordem importa em vários frameworks: a primeira rota que casa é a que responde.",
+      "whereItAppears": [
+        "Definição de API",
+        "Navegação do frontend",
+        "Middleware de proteção"
+      ],
+      "related": [
+        "Endpoint",
+        "Middleware",
+        "Framework",
+        "HTTP"
+      ],
+      "tags": [
+        "backend",
+        "frontend",
+        "api"
+      ]
+    },
+    {
+      "id": "sessao",
+      "term": "Sessão",
+      "short": "Estado que identifica um usuário conectado entre requisições.",
+      "explanation": "Como HTTP não guarda memória, a sessão é o que faz o servidor reconhecer você na próxima requisição. O padrão comum: no login, o servidor cria um registro de sessão e envia um identificador opaco por cookie. O identificador não carrega informação; ele aponta para o registro no servidor, que pode ser invalidado a qualquer momento.",
+      "whereItAppears": [
+        "Login e logout",
+        "Rotas protegidas",
+        "Sair de todos os dispositivos"
+      ],
+      "related": [
+        "Cookie",
+        "Autenticação",
+        "JWT",
+        "Hash"
+      ],
+      "tags": [
+        "seguranca",
+        "backend"
+      ]
+    },
+    {
+      "id": "sql",
+      "term": "SQL",
+      "short": "Linguagem para consultar e alterar dados em bancos relacionais.",
+      "explanation": "SQL é declarativa: você descreve o resultado desejado e o banco decide como obtê-lo. Dominar SELECT, WHERE, JOIN, GROUP BY e ORDER BY cobre a maior parte do trabalho diário. Vale aprender SQL antes de ORM — sem isso, não há como entender o que o ORM está executando, nem por que está lento.",
+      "example": {
+        "language": "sql",
+        "code": "SELECT p.status, COUNT(*) AS total\nFROM pedido p\nWHERE p.criado_em >= '2026-01-01'\nGROUP BY p.status\nORDER BY total DESC;"
+      },
+      "whereItAppears": [
+        "Todo sistema com banco relacional",
+        "Relatório",
+        "Investigação de dado inconsistente"
+      ],
+      "related": [
+        "Query",
+        "Índice",
+        "ORM",
+        "Normalização",
+        "Transação"
+      ],
+      "tags": [
+        "banco",
+        "fundamentos"
+      ]
+    },
+    {
+      "id": "stack-trace",
+      "term": "Stack trace",
+      "short": "Lista de chamadas que levaram até o ponto do erro.",
+      "explanation": "O stack trace mostra o caminho percorrido pelo código, do ponto do erro para trás. Leia de cima para baixo procurando a primeira linha de arquivo SEU: é onde a investigação começa. O restante costuma ser código de biblioteca, que apenas passou por ali.",
+      "whereItAppears": [
+        "Erro em desenvolvimento",
+        "Log de produção",
+        "Teste falhando"
+      ],
+      "related": [
+        "Debug",
+        "Log",
+        "Exceção"
+      ],
+      "tags": [
+        "debugging",
+        "fundamentos"
+      ]
+    },
+    {
+      "id": "status-code",
+      "term": "Status code",
+      "short": "Número na resposta HTTP que diz como o pedido terminou.",
+      "explanation": "As faixas: 2xx sucesso, 3xx redirecionamento, 4xx erro de quem pediu, 5xx erro do servidor. Escolher o código certo é comunicação com quem consome a API: 400 é pedido malformado, 401 não autenticado, 403 autenticado mas sem permissão, 404 não existe, 409 conflito, 422 dado inválido, 500 falha do servidor.",
+      "example": {
+        "language": "text",
+        "code": "200 OK              lista devolvida\n201 Created         recurso criado\n401 Unauthorized    falta autenticação\n403 Forbidden       autenticado, sem permissão\n404 Not Found       não existe\n500 Server Error    falhou do lado do servidor"
+      },
+      "whereItAppears": [
+        "Toda API",
+        "Tratamento de erro no frontend",
+        "Monitoramento e alertas"
+      ],
+      "related": [
+        "HTTP",
+        "Resposta",
+        "API",
+        "Endpoint"
+      ],
+      "tags": [
+        "api",
+        "http"
+      ]
+    },
+    {
+      "id": "teste-unitario",
+      "term": "Teste unitário",
+      "short": "Teste automatizado de uma parte pequena e isolada do código.",
+      "explanation": "Teste unitário verifica uma função ou classe sozinha, sem banco nem rede, e roda em milissegundos. Serve para duas coisas: dizer se a lógica está correta agora e avisar quando alguém quebrá-la depois. É o que permite refatorar sem medo. Não substitui teste de integração, que verifica as partes conversando.",
+      "example": {
+        "language": "python",
+        "code": "def test_total_ignora_item_sem_quantidade():\n    itens = [{\"preco\": 10, \"quantidade\": None}]\n    assert calcular_total(itens) == 0"
+      },
+      "whereItAppears": [
+        "Pipeline de CI",
+        "Antes de refatorar",
+        "Correção de bug (teste que reproduz)"
+      ],
+      "related": [
+        "Refatoração",
+        "Debug"
+      ],
+      "tags": [
+        "testes",
+        "qualidade"
+      ]
+    },
+    {
+      "id": "transacao",
+      "term": "Transação",
+      "short": "Conjunto de operações no banco que acontece por inteiro ou não acontece.",
+      "explanation": "A transação garante que um grupo de alterações seja tratado como uma só: se qualquer parte falhar, tudo volta ao estado anterior. É o que evita debitar o estoque sem registrar o pedido. Toda operação que altera mais de uma tabela e precisa ficar coerente pede transação.",
+      "example": {
+        "language": "sql",
+        "code": "BEGIN;\n  UPDATE estoque SET quantidade = quantidade - 2 WHERE produto_id = 9;\n  INSERT INTO pedido (produto_id, quantidade) VALUES (9, 2);\nCOMMIT;"
+      },
+      "whereItAppears": [
+        "Operação que altera várias tabelas",
+        "Processamento financeiro",
+        "Importação de dados"
+      ],
+      "related": [
+        "SQL",
+        "Chave estrangeira",
+        "Query"
+      ],
+      "tags": [
+        "banco",
+        "backend"
+      ]
+    },
+    {
+      "id": "variavel-de-ambiente",
+      "term": "Variável de ambiente",
+      "short": "Configuração fornecida ao programa pelo ambiente onde ele roda.",
+      "explanation": "Variável de ambiente separa configuração de código: a mesma imagem roda em desenvolvimento e produção com valores diferentes. É onde ficam URL de banco, chaves e segredos — nunca no repositório. O padrão é versionar um arquivo de exemplo, sem valores reais, e manter o arquivo real fora do Git.",
+      "example": {
+        "language": "bash",
+        "code": "# .env (fora do Git)\nDATABASE_URL=\"postgresql://...\"\nANTHROPIC_API_KEY=\"sk-ant-...\"\n\n# .env.example (no Git, sem valores)\nDATABASE_URL=\"\"\nANTHROPIC_API_KEY=\"\""
+      },
+      "whereItAppears": [
+        "Configuração de projeto",
+        "Deploy",
+        "Segredo vazado em repositório"
+      ],
+      "related": [
+        "Deploy",
+        "Docker",
+        "Repositório"
+      ],
+      "tags": [
+        "devops",
+        "seguranca",
+        "ambiente"
+      ]
+    },
+    {
+      "id": "versionamento",
+      "term": "Versionamento",
+      "short": "Prática de registrar e identificar as versões de algo.",
+      "explanation": "Versionar é conseguir dizer 'esta é a versão que está no ar' e voltar atrás quando preciso. Vale para código (Git), para banco (migrations), para API (v1, v2) e para dependências. Sem versionamento, a pergunta 'o que mudou desde ontem?' não tem resposta.",
+      "whereItAppears": [
+        "Git",
+        "Migration",
+        "API pública",
+        "Arquivo de lock"
+      ],
+      "related": [
+        "Git",
+        "Migration",
+        "Deploy",
+        "Dependência"
+      ],
+      "tags": [
+        "processo",
+        "devops"
+      ]
+    },
+    {
+      "id": "webhook",
+      "term": "Webhook",
+      "short": "Chamada HTTP que um sistema faz ao seu para avisar que algo aconteceu.",
+      "explanation": "No webhook a direção se inverte: em vez de você perguntar a cada minuto se o pagamento foi aprovado, o outro sistema chama a sua URL quando aprova. Quem recebe precisa de três cuidados: verificar a assinatura, responder rápido (processar depois, em fila) e tolerar entrega repetida, porque webhook pode chegar duas vezes.",
+      "whereItAppears": [
+        "Integração com pagamento",
+        "Eventos do GitHub",
+        "Notificação entre serviços"
+      ],
+      "related": [
+        "API",
+        "HTTP",
+        "Fila",
+        "Status code"
+      ],
+      "tags": [
+        "api",
+        "integracao"
+      ]
+    },
+    {
+      "id": "xss",
+      "term": "XSS",
+      "short": "Falha em que conteúdo de entrada é executado como script na página.",
+      "explanation": "XSS acontece quando texto enviado por alguém é inserido na página sem escape e o navegador o interpreta como código. O atacante passa a executar JavaScript no contexto da sua aplicação, com acesso ao que a página vê. A defesa é escapar na saída (frameworks modernos fazem isso por padrão) e desconfiar de qualquer API que insira HTML cru.",
+      "example": {
+        "language": "javascript",
+        "code": "// perigoso: o comentário pode conter <script>\nelemento.innerHTML = comentario\n\n// seguro: o navegador trata como texto\nelemento.textContent = comentario"
+      },
+      "whereItAppears": [
+        "Campo de comentário",
+        "Nome de usuário exibido na tela",
+        "OWASP Top 10"
+      ],
+      "related": [
+        "CSRF",
+        "Injeção de SQL",
+        "Cookie"
+      ],
+      "tags": [
+        "seguranca",
+        "frontend"
+      ]
+    },
+    {
+      "id": "rest",
+      "term": "REST",
+      "short": "Estilo de API que organiza as operacoes em torno de recursos e métodos HTTP.",
+      "explanation": "REST trata cada coisa do sistema como um recurso com endereço próprio, e usa os métodos HTTP para dizer a operação: GET lê, POST cria, PUT ou PATCH altera, DELETE remove. A vantagem prática é previsibilidade: quem nunca viu sua API consegue adivinhar os endereços. O erro comum é colocar o verbo no caminho, como POST /criarPedido, em vez de POST /pedidos.",
+      "example": {
+        "language": "text",
+        "code": "GET    /pedidos           lista\nPOST   /pedidos           cria\nGET    /pedidos/57        busca um\nPATCH  /pedidos/57        altera\nDELETE /pedidos/57        remove"
+      },
+      "whereItAppears": [
+        "Projeto de API",
+        "Documentação",
+        "Integração entre sistemas"
+      ],
+      "related": [
+        "API",
+        "Endpoint",
+        "HTTP",
+        "Status code"
+      ],
+      "tags": [
+        "api",
+        "backend"
+      ]
+    },
+    {
+      "id": "performance",
+      "term": "Performance",
+      "short": "Quanto tempo e quanto recurso o sistema gasta para fazer o que precisa.",
+      "explanation": "Performance é medida, não sensação. Antes de otimizar, é preciso saber onde o tempo está sendo gasto: consulta ao banco, processamento, espera por serviço externo ou transferência. Otimizar por palpite costuma melhorar a parte que já era rápida. A regra prática é medir, corrigir o maior gargalo e medir de novo.",
+      "whereItAppears": [
+        "Tela que demora a carregar",
+        "Relatório pesado",
+        "Análise de consulta lenta"
+      ],
+      "related": [
+        "Latência",
+        "Cache",
+        "Índice",
+        "Query",
+        "Big O"
+      ],
+      "tags": [
+        "performance"
+      ]
+    }
+  ]
+}

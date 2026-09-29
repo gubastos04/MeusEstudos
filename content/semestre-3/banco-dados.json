@@ -1,0 +1,410 @@
+{
+  "id": "banco-dados",
+  "semester": 3,
+  "order": 3,
+  "title": "Banco de dados",
+  "summary": "SQL de verdade: consulta, junção, agregação, índice, transação e migration. Com PostgreSQL como referência.",
+  "outcome": "Você escreve consultas com junção e agregação, entende por que uma consulta está lenta, cria índice com critério e altera o esquema com migration.",
+  "tags": ["banco", "sql", "performance"],
+  "stack": ["sql", "python"],
+  "items": [
+    {
+      "id": "bd-select-filtro-01",
+      "type": "lesson",
+      "title": "SELECT, WHERE e o que o banco faz por baixo",
+      "estimatedMinutes": 10,
+      "tags": ["sql"],
+      "why": "SQL é declarativo: você descreve o resultado e o banco decide o caminho. Saber qual caminho ele escolheu é o que permite corrigir consulta lenta.",
+      "goal": "Escrever consultas com filtro e ordenação e ler o plano de execução.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "SELECT id, status, criado_em\nFROM pedido\nWHERE status = 'pending'\n  AND criado_em >= '2026-01-01'\nORDER BY criado_em DESC\nLIMIT 50;"
+        },
+        {
+          "kind": "text",
+          "text": "Três hábitos que essa consulta mostra: listar as colunas em vez de `SELECT *`, filtrar no banco, e limitar o resultado."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "SELECT * em produção",
+          "text": "Trafega colunas que ninguém usa, impede o banco de responder só com o índice e quebra o código quando alguém adiciona uma coluna grande."
+        },
+        {
+          "kind": "text",
+          "text": "Para saber por que uma consulta está lenta, pergunte ao banco:"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "EXPLAIN ANALYZE\nSELECT id FROM pedido WHERE status = 'pending';"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Seq Scan on pedido  (cost=0.00..18334.00 rows=4821 width=4)\n                    (actual time=0.031..842.115 rows=4903 loops=1)\n  Filter: (status = 'pending'::text)\n  Rows Removed by Filter: 995097",
+          "caption": "\"Seq Scan\" e \"Rows Removed by Filter: 995097\": o banco leu um milhão de linhas para devolver cinco mil."
+        },
+        {
+          "kind": "text",
+          "text": "Duas palavras a procurar no plano: **Seq Scan** em tabela grande (leu tudo) e **Rows Removed by Filter** alto (descartou quase tudo). As duas juntas indicam índice faltando."
+        },
+        {
+          "kind": "text",
+          "text": "Cuidado com filtro que impede o uso do índice:"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- não usa índice em criado_em: a função é aplicada em cada linha\nWHERE DATE(criado_em) = '2026-03-11'\n\n-- usa índice: a comparação é direta na coluna\nWHERE criado_em >= '2026-03-11' AND criado_em < '2026-03-12'"
+        },
+        {
+          "kind": "quiz",
+          "question": "No plano de execução aparece \"Seq Scan on pedido\" com \"Rows Removed by Filter: 995097\". O que isso indica?",
+          "choices": [
+            "A consulta está correta e o banco está otimizado",
+            "O banco percorreu a tabela inteira e descartou quase tudo: falta índice para esse filtro",
+            "A tabela está corrompida",
+            "Faltou LIMIT na consulta"
+          ],
+          "answerIndex": 1,
+          "explanation": "Seq Scan é leitura sequencial. Descartar 99,5% das linhas lidas é o sinal mais claro de índice faltando na coluna filtrada."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa tabela do seu projeto, rode EXPLAIN ANALYZE numa consulta com WHERE. Identifique se houve Seq Scan e quantas linhas foram descartadas.",
+        "expected": "Você consegue dizer se o banco usou índice ou leu a tabela inteira."
+      },
+      "ifStuck": ["Em SQLite o comando é EXPLAIN QUERY PLAN; a saída é mais curta, mas também mostra se houve varredura."],
+      "commonErrors": [
+        {
+          "error": "Filtrar com função sobre a coluna.",
+          "why": "O índice guarda o valor da coluna, não o resultado da função aplicada a ela.",
+          "fix": "Reescreva como faixa de valores, ou crie índice sobre a expressão."
+        }
+      ],
+      "exercise": {
+        "id": "ex-bd-consulta-filtro-01",
+        "title": "Consulta de pedidos por período",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva a consulta que lista id, status e criado_em dos pedidos com status 'pending' criados em março de 2026, do mais recente para o mais antigo, no máximo 50 registros. O filtro de data deve permitir uso de índice.",
+        "starter": "",
+        "checks": [
+          { "name": "lista as colunas em vez de *", "type": "notContains", "value": "select *", "hint": "Liste as colunas necessárias." },
+          { "name": "filtra por status", "type": "regex", "value": "status\\s*=", "hint": "O enunciado pede status pending." },
+          { "name": "filtra periodo por faixa", "type": "regex", "value": "criado_em\\s*>=", "hint": "Comparação direta na coluna permite índice." },
+          { "name": "nao usa funcao sobre a coluna de data", "type": "regex", "value": "^(?![\\s\\S]*(DATE|EXTRACT|YEAR|MONTH)\\s*\\(\\s*criado_em)[\\s\\S]*$", "hint": "Função sobre a coluna impede o uso do índice." },
+          { "name": "ordena do mais recente", "type": "regex", "value": "ORDER BY\\s+criado_em\\s+DESC", "hint": "Do mais recente para o mais antigo." },
+          { "name": "limita o resultado", "type": "regex", "value": "LIMIT\\s+50", "hint": "No máximo 50." }
+        ],
+        "hints": [
+          "Março de 2026 é uma faixa: de 2026-03-01 até antes de 2026-04-01.",
+          "Use >= no início e < no fim, para não depender da hora."
+        ],
+        "solution": "SELECT id, status, criado_em\nFROM pedido\nWHERE status = 'pending'\n  AND criado_em >= '2026-03-01'\n  AND criado_em <  '2026-04-01'\nORDER BY criado_em DESC\nLIMIT 50;\n",
+        "solutionNotes": "Usar < no limite superior evita o problema de '2026-03-31' excluir os registros do próprio dia 31 com hora diferente de zero."
+      },
+      "glossary": ["sql", "Query", "indice", "Performance"]
+    },
+    {
+      "id": "bd-joins-agregacao-01",
+      "type": "lesson",
+      "title": "JOIN e agregação",
+      "estimatedMinutes": 10,
+      "tags": ["sql"],
+      "why": "Relatório é junção com agregação. E o erro mais comum de relatório é perder linhas num INNER JOIN sem perceber.",
+      "goal": "Escolher entre INNER e LEFT JOIN e agrupar corretamente.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- pedidos com o nome do cliente\nSELECT p.id, p.status, c.nome\nFROM pedido p\nJOIN cliente c ON c.id = p.cliente_id;"
+        },
+        {
+          "kind": "text",
+          "text": "`JOIN` (INNER) devolve só as linhas com correspondência nos dois lados. Se um pedido tiver cliente_id inválido, ele desaparece do resultado."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- todos os clientes, inclusive os sem pedido\nSELECT c.nome, COUNT(p.id) AS total_pedidos\nFROM cliente c\nLEFT JOIN pedido p ON p.cliente_id = c.id\nGROUP BY c.id, c.nome\nORDER BY total_pedidos DESC;"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "COUNT(*) com LEFT JOIN conta errado",
+          "text": "COUNT(*) conta linhas, e a linha existe mesmo sem pedido: clientes sem pedido apareceriam com 1. COUNT(p.id) ignora nulos e devolve 0."
+        },
+        {
+          "kind": "text",
+          "text": "Regra do GROUP BY: toda coluna do SELECT que não está numa função de agregação precisa estar no GROUP BY."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "SELECT status, COUNT(*) AS total, SUM(valor) AS soma\nFROM pedido\nWHERE criado_em >= '2026-01-01'\nGROUP BY status\nHAVING COUNT(*) > 10\nORDER BY total DESC;"
+        },
+        {
+          "kind": "text",
+          "text": "`WHERE` filtra linhas antes de agrupar; `HAVING` filtra grupos depois. Colocar condição no lugar errado muda o resultado."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um relatório de \"pedidos por cliente\" mostra 1 para clientes que nunca compraram. Qual é a causa?",
+          "choices": [
+            "O LEFT JOIN deveria ser INNER JOIN",
+            "Está usando COUNT(*), que conta a linha produzida pelo LEFT JOIN mesmo sem pedido correspondente",
+            "Falta ORDER BY",
+            "O GROUP BY está com coluna errada"
+          ],
+          "answerIndex": 1,
+          "explanation": "COUNT(*) conta linhas; COUNT(coluna_do_lado_direito) ignora nulos. Trocar para COUNT(p.id) resolve.",
+          "topics": ["sql"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma consulta que mostre, por status, a quantidade de pedidos e o valor total, apenas dos últimos 90 dias.",
+        "expected": "Filtro de data no WHERE, não no HAVING."
+      },
+      "ifStuck": ["Monte primeiro o SELECT sem agregação, confira as linhas, e só depois agrupe."],
+      "commonErrors": [
+        {
+          "error": "\"column must appear in the GROUP BY clause\".",
+          "why": "Uma coluna do SELECT não está agregada nem agrupada.",
+          "fix": "Inclua a coluna no GROUP BY ou envolva em MIN/MAX/SUM, conforme o que você quer."
+        }
+      ],
+      "exercise": {
+        "id": "ex-bd-relatorio-01",
+        "title": "Relatório de tickets por prioridade",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 9,
+        "prompt": "Escreva a consulta que mostre, para cada prioridade, quantos tickets existem e quantos estão abertos, incluindo prioridades sem nenhum ticket. Tabelas: prioridade(id, nome) e ticket(id, prioridade_id, status).",
+        "starter": "",
+        "checks": [
+          { "name": "usa left join", "type": "regex", "value": "LEFT\\s+JOIN", "hint": "Prioridade sem ticket precisa aparecer." },
+          { "name": "conta coluna do ticket e nao asterisco", "type": "regex", "value": "COUNT\\s*\\(\\s*t\\.|COUNT\\s*\\(\\s*ticket\\.", "hint": "COUNT(*) contaria 1 para prioridade sem ticket." },
+          { "name": "agrupa", "type": "regex", "value": "GROUP BY", "hint": "Agregação por prioridade precisa de GROUP BY." },
+          { "name": "conta abertos separadamente", "type": "regex", "value": "CASE|FILTER", "hint": "Contagem condicional usa CASE WHEN ou FILTER." },
+          { "name": "parte da tabela de prioridade", "type": "regex", "value": "FROM\\s+prioridade", "hint": "O lado que precisa aparecer inteiro vai no FROM." }
+        ],
+        "hints": [
+          "A tabela que precisa aparecer inteira fica à esquerda do LEFT JOIN.",
+          "Contagem condicional: COUNT(CASE WHEN t.status = 'aberto' THEN 1 END).",
+          "No PostgreSQL também funciona: COUNT(*) FILTER (WHERE t.status = 'aberto')."
+        ],
+        "solution": "SELECT\n  p.nome,\n  COUNT(t.id) AS total,\n  COUNT(CASE WHEN t.status = 'aberto' THEN 1 END) AS abertos\nFROM prioridade p\nLEFT JOIN ticket t ON t.prioridade_id = p.id\nGROUP BY p.id, p.nome\nORDER BY total DESC;\n",
+        "solutionNotes": "COUNT(CASE ...) funciona em qualquer banco. A sintaxe FILTER é mais legível e específica do PostgreSQL."
+      },
+      "glossary": ["sql", "Query", "chave-estrangeira"]
+    },
+    {
+      "id": "bd-indice-transacao-01",
+      "type": "lesson",
+      "title": "Índice e transação",
+      "estimatedMinutes": 10,
+      "tags": ["banco", "performance"],
+      "why": "Índice resolve quase toda lentidão de consulta. Transação evita quase toda inconsistência de dado. São as duas ferramentas de maior retorno.",
+      "goal": "Criar índice com base na consulta real e envolver operações relacionadas numa transação.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Índice serve às colunas que aparecem em WHERE, JOIN e ORDER BY. A ordem das colunas no índice composto importa."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- consulta real da tela de suporte\nSELECT id, status, criado_em FROM pedido\nWHERE status = 'pending'\nORDER BY criado_em DESC\nLIMIT 50;\n\n-- índice que atende filtro e ordenação de uma vez\nCREATE INDEX idx_pedido_status_criado ON pedido (status, criado_em DESC);"
+        },
+        {
+          "kind": "text",
+          "text": "A regra da ordem: primeiro as colunas de igualdade, depois as de faixa ou ordenação. Um índice em (criado_em, status) não serviria tão bem para essa consulta."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Índice não é grátis",
+          "text": "Cada índice ocupa espaço e precisa ser atualizado em toda escrita. Índice que nenhuma consulta usa é só custo. Crie a partir da consulta, não por precaução."
+        },
+        {
+          "kind": "text",
+          "text": "Transação: um conjunto de operações que acontece por inteiro ou não acontece."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "BEGIN;\n  UPDATE estoque SET quantidade = quantidade - 2 WHERE produto_id = 9;\n  INSERT INTO movimentacao (produto_id, quantidade, tipo) VALUES (9, 2, 'saida');\nCOMMIT;"
+        },
+        {
+          "kind": "text",
+          "text": "Sem transação, uma falha no meio deixa o estoque debitado sem registro de movimentação — e o saldo passa a divergir do histórico, sem nenhuma pista do motivo."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# em código, o padrão é um bloco que confirma no fim e desfaz em caso de erro\nwith conexao.transaction():\n    repo.debitar_estoque(produto_id, quantidade)\n    repo.registrar_movimentacao(produto_id, quantidade, \"saida\")"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Não chame serviço externo dentro de transação",
+          "text": "A transação mantém a conexão e os bloqueios presos durante a espera de rede. E se ela for revertida, a chamada externa já aconteceu."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual índice atende melhor a consulta `WHERE cliente_id = ? ORDER BY criado_em DESC LIMIT 20`?",
+          "choices": [
+            "(criado_em)",
+            "(cliente_id, criado_em DESC)",
+            "(criado_em, cliente_id)",
+            "Dois índices separados, um em cada coluna"
+          ],
+          "answerIndex": 1,
+          "explanation": "A coluna de igualdade vem primeiro; a de ordenação em seguida. Assim o banco encontra o grupo do cliente e já lê na ordem pedida, sem ordenar depois.",
+          "topics": ["performance"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue a consulta mais usada do seu projeto e escreva o índice que a atenderia. Rode EXPLAIN antes e depois de criar.",
+        "expected": "O plano deixa de mostrar Seq Scan e passa a usar o índice."
+      },
+      "ifStuck": ["Comece pelas colunas do WHERE com igualdade; acrescente a coluna do ORDER BY no fim."],
+      "commonErrors": [
+        {
+          "error": "Criar índice em toda coluna \"por garantia\".",
+          "why": "Cada escrita passa a atualizar todos eles, e o banco pode escolher o índice errado.",
+          "fix": "Índice a partir da consulta observada, verificando o ganho com EXPLAIN."
+        }
+      ],
+      "glossary": ["indice", "transacao", "migration", "orm", "Query"]
+    },
+    {
+      "id": "bd-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": ["banco"],
+      "summary": "Você escreve consulta com junção e agregação, diagnostica lentidão com EXPLAIN e protege operações relacionadas com transação.",
+      "learned": [
+        "Liste colunas, filtre no banco, limite o resultado",
+        "Seq Scan com muitas linhas descartadas significa índice faltando",
+        "Função sobre a coluna impede uso do índice",
+        "COUNT(*) com LEFT JOIN conta errado; use COUNT(coluna)",
+        "WHERE filtra linhas; HAVING filtra grupos",
+        "Índice composto: igualdade primeiro, ordenação depois",
+        "Transação para operações que precisam ficar coerentes; nunca com chamada externa dentro"
+      ],
+      "nextUp": "Python aplicado: API com FastAPI, banco, autenticação e testes."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-bd-consultas",
+      "title": "Banco de dados aplicado",
+      "format": "alternativa",
+      "summary": "Seis situações de consulta lenta, dado inconsistente e modelagem.",
+      "estimatedMinutes": 10,
+      "topics": ["sql", "índice", "transação", "agregação"],
+      "afterItemId": "bd-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-bd-explain-01",
+          "kind": "debugging",
+          "prompt": "O plano mostra Seq Scan em uma tabela de 2 milhões de linhas e 1,99 milhão de linhas removidas pelo filtro. Qual é a primeira ação?",
+          "choices": [
+            "Aumentar a memória do banco",
+            "Criar índice na coluna usada no filtro e conferir o plano novamente",
+            "Reescrever a consulta como subconsulta",
+            "Migrar para outro banco de dados"
+          ],
+          "answerIndex": 1,
+          "explanation": "O banco está lendo tudo para devolver pouco. Índice na coluna filtrada é a correção direta, e o EXPLAIN confirma o efeito.",
+          "topics": ["índice"]
+        },
+        {
+          "id": "q-bd-funcao-02",
+          "kind": "codigo",
+          "prompt": "Por que esta consulta não usa o índice de criado_em?",
+          "code": {
+            "language": "sql",
+            "code": "SELECT id FROM pedido WHERE DATE(criado_em) = '2026-03-11';"
+          },
+          "choices": [
+            "Porque falta ORDER BY",
+            "Porque a função DATE é aplicada a cada linha, e o índice guarda o valor da coluna, não o resultado da função",
+            "Porque a data está entre aspas simples",
+            "Porque DATE não existe em PostgreSQL"
+          ],
+          "answerIndex": 1,
+          "explanation": "Reescrever como faixa (>= dia e < dia seguinte) permite o uso do índice. Alternativa: criar índice sobre a expressão.",
+          "topics": ["índice"]
+        },
+        {
+          "id": "q-bd-count-03",
+          "kind": "debugging",
+          "prompt": "Um relatório de pedidos por cliente mostra 1 para clientes sem nenhum pedido. O que corrigir?",
+          "code": {
+            "language": "sql",
+            "code": "SELECT c.nome, COUNT(*) AS total\nFROM cliente c\nLEFT JOIN pedido p ON p.cliente_id = c.id\nGROUP BY c.id, c.nome;"
+          },
+          "choices": [
+            "Trocar LEFT JOIN por INNER JOIN",
+            "Trocar COUNT(*) por COUNT(p.id)",
+            "Remover o GROUP BY",
+            "Adicionar HAVING COUNT(*) > 0"
+          ],
+          "answerIndex": 1,
+          "explanation": "COUNT(*) conta a linha que o LEFT JOIN produz com nulos. COUNT(p.id) ignora nulo e devolve 0. Trocar para INNER faria o cliente desaparecer do relatório.",
+          "topics": ["agregação"]
+        },
+        {
+          "id": "q-bd-transacao-04",
+          "kind": "situacao",
+          "prompt": "O estoque de alguns produtos está divergindo do histórico de movimentações. O código debita o estoque e depois insere a movimentação. O que provavelmente falta?",
+          "choices": [
+            "Índice na tabela de movimentação",
+            "Transação envolvendo as duas operações, para que uma falha desfaça a outra",
+            "Chave estrangeira entre as tabelas",
+            "Cache de saldo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem transação, uma falha entre as duas operações deixa o estoque alterado sem registro. É exatamente o sintoma descrito.",
+          "topics": ["transação"]
+        },
+        {
+          "id": "q-bd-indice-05",
+          "kind": "conceitual",
+          "prompt": "Por que não criar índice em todas as colunas por precaução?",
+          "choices": [
+            "Porque o banco tem limite de índices",
+            "Porque cada índice ocupa espaço e é atualizado em toda escrita, tornando inserção e alteração mais lentas",
+            "Porque índice só funciona em coluna numérica",
+            "Porque índice deixa a leitura mais lenta"
+              ],
+          "answerIndex": 1,
+          "explanation": "Índice é uma troca: leitura mais rápida por escrita mais lenta e mais espaço. Índice sem consulta que o use é só custo.",
+          "topics": ["índice"]
+        },
+        {
+          "id": "q-bd-migration-06",
+          "kind": "conceitual",
+          "prompt": "Por que alterar a estrutura do banco diretamente em produção, sem migration, é problema?",
+          "choices": [
+            "Porque é mais lento",
+            "Porque a alteração não fica registrada nem versionada, e os outros ambientes divergem sem que ninguém saiba",
+            "Porque o banco não permite",
+            "Porque exige reiniciar a aplicação"
+          ],
+          "answerIndex": 1,
+          "explanation": "Migration é o histórico da estrutura. Sem ela, ninguém consegue recriar o banco nem saber o que mudou e quando.",
+          "topics": ["sql"]
+        }
+      ]
+    }
+  ]
+}

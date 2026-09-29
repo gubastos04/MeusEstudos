@@ -1,0 +1,1589 @@
+{
+  "id": "python",
+  "semester": 1,
+  "order": 2,
+  "title": "Programação em Python",
+  "summary": "A linguagem que você vai usar para aprender o resto: sintaxe, estruturas, funções, erros, objetos e testes. Cada aula termina em código rodando.",
+  "outcome": "Você consegue montar o ambiente, escrever funções com tratamento de erro, manipular listas e dicionários, ler e escrever arquivos, organizar o código em módulos e escrever testes automatizados.",
+  "tags": [
+    "python",
+    "fundamentos"
+  ],
+  "stack": [
+    "python"
+  ],
+  "items": [
+    {
+      "id": "python-ambiente-01",
+      "type": "lesson",
+      "title": "Ambiente: venv e o primeiro arquivo",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "ambiente"
+      ],
+      "why": "Instalar pacote direto no sistema é a primeira fonte de \"funcionava ontem\". Ambiente isolado por projeto resolve isso antes de acontecer.",
+      "goal": "Criar um ambiente virtual, ativar, instalar um pacote e rodar um arquivo .py.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Python instala pacotes numa pasta compartilhada por padrão. Dois projetos que precisam de versões diferentes da mesma biblioteca entram em conflito."
+        },
+        {
+          "kind": "text",
+          "text": "O ambiente virtual (`venv`) cria uma cópia isolada do Python dentro da pasta do projeto. Cada projeto tem as suas dependências."
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "$ python -m venv .venv",
+            "",
+            "# Linux / macOS",
+            "$ source .venv/bin/activate",
+            "",
+            "# Windows (PowerShell)",
+            "> .venv\\Scripts\\Activate.ps1",
+            "",
+            "(.venv) $ python --version",
+            "Python 3.12.3"
+          ],
+          "caption": "O prefixo (.venv) no prompt indica que o ambiente está ativo."
+        },
+        {
+          "kind": "text",
+          "text": "Com o ambiente ativo, instale e registre a dependência:"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "(.venv) $ pip install requests",
+            "(.venv) $ pip freeze > requirements.txt"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "`requirements.txt` é o que faz outra pessoa (ou o servidor) instalar exatamente o mesmo conjunto. A pasta `.venv` nunca vai para o Git; o arquivo de requisitos, sempre."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# ola.py\ndef saudacao(nome):\n    return f\"olá, {nome}\"\n\n\nif __name__ == \"__main__\":\n    print(saudacao(\"mundo\"))"
+        },
+        {
+          "kind": "text",
+          "text": "O bloco `if __name__ == \"__main__\":` só executa quando o arquivo é rodado direto. Se outro arquivo importar este, a função fica disponível e o `print` não acontece."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Erro frequente",
+          "text": "`pip install` sem o ambiente ativo instala no Python do sistema. Se o prompt não mostra (.venv), ative antes."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Crie uma pasta, um venv, ative, crie o arquivo ola.py acima e rode com `python ola.py`. Depois crie o requirements.txt.",
+        "expected": "O terminal imprime: olá, mundo"
+      },
+      "ifStuck": [
+        "No Windows, se a ativação for bloqueada por política de execução, use o Prompt de Comando com .venv\\Scripts\\activate.bat.",
+        "Se `python` não for encontrado, tente `python3`."
+      ],
+      "commonErrors": [
+        {
+          "error": "ModuleNotFoundError para um pacote que você acabou de instalar.",
+          "why": "O pacote foi instalado em outro Python: o do sistema, e não o do venv ativo.",
+          "fix": "Confirme o ambiente com `pip -V` e veja se o caminho aponta para .venv."
+        },
+        {
+          "error": "Commitar a pasta .venv.",
+          "why": "São milhares de arquivos binários, específicos do seu sistema operacional.",
+          "fix": "Adicione .venv/ ao .gitignore."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-gitignore-01",
+        "title": "O que entra no repositório",
+        "kind": "structural",
+        "language": "text",
+        "estimatedMinutes": 4,
+        "prompt": "Escreva o conteúdo de um .gitignore para um projeto Python que usa venv, tem banco SQLite local e um arquivo .env com segredos. Uma entrada por linha.",
+        "starter": "",
+        "expectedResult": "As três coisas que nunca devem ir para o Git: ambiente virtual, arquivo de segredos e banco local.",
+        "checks": [
+          {
+            "name": "ignora o ambiente virtual",
+            "type": "regex",
+            "value": "\\.venv|venv/",
+            "hint": "A pasta do ambiente virtual precisa ficar fora."
+          },
+          {
+            "name": "ignora o arquivo de segredos",
+            "type": "contains",
+            "value": ".env",
+            "hint": "Onde ficam as chaves?"
+          },
+          {
+            "name": "ignora o banco local",
+            "type": "regex",
+            "value": "\\.db|\\.sqlite",
+            "hint": "O banco de desenvolvimento não é compartilhado."
+          },
+          {
+            "name": "ignora cache do Python",
+            "type": "regex",
+            "value": "__pycache__|\\.pyc",
+            "hint": "O Python gera arquivos compilados em __pycache__."
+          }
+        ],
+        "hints": [
+          "Pense no que é específico da sua máquina e no que é segredo.",
+          "Python também gera arquivos temporários de compilação."
+        ],
+        "solution": ".venv/\n__pycache__/\n*.pyc\n.env\n*.db\n*.sqlite3\n",
+        "solutionNotes": "Se um segredo já foi commitado, adicionar ao .gitignore não resolve: ele continua no histórico. É preciso rotacionar a chave."
+      },
+      "glossary": [
+        "variavel-de-ambiente",
+        "dependencia",
+        "repositorio"
+      ]
+    },
+    {
+      "id": "python-variaveis-tipos-01",
+      "type": "lesson",
+      "title": "Variáveis e tipos",
+      "estimatedMinutes": 9,
+      "tags": [
+        "python",
+        "fundamentos"
+      ],
+      "why": "A maior parte dos erros de execução em Python vem de um valor chegar com tipo diferente do esperado.",
+      "goal": "Reconhecer os tipos básicos e converter entrada de texto em número com segurança.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Variável é um nome apontando para um valor. Em Python você não declara o tipo: ele vem do valor."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "nome = \"Ana\"          # str\nidade = 34            # int\nsaldo = 1520.75       # float\nativo = True          # bool\nsem_valor = None      # NoneType\n\nprint(type(saldo))    # <class 'float'>"
+        },
+        {
+          "kind": "text",
+          "text": "Como o tipo não é declarado, ele pode surpreender. Todo dado que vem de fora — formulário, arquivo, API — chega como texto."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "quantidade = \"2\"\nprint(quantidade * 3)   # 222  (repetiu o texto)\nprint(int(quantidade) * 3)  # 6",
+          "highlight": [
+            2
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Falha silenciosa",
+          "text": "`\"2\" * 3` não dá erro. Ele produz um resultado errado que segue adiante. Este é o pior tipo de defeito: não avisa."
+        },
+        {
+          "kind": "text",
+          "text": "Conversão que pode falhar precisa de tratamento:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def para_inteiro(texto, padrao=None):\n    try:\n        return int(texto)\n    except (TypeError, ValueError):\n        return padrao\n\n\nprint(para_inteiro(\"10\"))     # 10\nprint(para_inteiro(\"dez\"))    # None\nprint(para_inteiro(None))     # None"
+        },
+        {
+          "kind": "text",
+          "text": "Devolver `None` é adequado quando o valor é opcional. Em dado financeiro, o certo é falhar: melhor um erro visível que um total errado."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual é o resultado de `int(\"10\") + \"5\"` em Python?",
+          "choices": [
+            "15",
+            "\"105\"",
+            "TypeError",
+            "\"15\""
+          ],
+          "answerIndex": 2,
+          "explanation": "Python não converte tipos automaticamente na soma: somar int com str levanta TypeError. Diferente do JavaScript, que faria a concatenação silenciosa."
+        }
+      ],
+      "tryNow": {
+        "instructions": "No terminal, rode `python` e experimente: \"3\" * 4, int(\"3\") * 4, float(\"3,5\"). Observe qual falha e por quê.",
+        "expected": "float(\"3,5\") falha: em Python o separador decimal é ponto, não vírgula."
+      },
+      "ifStuck": [
+        "Use `type(valor)` para ver o tipo real do que você tem em mãos."
+      ],
+      "commonErrors": [
+        {
+          "error": "ValueError: invalid literal for int() with base 10: '3,5'",
+          "why": "O texto tem vírgula, formato brasileiro. int() e float() esperam ponto.",
+          "fix": "Troque a vírgula antes de converter: float(texto.replace(\",\", \".\"))"
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-conversao-01",
+        "title": "Converter valor em formato brasileiro",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `para_decimal(texto)`. Recebe valores como \"1.520,75\" (formato brasileiro) e devolve float. Se não for possível converter, devolva None. Texto vazio e None também devolvem None.",
+        "starter": "def para_decimal(texto):\n    # escreva aqui\n    pass\n",
+        "expectedResult": "1.520,75 vira 1520.75; \"abc\" vira None.",
+        "tests": [
+          {
+            "name": "valor com milhar e decimal",
+            "expression": "para_decimal('1.520,75')",
+            "expected": 1520.75
+          },
+          {
+            "name": "valor simples",
+            "expression": "para_decimal('10,5')",
+            "expected": 10.5
+          },
+          {
+            "name": "valor inteiro",
+            "expression": "para_decimal('42')",
+            "expected": 42
+          },
+          {
+            "name": "texto invalido",
+            "expression": "para_decimal('abc')",
+            "expected": null
+          },
+          {
+            "name": "texto vazio",
+            "expression": "para_decimal('')",
+            "expected": null
+          },
+          {
+            "name": "None",
+            "expression": "para_decimal(None)",
+            "expected": null
+          }
+        ],
+        "hints": [
+          "São duas trocas: o ponto de milhar sai, a vírgula decimal vira ponto.",
+          "A ordem importa: remova o ponto primeiro, depois troque a vírgula.",
+          "Envolva a conversão em try/except (TypeError, ValueError)."
+        ],
+        "solution": "def para_decimal(texto):\n    if not isinstance(texto, str) or not texto.strip():\n        return None\n    normalizado = texto.strip().replace(\".\", \"\").replace(\",\", \".\")\n    try:\n        return float(normalizado)\n    except ValueError:\n        return None\n",
+        "solutionNotes": "Em sistema financeiro real, use Decimal em vez de float: float tem erro de arredondamento binário e centavos desaparecem em somas longas."
+      },
+      "glossary": [
+        "Exceção"
+      ]
+    },
+    {
+      "id": "python-condicionais-01",
+      "type": "lesson",
+      "title": "Condicionais e o valor de verdade",
+      "estimatedMinutes": 8,
+      "tags": [
+        "python",
+        "fundamentos"
+      ],
+      "why": "Em Python, `0`, `\"\"` e lista vazia são falsos. Isso causa bug em validação de formulário quando o valor legítimo é zero.",
+      "goal": "Escrever condições que distinguem \"vazio\" de \"zero\" e de \"ausente\".",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "status = \"pending\"\n\nif status == \"pending\":\n    print(\"aguardando\")\nelif status == \"done\":\n    print(\"concluído\")\nelse:\n    print(\"status desconhecido:\", status)"
+        },
+        {
+          "kind": "text",
+          "text": "O `else` que registra o valor inesperado é um hábito que economiza horas: quando aparecer um status novo no banco, você vai saber."
+        },
+        {
+          "kind": "text",
+          "text": "Qualquer valor em Python pode ser avaliado como verdadeiro ou falso. Os falsos são:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "bool(0)        # False\nbool(0.0)      # False\nbool(\"\")       # False\nbool([])       # False\nbool({})       # False\nbool(None)     # False\nbool(\"0\")      # True   (texto com conteúdo)\nbool([0])      # True   (lista com um item)"
+        },
+        {
+          "kind": "text",
+          "text": "Isso gera um defeito clássico:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def aplicar_desconto(percentual):\n    if not percentual:\n        return \"sem desconto informado\"\n    return f\"desconto de {percentual}%\"\n\n\nprint(aplicar_desconto(0))    # \"sem desconto informado\" — e zero era válido!",
+          "highlight": [
+            2
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A correção é comparar com o que você realmente quer saber:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def aplicar_desconto(percentual):\n    if percentual is None:\n        return \"sem desconto informado\"\n    return f\"desconto de {percentual}%\""
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Regra prática",
+          "text": "`is None` para ausência. `not valor` só quando vazio e zero devem ser tratados igual."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma função que valide um campo de quantidade: None é erro (\"campo obrigatório\"), 0 é válido, negativo é erro (\"não pode ser negativo\").",
+        "expected": "Três caminhos distintos, e o zero passa."
+      },
+      "ifStuck": [
+        "Trate a ausência primeiro, depois valide o valor."
+      ],
+      "commonErrors": [
+        {
+          "error": "if not quantidade: return erro",
+          "why": "Rejeita 0, que costuma ser válido.",
+          "fix": "if quantidade is None: return erro"
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-validar-quantidade-01",
+        "title": "Validar quantidade sem rejeitar zero",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 7,
+        "prompt": "Implemente `validar_quantidade(valor)`. Devolve a mensagem \"campo obrigatório\" quando valor é None; \"deve ser um número inteiro\" quando não é int (atenção: True não vale); \"não pode ser negativo\" quando é menor que zero; e None (sem erro) quando está válido, inclusive para 0.",
+        "starter": "def validar_quantidade(valor):\n    # devolve a mensagem de erro, ou None quando está válido\n    pass\n",
+        "tests": [
+          {
+            "name": "zero e valido",
+            "expression": "validar_quantidade(0)",
+            "expected": null
+          },
+          {
+            "name": "positivo e valido",
+            "expression": "validar_quantidade(5)",
+            "expected": null
+          },
+          {
+            "name": "ausente e obrigatorio",
+            "expression": "validar_quantidade(None)",
+            "expected": "campo obrigatório"
+          },
+          {
+            "name": "negativo",
+            "expression": "validar_quantidade(-1)",
+            "expected": "não pode ser negativo"
+          },
+          {
+            "name": "texto nao e inteiro",
+            "expression": "validar_quantidade('3')",
+            "expected": "deve ser um número inteiro"
+          },
+          {
+            "name": "booleano nao conta como inteiro",
+            "expression": "validar_quantidade(True)",
+            "expected": "deve ser um número inteiro"
+          }
+        ],
+        "hints": [
+          "A ordem das verificações importa: ausência, tipo, faixa.",
+          "Em Python, bool é subclasse de int: isinstance(True, int) é True.",
+          "Use `isinstance(valor, bool)` para descartar booleano antes de checar int."
+        ],
+        "solution": "def validar_quantidade(valor):\n    if valor is None:\n        return \"campo obrigatório\"\n    if isinstance(valor, bool) or not isinstance(valor, int):\n        return \"deve ser um número inteiro\"\n    if valor < 0:\n        return \"não pode ser negativo\"\n    return None\n",
+        "solutionNotes": "Devolver a mensagem em vez de levantar exceção facilita juntar todos os erros de um formulário e mostrar de uma vez."
+      },
+      "glossary": [
+        "Exceção"
+      ]
+    },
+    {
+      "id": "python-loops-01",
+      "type": "lesson",
+      "title": "Repetição: for, while e o que evitar",
+      "estimatedMinutes": 9,
+      "tags": [
+        "python",
+        "fundamentos"
+      ],
+      "why": "Quase todo processamento de dados é um percurso. E quase toda lentidão em aplicação web é uma consulta dentro de um laço.",
+      "goal": "Percorrer coleções com for, usar while quando a parada não é conhecida e reconhecer o laço que vira problema.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "pedidos = [\"a\", \"b\", \"c\"]\n\nfor pedido in pedidos:\n    print(pedido)\n\nfor indice, pedido in enumerate(pedidos, start=1):\n    print(indice, pedido)"
+        },
+        {
+          "kind": "text",
+          "text": "`while` serve quando você não sabe quantas vezes vai repetir:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "tentativas = 0\nenviado = False\n\nwhile not enviado and tentativas < 3:\n    enviado = tentar_enviar()\n    tentativas += 1",
+          "caption": "Note o limite de tentativas: laço sem teto é como chamada de API em loop infinito."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "O laço que derruba produção",
+          "text": "Consulta ao banco dentro de um laço. Com 10 itens você não percebe; com 5.000 a tela trava. Chama-se problema N+1."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# 1 + N consultas\nfor pedido in pedidos:\n    cliente = banco.buscar_cliente(pedido.cliente_id)   # uma consulta por pedido\n    print(pedido.id, cliente.nome)\n\n# 2 consultas, independente do tamanho\nids = [p.cliente_id for p in pedidos]\nclientes = banco.buscar_clientes(ids)          # uma consulta só\npor_id = {c.id: c for c in clientes}\nfor pedido in pedidos:\n    print(pedido.id, por_id[pedido.cliente_id].nome)"
+        },
+        {
+          "kind": "text",
+          "text": "A segunda versão troca N consultas por uma busca em dicionário, que é praticamente instantânea."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma listagem faz uma consulta por item para buscar o nome do cliente. Com 2.000 itens, qual é a melhor primeira medida?",
+          "choices": [
+            "Aumentar o tempo limite da requisição",
+            "Buscar todos os clientes necessários em uma consulta e montar um dicionário por id",
+            "Adicionar cache na tela",
+            "Paginar em 500 itens e manter a consulta por item"
+          ],
+          "answerIndex": 1,
+          "explanation": "É a correção da causa. Aumentar timeout esconde. Cache adia. Paginar ajuda, mas 500 consultas por página continuam sendo 500 idas ao banco."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva um laço que soma o valor de todos os pedidos de uma lista, ignorando os cancelados. Depois reescreva usando sum() com uma compreensão de lista.",
+        "expected": "As duas versões devem dar o mesmo resultado."
+      },
+      "ifStuck": [
+        "Compreensão de lista: `sum(p[\"valor\"] for p in pedidos if p[\"status\"] != \"cancelado\")`"
+      ],
+      "commonErrors": [
+        {
+          "error": "Modificar a lista enquanto a percorre.",
+          "why": "Remover item durante o for faz o percurso pular elementos.",
+          "fix": "Construa uma lista nova com o que deve permanecer."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-agrupar-status-01",
+        "title": "Contar pedidos por status",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `contar_por_status(pedidos)`. Recebe uma lista de dicionários com a chave \"status\" e devolve um dicionário com a contagem de cada status. Pedido sem a chave \"status\" conta como \"desconhecido\". Lista vazia devolve dicionário vazio.",
+        "starter": "def contar_por_status(pedidos):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "contar_por_status([])",
+            "expected": {}
+          },
+          {
+            "name": "contagem simples",
+            "expression": "contar_por_status([{'status':'pending'},{'status':'done'},{'status':'pending'}])",
+            "expected": {
+              "pending": 2,
+              "done": 1
+            }
+          },
+          {
+            "name": "sem a chave status conta como desconhecido",
+            "expression": "contar_por_status([{'id':1},{'status':'done'}])",
+            "expected": {
+              "desconhecido": 1,
+              "done": 1
+            }
+          },
+          {
+            "name": "status nulo tambem conta como desconhecido",
+            "expression": "contar_por_status([{'status':None}])",
+            "expected": {
+              "desconhecido": 1
+            }
+          }
+        ],
+        "hints": [
+          "Use um dicionário como acumulador.",
+          "`pedido.get(\"status\")` devolve None quando a chave não existe, sem levantar erro.",
+          "`contagem[chave] = contagem.get(chave, 0) + 1` resolve o caso de primeira aparição."
+        ],
+        "solution": "def contar_por_status(pedidos):\n    contagem = {}\n    for pedido in pedidos:\n        status = pedido.get(\"status\") or \"desconhecido\"\n        contagem[status] = contagem.get(status, 0) + 1\n    return contagem\n",
+        "solutionNotes": "A biblioteca padrão tem collections.Counter, que faz isso em uma linha. Vale conhecer as duas: a versão manual é a que você adapta quando a regra cresce."
+      },
+      "glossary": [
+        "Latência",
+        "Query"
+      ]
+    },
+    {
+      "id": "python-funcoes-01",
+      "type": "lesson",
+      "title": "Funções",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "fundamentos"
+      ],
+      "why": "Função é a unidade de reuso e de teste. Código sem funções não tem como ser testado em partes.",
+      "goal": "Escrever funções com parâmetros nomeados, valor padrão seguro e retorno explícito.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def calcular_frete(peso_kg, distancia_km, expresso=False):\n    base = peso_kg * 1.5 + distancia_km * 0.2\n    return base * 2 if expresso else base\n\n\nprint(calcular_frete(2, 100))\nprint(calcular_frete(2, 100, expresso=True))"
+        },
+        {
+          "kind": "text",
+          "text": "Chamar com o nome do parâmetro (`expresso=True`) deixa a chamada legível. `calcular_frete(2, 100, True)` exige abrir a função para entender o que o `True` significa."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "A pegadinha mais famosa do Python",
+          "text": "Valor padrão mutável é criado UMA vez, quando a função é definida, e compartilhado entre todas as chamadas."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def adicionar(item, lista=[]):      # errado\n    lista.append(item)\n    return lista\n\nprint(adicionar(\"a\"))   # ['a']\nprint(adicionar(\"b\"))   # ['a', 'b']  <- a lista anterior voltou",
+          "highlight": [
+            1
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def adicionar(item, lista=None):    # correto\n    if lista is None:\n        lista = []\n    lista.append(item)\n    return lista"
+        },
+        {
+          "kind": "text",
+          "text": "Anotações de tipo não são obrigatórias e não são verificadas em execução, mas documentam o contrato e permitem que ferramentas achem erro antes de rodar:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def pedidos_pendentes(pedidos: list[dict]) -> list[dict]:\n    return [p for p in pedidos if p.get(\"status\") == \"pending\"]"
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que `def f(itens=[])` é considerado defeito?",
+          "choices": [
+            "Porque listas não podem ser parâmetros em Python",
+            "Porque a lista padrão é criada uma única vez e mantém o conteúdo entre chamadas",
+            "Porque o Python cria uma lista nova a cada chamada e isso consome memória",
+            "Porque o nome do parâmetro deveria ser plural"
+          ],
+          "answerIndex": 1,
+          "explanation": "O valor padrão é avaliado na definição da função, não na chamada. O objeto é o mesmo em todas as chamadas, e acumula estado entre elas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma função `resumo_pedido(pedido, incluir_itens=False)` que devolve um dicionário com id, status e total, e inclui a lista de itens só quando pedido for solicitado.",
+        "expected": "Duas chamadas com resultados diferentes, sem repetir código."
+      },
+      "ifStuck": [
+        "Monte o dicionário base primeiro e adicione a chave extra dentro de um if."
+      ],
+      "commonErrors": [
+        {
+          "error": "Função que às vezes devolve valor e às vezes não.",
+          "why": "Quando um caminho não tem return, o Python devolve None, e o erro aparece longe dali.",
+          "fix": "Garanta return em todos os caminhos, ou levante exceção explícita."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-resumo-pedido-01",
+        "title": "Resumo de pedido",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `resumo_pedido(pedido, incluir_itens=False)`. O pedido é um dicionário com \"id\", \"status\" e \"itens\" (lista de dicionários com \"preco\" e \"quantidade\"). Devolva {\"id\", \"status\", \"total\"} e, quando incluir_itens for True, também \"quantidade_itens\" com a soma das quantidades. Pedido sem itens tem total 0.",
+        "starter": "def resumo_pedido(pedido, incluir_itens=False):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "resumo basico",
+            "expression": "resumo_pedido({'id': 7, 'status': 'pending', 'itens': [{'preco': 10, 'quantidade': 2}]})",
+            "expected": {
+              "id": 7,
+              "status": "pending",
+              "total": 20
+            }
+          },
+          {
+            "name": "sem itens",
+            "expression": "resumo_pedido({'id': 8, 'status': 'done', 'itens': []})",
+            "expected": {
+              "id": 8,
+              "status": "done",
+              "total": 0
+            }
+          },
+          {
+            "name": "chave itens ausente",
+            "expression": "resumo_pedido({'id': 9, 'status': 'done'})",
+            "expected": {
+              "id": 9,
+              "status": "done",
+              "total": 0
+            }
+          },
+          {
+            "name": "com quantidade de itens",
+            "expression": "resumo_pedido({'id': 1, 'status': 'pending', 'itens': [{'preco': 5, 'quantidade': 3}, {'preco': 2, 'quantidade': 1}]}, incluir_itens=True)",
+            "expected": {
+              "id": 1,
+              "status": "pending",
+              "total": 17,
+              "quantidade_itens": 4
+            }
+          }
+        ],
+        "hints": [
+          "Use pedido.get(\"itens\") or [] para o caso da chave ausente.",
+          "sum() com compreensão resolve o total em uma linha.",
+          "Adicione a chave extra ao dicionário depois de montá-lo, dentro do if."
+        ],
+        "solution": "def resumo_pedido(pedido, incluir_itens=False):\n    itens = pedido.get(\"itens\") or []\n    resumo = {\n        \"id\": pedido.get(\"id\"),\n        \"status\": pedido.get(\"status\"),\n        \"total\": sum(i[\"preco\"] * i[\"quantidade\"] for i in itens),\n    }\n    if incluir_itens:\n        resumo[\"quantidade_itens\"] = sum(i[\"quantidade\"] for i in itens)\n    return resumo\n"
+      },
+      "glossary": [
+        "Refatoração",
+        "Teste unitário"
+      ]
+    },
+    {
+      "id": "python-listas-dicionarios-01",
+      "type": "lesson",
+      "title": "Listas e dicionários: qual usar",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "estrutura-dados"
+      ],
+      "why": "Escolher lista onde cabia dicionário é a origem mais comum de código lento sem motivo.",
+      "goal": "Decidir entre lista e dicionário pelo tipo de acesso que você precisa.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Lista guarda ordem e permite repetição. Dicionário guarda pares chave/valor e encontra pela chave sem percorrer nada."
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Operação",
+            "Lista",
+            "Dicionário"
+          ],
+          "rows": [
+            [
+              "Achar por identificador",
+              "percorre até achar",
+              "acesso direto"
+            ],
+            [
+              "Manter ordem de chegada",
+              "natural",
+              "ordem de inserção"
+            ],
+            [
+              "Verificar se existe",
+              "percorre tudo",
+              "imediato"
+            ],
+            [
+              "Somar tudo",
+              "percorre tudo",
+              "percorre tudo"
+            ]
+          ],
+          "caption": "Com 20 itens a diferença é invisível. Com 50 mil, é a diferença entre 1ms e 2 segundos."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# buscando na lista: percorre até encontrar\ndef buscar(clientes, cliente_id):\n    for cliente in clientes:\n        if cliente[\"id\"] == cliente_id:\n            return cliente\n    return None\n\n# indexando uma vez e buscando direto depois\npor_id = {c[\"id\"]: c for c in clientes}\ncliente = por_id.get(cliente_id)"
+        },
+        {
+          "kind": "text",
+          "text": "Se você busca uma vez, a lista serve. Se busca dentro de um laço, indexe antes."
+        },
+        {
+          "kind": "text",
+          "text": "Acesso a chave inexistente é uma fonte constante de erro:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "pedido = {\"id\": 7}\n\npedido[\"cliente\"]          # KeyError\npedido.get(\"cliente\")      # None\npedido.get(\"cliente\", {})  # {} — útil para seguir encadeando"
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Quando o KeyError é melhor",
+          "text": "Se a chave é obrigatória, deixe o KeyError acontecer. `.get()` em campo obrigatório troca um erro claro por um None que vai quebrar dez linhas depois."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa verificar, para 10.000 pedidos, se o id do cliente está numa coleção de 50.000 clientes ativos. Qual estrutura escolher para a coleção de ativos?",
+          "choices": [
+            "Lista, porque preserva a ordem",
+            "Conjunto (set) ou dicionário, porque a verificação de pertencimento é direta",
+            "Lista ordenada, porque a busca fica mais rápida automaticamente",
+            "Tupla, porque é imutável"
+          ],
+          "answerIndex": 1,
+          "explanation": "Com lista, são 10.000 percursos de até 50.000 itens. Com set ou dict, a verificação é direta e o total cai para 10.000 operações rápidas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Dada uma lista de produtos e uma lista de movimentações (cada uma com produto_id e quantidade), calcule o saldo por produto. Indexe antes de percorrer.",
+        "expected": "Um dicionário produto_id -> saldo, sem consulta dentro de laço."
+      },
+      "ifStuck": [
+        "Primeiro monte o dicionário de saldos com zero para cada produto. Depois percorra as movimentações somando."
+      ],
+      "commonErrors": [
+        {
+          "error": "KeyError no meio de um processamento longo.",
+          "why": "Um registro veio sem a chave que todos os outros tinham.",
+          "fix": "Decida explicitamente: `.get()` com padrão para campo opcional, ou validação antes do laço para campo obrigatório."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-saldo-estoque-01",
+        "title": "Saldo de estoque por produto",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `calcular_saldo(produtos, movimentacoes)`. `produtos` é lista de dicionários com \"id\". `movimentacoes` tem \"produto_id\", \"quantidade\" e \"tipo\" (\"entrada\" ou \"saida\"). Devolva um dicionário id -> saldo. Todo produto aparece no resultado, mesmo sem movimentação. Movimentação de produto inexistente é ignorada.",
+        "starter": "def calcular_saldo(produtos, movimentacoes):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "sem produtos e sem movimentacoes",
+            "expression": "calcular_saldo([], [])",
+            "expected": {},
+            "expectThrows": false,
+            "hidden": false
+          },
+          {
+            "name": "produto sem movimentacao fica com zero",
+            "expression": "calcular_saldo([{'id': 'a'}], [])",
+            "expected": {
+              "a": 0
+            }
+          },
+          {
+            "name": "entrada e saida",
+            "expression": "calcular_saldo([{'id':'a'}], [{'produto_id':'a','quantidade':10,'tipo':'entrada'},{'produto_id':'a','quantidade':3,'tipo':'saida'}])",
+            "expected": {
+              "a": 7
+            }
+          },
+          {
+            "name": "ignora produto inexistente",
+            "expression": "calcular_saldo([{'id':'a'}], [{'produto_id':'z','quantidade':5,'tipo':'entrada'}])",
+            "expected": {
+              "a": 0
+            }
+          },
+          {
+            "name": "varios produtos",
+            "expression": "calcular_saldo([{'id':'a'},{'id':'b'}], [{'produto_id':'a','quantidade':2,'tipo':'entrada'},{'produto_id':'b','quantidade':4,'tipo':'entrada'},{'produto_id':'b','quantidade':1,'tipo':'saida'}])",
+            "expected": {
+              "a": 2,
+              "b": 3
+            }
+          },
+          {
+            "name": "saldo pode ficar negativo e isso aparece",
+            "expression": "calcular_saldo([{'id':'a'}], [{'produto_id':'a','quantidade':2,'tipo':'saida'}])",
+            "expected": {
+              "a": -2
+            }
+          }
+        ],
+        "hints": [
+          "Comece criando o dicionário com todos os produtos em zero.",
+          "Use `if movimentacao['produto_id'] not in saldos: continue` para descartar o que não existe.",
+          "Saída subtrai. Não trate negativo aqui: saldo negativo é informação, não erro."
+        ],
+        "solution": "def calcular_saldo(produtos, movimentacoes):\n    saldos = {produto[\"id\"]: 0 for produto in produtos}\n    for movimentacao in movimentacoes:\n        produto_id = movimentacao.get(\"produto_id\")\n        if produto_id not in saldos:\n            continue\n        quantidade = movimentacao.get(\"quantidade\", 0)\n        if movimentacao.get(\"tipo\") == \"saida\":\n            saldos[produto_id] -= quantidade\n        else:\n            saldos[produto_id] += quantidade\n    return saldos\n",
+        "solutionNotes": "Saldo negativo revela problema de dado ou de processo. Esconder com max(0, saldo) apagaria a evidência."
+      },
+      "glossary": [
+        "Big O",
+        "Complexidade"
+      ]
+    },
+    {
+      "id": "python-arquivos-excecoes-01",
+      "type": "lesson",
+      "title": "Arquivos e exceções",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "fundamentos"
+      ],
+      "why": "Importar planilha e ler arquivo de configuração é tarefa recorrente. E arquivo é onde aparece a maior variedade de dado sujo.",
+      "goal": "Ler e escrever arquivo com encoding correto e tratar apenas os erros que você sabe tratar.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "with open(\"pedidos.csv\", \"r\", encoding=\"utf-8\") as arquivo:\n    for linha in arquivo:\n        print(linha.rstrip())"
+        },
+        {
+          "kind": "text",
+          "text": "O `with` fecha o arquivo mesmo se ocorrer erro no meio. Sem ele, um erro deixa o arquivo aberto."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Sempre informe o encoding",
+          "text": "Sem `encoding=\"utf-8\"`, o Python usa o padrão do sistema. O mesmo código lê corretamente no Linux e quebra no Windows com acentos."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "import csv\n\nwith open(\"pedidos.csv\", encoding=\"utf-8\", newline=\"\") as arquivo:\n    for registro in csv.DictReader(arquivo):\n        print(registro[\"id\"], registro[\"status\"])",
+          "caption": "Use o módulo csv: separador dentro de campo entre aspas quebra qualquer split(\",\") caseiro."
+        },
+        {
+          "kind": "text",
+          "text": "Tratamento de erro: capture o que você sabe tratar, e deixe o resto subir."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def ler_configuracao(caminho):\n    try:\n        with open(caminho, encoding=\"utf-8\") as arquivo:\n            return json.load(arquivo)\n    except FileNotFoundError:\n        return {}                      # ausência é caso previsto\n    except json.JSONDecodeError as erro:\n        raise ValueError(f\"configuração inválida em {caminho}: {erro}\") from erro"
+        },
+        {
+          "kind": "text",
+          "text": "Arquivo ausente tem resposta (usar o padrão). Arquivo corrompido não tem: seguir com configuração pela metade produz comportamento imprevisível."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "O pior tratamento de erro possível",
+          "text": "`except: pass` engole qualquer erro, inclusive os que você nem imaginou. O problema não desaparece: ele reaparece depois, sem rastro."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um processamento de importação usa `except Exception: continue` para cada linha. Qual é a consequência mais grave?",
+          "choices": [
+            "O processamento fica mais lento",
+            "Linhas com problema são descartadas em silêncio e ninguém sabe quantas nem por quê",
+            "O arquivo fica aberto até o fim do programa",
+            "Nenhuma: é o padrão recomendado para importação"
+          ],
+          "answerIndex": 1,
+          "explanation": "Importação que descarta em silêncio gera dado faltando sem rastro. O padrão adequado é contar, registrar o motivo por linha e devolver um relatório do que não entrou."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva uma função que leia um CSV de produtos e devolva duas listas: os registros válidos e os rejeitados com o motivo. Nenhuma linha deve desaparecer em silêncio.",
+        "expected": "Toda linha da entrada está em uma das duas listas."
+      },
+      "ifStuck": [
+        "Para cada linha, valide; se falhar, adicione um dicionário com a linha original e o motivo na lista de rejeitados."
+      ],
+      "commonErrors": [
+        {
+          "error": "UnicodeDecodeError ao ler arquivo exportado do Excel.",
+          "why": "Excel em português costuma salvar em cp1252, não em UTF-8.",
+          "fix": "Tente encoding=\"utf-8-sig\" e, se falhar, encoding=\"cp1252\"."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-importacao-relatorio-01",
+        "title": "Importação que presta contas",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `processar_linhas(linhas)`. Cada linha é um dicionário com \"sku\" e \"quantidade\" (texto). Devolva {\"validos\": [...], \"rejeitados\": [...]}. Um registro válido tem sku não vazio e quantidade convertível para int maior ou igual a zero, e entra como {\"sku\": ..., \"quantidade\": int}. Rejeitado entra como {\"linha\": <índice base 1>, \"motivo\": ...} com motivo \"sku ausente\" ou \"quantidade inválida\".",
+        "starter": "def processar_linhas(linhas):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "lista vazia nao quebra",
+            "expression": "processar_linhas([])",
+            "expected": {
+              "validos": [],
+              "rejeitados": []
+            },
+            "expectThrows": false,
+            "hidden": false
+          },
+          {
+            "name": "linha valida",
+            "expression": "processar_linhas([{'sku':'A1','quantidade':'5'}])",
+            "expected": {
+              "validos": [
+                {
+                  "sku": "A1",
+                  "quantidade": 5
+                }
+              ],
+              "rejeitados": []
+            }
+          },
+          {
+            "name": "sku vazio e rejeitado",
+            "expression": "processar_linhas([{'sku':'','quantidade':'5'}])",
+            "expected": {
+              "validos": [],
+              "rejeitados": [
+                {
+                  "linha": 1,
+                  "motivo": "sku ausente"
+                }
+              ]
+            }
+          },
+          {
+            "name": "quantidade nao numerica",
+            "expression": "processar_linhas([{'sku':'A1','quantidade':'cinco'}])",
+            "expected": {
+              "validos": [],
+              "rejeitados": [
+                {
+                  "linha": 1,
+                  "motivo": "quantidade inválida"
+                }
+              ]
+            }
+          },
+          {
+            "name": "quantidade negativa",
+            "expression": "processar_linhas([{'sku':'A1','quantidade':'-2'}])",
+            "expected": {
+              "validos": [],
+              "rejeitados": [
+                {
+                  "linha": 1,
+                  "motivo": "quantidade inválida"
+                }
+              ]
+            }
+          },
+          {
+            "name": "zero e valido",
+            "expression": "processar_linhas([{'sku':'A1','quantidade':'0'}])",
+            "expected": {
+              "validos": [
+                {
+                  "sku": "A1",
+                  "quantidade": 0
+                }
+              ],
+              "rejeitados": []
+            }
+          },
+          {
+            "name": "nenhuma linha desaparece",
+            "expression": "(lambda r: len(r['validos']) + len(r['rejeitados']))(processar_linhas([{'sku':'A1','quantidade':'1'},{'sku':'','quantidade':'1'},{'sku':'B2','quantidade':'x'}]))",
+            "expected": 3
+          }
+        ],
+        "hints": [
+          "Use enumerate(linhas, start=1) para ter o número da linha.",
+          "Valide o sku primeiro: sem ele, o motivo é \"sku ausente\" mesmo que a quantidade também esteja errada.",
+          "int() levanta ValueError; trate e use o motivo \"quantidade inválida\"."
+        ],
+        "solution": "def processar_linhas(linhas):\n    validos = []\n    rejeitados = []\n\n    for numero, linha in enumerate(linhas, start=1):\n        sku = (linha.get(\"sku\") or \"\").strip()\n        if not sku:\n            rejeitados.append({\"linha\": numero, \"motivo\": \"sku ausente\"})\n            continue\n        try:\n            quantidade = int(linha.get(\"quantidade\"))\n        except (TypeError, ValueError):\n            rejeitados.append({\"linha\": numero, \"motivo\": \"quantidade inválida\"})\n            continue\n        if quantidade < 0:\n            rejeitados.append({\"linha\": numero, \"motivo\": \"quantidade inválida\"})\n            continue\n        validos.append({\"sku\": sku, \"quantidade\": quantidade})\n\n    return {\"validos\": validos, \"rejeitados\": rejeitados}\n",
+        "solutionNotes": "O número da linha no relatório é o que permite a pessoa corrigir a planilha. Sem ele, o relatório é inútil."
+      },
+      "glossary": [
+        "Exceção",
+        "Log",
+        "Stack trace"
+      ]
+    },
+    {
+      "id": "python-modulos-oo-01",
+      "type": "lesson",
+      "title": "Módulos e classes: organizar antes de crescer",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "arquitetura"
+      ],
+      "why": "Arquivo único de 800 linhas é onde todo projeto de estudo morre. Separar por responsabilidade é o que permite continuar.",
+      "goal": "Dividir código em módulos e escrever uma classe quando ela realmente resolve algo.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Módulo é um arquivo .py. Importar é trazer o que está em outro arquivo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "estoque/\n  __init__.py\n  modelos.py      # estruturas de dado\n  regras.py       # decisões de negócio\n  repositorio.py  # acesso ao banco\n  main.py         # entrada do programa"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# regras.py\nfrom .modelos import Movimentacao\n\n\ndef saldo_apos(movimentacoes):\n    return sum(m.assinado() for m in movimentacoes)"
+        },
+        {
+          "kind": "text",
+          "text": "A divisão por responsabilidade tem um efeito prático: `regras.py` pode ser testado sem banco, porque não sabe o que é banco."
+        },
+        {
+          "kind": "text",
+          "text": "Classe agrupa dado com o comportamento daquele dado:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "from dataclasses import dataclass\n\n\n@dataclass\nclass Movimentacao:\n    produto_id: str\n    quantidade: int\n    tipo: str\n\n    def assinado(self) -> int:\n        return -self.quantidade if self.tipo == \"saida\" else self.quantidade\n\n\nmovimento = Movimentacao(\"A1\", 3, \"saida\")\nprint(movimento.assinado())   # -3"
+        },
+        {
+          "kind": "text",
+          "text": "`@dataclass` gera construtor, comparação e representação. Sem ele, seriam mais vinte linhas repetitivas."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Quando NÃO usar classe",
+          "text": "Se a classe só tem um método e nenhum estado, uma função resolve. Classe existe para juntar dado e comportamento, não para parecer organizado."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual divisão de arquivos facilita testar as regras de negócio sem subir banco?",
+          "choices": [
+            "Tudo em main.py, com funções pequenas",
+            "Regras num módulo que não importa nada de banco, e acesso a dados num módulo separado",
+            "Uma classe por tabela, com os métodos de consulta dentro",
+            "Separar por tipo de arquivo: todas as classes em um módulo, todas as funções em outro"
+          ],
+          "answerIndex": 1,
+          "explanation": "O que permite testar sem infraestrutura é a direção da dependência: as regras não conhecem o banco. Separar por tipo de arquivo não muda nada, porque as dependências continuam misturadas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue o exercício de saldo de estoque que você fez e separe em dois arquivos: um com a regra de cálculo e outro que só monta os dados e chama a regra.",
+        "expected": "O arquivo de regra não importa nada além da biblioteca padrão."
+      },
+      "ifStuck": [
+        "A regra recebe dados prontos por parâmetro e devolve resultado. Ela não busca nada."
+      ],
+      "commonErrors": [
+        {
+          "error": "ImportError: attempted relative import with no known parent package",
+          "why": "Import relativo (`from .modelos import ...`) só funciona quando o arquivo é executado como parte de um pacote.",
+          "fix": "Rode com `python -m estoque.main`, e não `python estoque/main.py`."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-classe-movimentacao-01",
+        "title": "Classe de movimentação",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 9,
+        "prompt": "Escreva a classe `Movimentacao` com os atributos produto_id, quantidade e tipo. Métodos: `assinado()` devolve a quantidade negativa para tipo \"saida\" e positiva nos outros casos; `valida()` devolve True quando quantidade é int maior que zero e tipo está em (\"entrada\", \"saida\").",
+        "starter": "class Movimentacao:\n    def __init__(self, produto_id, quantidade, tipo):\n        # escreva aqui\n        pass\n",
+        "tests": [
+          {
+            "name": "entrada e positiva",
+            "expression": "Movimentacao('a', 5, 'entrada').assinado()",
+            "expected": 5
+          },
+          {
+            "name": "saida e negativa",
+            "expression": "Movimentacao('a', 5, 'saida').assinado()",
+            "expected": -5
+          },
+          {
+            "name": "movimentacao valida",
+            "expression": "Movimentacao('a', 1, 'entrada').valida()",
+            "expected": true
+          },
+          {
+            "name": "quantidade zero nao vale",
+            "expression": "Movimentacao('a', 0, 'entrada').valida()",
+            "expected": false
+          },
+          {
+            "name": "tipo desconhecido nao vale",
+            "expression": "Movimentacao('a', 1, 'ajuste').valida()",
+            "expected": false
+          },
+          {
+            "name": "quantidade em texto nao vale",
+            "expression": "Movimentacao('a', '1', 'entrada').valida()",
+            "expected": false
+          }
+        ],
+        "hints": [
+          "Guarde os três valores em self dentro do __init__.",
+          "Em assinado(), compare self.tipo com \"saida\".",
+          "Em valida(), lembre que isinstance(True, int) é True: descarte bool explicitamente."
+        ],
+        "solution": "class Movimentacao:\n    TIPOS = (\"entrada\", \"saida\")\n\n    def __init__(self, produto_id, quantidade, tipo):\n        self.produto_id = produto_id\n        self.quantidade = quantidade\n        self.tipo = tipo\n\n    def assinado(self):\n        return -self.quantidade if self.tipo == \"saida\" else self.quantidade\n\n    def valida(self):\n        if isinstance(self.quantidade, bool) or not isinstance(self.quantidade, int):\n            return False\n        return self.quantidade > 0 and self.tipo in self.TIPOS\n"
+      },
+      "glossary": [
+        "Refatoração",
+        "Teste unitário"
+      ]
+    },
+    {
+      "id": "python-testes-01",
+      "type": "lesson",
+      "title": "Testes automatizados",
+      "estimatedMinutes": 10,
+      "tags": [
+        "python",
+        "testes"
+      ],
+      "why": "Teste é o que permite mexer em código que você não lembra. Sem teste, toda alteração é aposta.",
+      "goal": "Escrever testes com pytest, incluindo o teste que reproduz um bug antes de corrigi-lo.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Um teste chama seu código com uma entrada conhecida e verifica o resultado. Automatizado significa que roda sozinho, sempre igual."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# regras.py\ndef calcular_total(itens):\n    return sum(i[\"preco\"] * i[\"quantidade\"] for i in itens)"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# test_regras.py\nimport pytest\n\nfrom regras import calcular_total\n\n\ndef test_lista_vazia_soma_zero():\n    assert calcular_total([]) == 0\n\n\ndef test_soma_itens():\n    itens = [{\"preco\": 10, \"quantidade\": 2}, {\"preco\": 5, \"quantidade\": 1}]\n    assert calcular_total(itens) == 25\n\n\ndef test_quantidade_invalida_levanta_erro():\n    with pytest.raises(TypeError):\n        calcular_total([{\"preco\": 10, \"quantidade\": None}])"
+        },
+        {
+          "kind": "terminal",
+          "lines": [
+            "(.venv) $ pip install pytest",
+            "(.venv) $ pytest -q",
+            "..F                                     [100%]",
+            "",
+            "FAILED test_regras.py::test_quantidade_invalida_levanta_erro"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O nome do teste é documentação. `test_quantidade_invalida_levanta_erro` diz a regra; `test_1` não diz nada."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "O fluxo que vale mais a pena",
+          "text": "Quando aparecer um bug, escreva primeiro um teste que falha reproduzindo o problema. Depois corrija. O teste que falhou passa a ser a garantia de que aquele bug não volta."
+        },
+        {
+          "kind": "text",
+          "text": "O que testar primeiro, quando o tempo é curto: regra de negócio, caso de borda e bug já encontrado. Não gaste teste em getter."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um bug em produção foi corrigido com uma linha. Qual é o próximo passo mais útil?",
+          "choices": [
+            "Fazer o deploy imediatamente e seguir para a próxima tarefa",
+            "Escrever um teste que falharia com o código antigo e passa com o novo",
+            "Refatorar a função inteira, já que você está ali",
+            "Adicionar um comentário explicando o bug"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem esse teste, nada impede a correção ser desfeita em seis meses por alguém que não conhece o caso — inclusive você."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva três testes para a função `validar_quantidade` que você implementou antes: um para zero válido, um para None e um para texto.",
+        "expected": "Os três passam. Depois quebre a função de propósito e confirme que o teste acusa."
+      },
+      "ifStuck": [
+        "Nome do arquivo precisa começar com test_ para o pytest encontrar."
+      ],
+      "commonErrors": [
+        {
+          "error": "ModuleNotFoundError ao importar o módulo testado.",
+          "why": "O pytest roda da raiz do projeto e o módulo está em outra pasta sem __init__.py.",
+          "fix": "Rode `python -m pytest` da raiz, ou transforme a pasta em pacote."
+        }
+      ],
+      "exercise": {
+        "id": "ex-python-teste-borda-01",
+        "title": "Escrever o teste que faltava",
+        "kind": "structural",
+        "language": "python",
+        "estimatedMinutes": 7,
+        "prompt": "A função `media(valores)` quebra com lista vazia. Escreva um teste pytest chamado test_media_lista_vazia que verifica o comportamento esperado: levantar ValueError com mensagem clara. Use pytest.raises.",
+        "starter": "import pytest\n\nfrom estatisticas import media\n\n\n",
+        "checks": [
+          {
+            "name": "define a funcao de teste com o nome pedido",
+            "type": "contains",
+            "value": "def test_media_lista_vazia",
+            "hint": "O pytest descobre testes pelo prefixo test_."
+          },
+          {
+            "name": "usa pytest.raises",
+            "type": "contains",
+            "value": "pytest.raises",
+            "hint": "Como se verifica que uma exceção foi levantada?"
+          },
+          {
+            "name": "verifica ValueError",
+            "type": "contains",
+            "value": "ValueError",
+            "hint": "O enunciado diz qual exceção é esperada."
+          },
+          {
+            "name": "chama media com lista vazia",
+            "type": "regex",
+            "value": "media\\(\\s*\\[\\s*\\]\\s*\\)",
+            "hint": "O caso de borda é a lista vazia."
+          }
+        ],
+        "hints": [
+          "A estrutura é: with pytest.raises(ValueError): media([])",
+          "Para checar a mensagem: pytest.raises(ValueError, match=\"vazia\")"
+        ],
+        "solution": "import pytest\n\nfrom estatisticas import media\n\n\ndef test_media_lista_vazia():\n    with pytest.raises(ValueError, match=\"vazia\"):\n        media([])\n"
+      },
+      "glossary": [
+        "Teste unitário",
+        "Refatoração",
+        "Debug"
+      ]
+    },
+    {
+      "id": "python-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 4,
+      "tags": [
+        "python"
+      ],
+      "summary": "Você tem o suficiente para escrever código Python que trata dado sujo, está organizado em módulos e tem teste. É a base de tudo que vem depois.",
+      "learned": [
+        "Ambiente isolado por projeto, com requirements.txt versionado",
+        "Conversão de tipo é ponto de falha: trate explicitamente",
+        "`is None` para ausência; `not valor` rejeita zero",
+        "Consulta dentro de laço é o problema de performance mais comum",
+        "Valor padrão mutável em função é compartilhado entre chamadas",
+        "Dicionário para buscar por chave; lista para ordem",
+        "Capture só o erro que você sabe tratar",
+        "Teste primeiro a regra de negócio e o bug já encontrado"
+      ],
+      "nextUp": "Desenvolvimento web: HTML, CSS, JavaScript e a primeira integração com uma API."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-python-fundamentos",
+      "title": "Python — fundamentos",
+      "format": "alternativa",
+      "summary": "Oito questões sobre o que costuma quebrar de verdade em código Python. Leitura de código e decisão técnica, não definição decorada.",
+      "estimatedMinutes": 12,
+      "topics": [
+        "tipos",
+        "condicionais",
+        "loops",
+        "funções",
+        "listas",
+        "dicionários",
+        "exceções"
+      ],
+      "afterItemId": "python-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-py-mutavel-01",
+          "kind": "codigo",
+          "prompt": "O que este código imprime?",
+          "code": {
+            "language": "python",
+            "code": "def adicionar(item, lista=[]):\n    lista.append(item)\n    return lista\n\nprint(adicionar(\"a\"))\nprint(adicionar(\"b\"))"
+          },
+          "choices": [
+            "['a'] e ['b']",
+            "['a'] e ['a', 'b']",
+            "['a', 'b'] duas vezes",
+            "Levanta TypeError na segunda chamada"
+          ],
+          "answerIndex": 1,
+          "explanation": "O valor padrão é avaliado uma vez, na definição da função. A mesma lista é reutilizada e acumula itens entre chamadas.",
+          "topics": [
+            "funções"
+          ]
+        },
+        {
+          "id": "q-py-falsy-02",
+          "kind": "debugging",
+          "prompt": "Um formulário rejeita desconto de 0%, dizendo \"campo obrigatório\". Qual linha causa isso?",
+          "code": {
+            "language": "python",
+            "code": "def validar(desconto):\n    if not desconto:\n        return \"campo obrigatório\"\n    if desconto > 100:\n        return \"máximo 100\"\n    return None"
+          },
+          "choices": [
+            "A comparação `desconto > 100`",
+            "`if not desconto`, porque 0 é avaliado como falso",
+            "O `return None` no fim",
+            "Nada: 0 não deveria ser aceito mesmo"
+          ],
+          "answerIndex": 1,
+          "explanation": "`not 0` é True em Python. Para verificar ausência, use `if desconto is None`.",
+          "topics": [
+            "condicionais"
+          ]
+        },
+        {
+          "id": "q-py-dict-03",
+          "kind": "situacao",
+          "prompt": "Um relatório percorre 8.000 vendas e, para cada uma, procura o vendedor numa lista de 1.200 vendedores com um for. A tela leva 40 segundos. Qual mudança resolve a causa?",
+          "choices": [
+            "Aumentar o timeout da requisição",
+            "Indexar os vendedores num dicionário por id antes de percorrer as vendas",
+            "Ordenar a lista de vendedores por nome",
+            "Dividir o relatório em duas páginas"
+          ],
+          "answerIndex": 1,
+          "explanation": "São até 9,6 milhões de comparações. Com um dicionário, a busca passa a ser direta e o total cai para 8.000 operações rápidas.",
+          "wrongExplanations": {
+            "0": "Esconde o problema e mantém a tela inutilizável.",
+            "2": "Ordenar não acelera busca linear com for.",
+            "3": "Reduz pela metade um custo que deveria desaparecer."
+          },
+          "topics": [
+            "listas",
+            "dicionários"
+          ]
+        },
+        {
+          "id": "q-py-excecao-04",
+          "kind": "conceitual",
+          "prompt": "Por que `except Exception: pass` dentro de um laço de importação é considerado defeito grave?",
+          "choices": [
+            "Porque deixa a importação mais lenta",
+            "Porque descarta registros em silêncio, sem contagem nem motivo, e o dado faltando aparece muito depois",
+            "Porque `Exception` não existe em Python 3",
+            "Porque só funciona em arquivos CSV"
+          ],
+          "answerIndex": 1,
+          "explanation": "O erro não desaparece: ele passa a ser invisível. Importação precisa devolver relatório do que entrou, do que não entrou e por quê.",
+          "topics": [
+            "exceções"
+          ]
+        },
+        {
+          "id": "q-py-tipo-05",
+          "kind": "codigo",
+          "prompt": "Qual é o resultado de `\"3\" * 4` em Python?",
+          "code": {
+            "language": "python",
+            "code": "quantidade = \"3\"\nprint(quantidade * 4)"
+          },
+          "choices": [
+            "12",
+            "\"3333\"",
+            "TypeError",
+            "\"12\""
+          ],
+          "answerIndex": 1,
+          "explanation": "Texto multiplicado por inteiro repete o texto. Não há erro, e é justamente isso que torna o defeito difícil: o valor errado segue adiante.",
+          "topics": [
+            "tipos"
+          ]
+        },
+        {
+          "id": "q-py-loop-06",
+          "kind": "debugging",
+          "prompt": "Este código deveria remover os cancelados e deixa alguns para trás. Por quê?",
+          "code": {
+            "language": "python",
+            "code": "for pedido in pedidos:\n    if pedido[\"status\"] == \"cancelado\":\n        pedidos.remove(pedido)"
+          },
+          "choices": [
+            "`remove` não funciona com dicionários",
+            "A lista está sendo alterada durante o percurso, o que faz o laço pular posições",
+            "Falta converter status para minúsculas",
+            "O laço precisaria ser while"
+          ],
+          "answerIndex": 1,
+          "explanation": "Ao remover um item, os seguintes deslocam uma posição e o percurso avança por cima de um deles. A forma correta é construir uma lista nova com o que fica.",
+          "topics": [
+            "loops",
+            "listas"
+          ]
+        },
+        {
+          "id": "q-py-get-07",
+          "kind": "conceitual",
+          "prompt": "Quando é melhor deixar o `KeyError` acontecer em vez de usar `.get()`?",
+          "choices": [
+            "Nunca: `.get()` é sempre mais seguro",
+            "Quando a chave é obrigatória, porque um None silencioso quebraria mais adiante, longe da causa",
+            "Somente em código de teste",
+            "Quando o dicionário tem mais de dez chaves"
+          ],
+          "answerIndex": 1,
+          "explanation": "`.get()` em campo obrigatório troca um erro preciso por uma falha distante. Erro cedo e claro custa menos que None viajando pelo sistema.",
+          "topics": [
+            "dicionários",
+            "exceções"
+          ]
+        },
+        {
+          "id": "q-py-funcao-08",
+          "kind": "situacao",
+          "prompt": "Você precisa testar a regra de cálculo de saldo, mas ela busca os dados no banco por dentro. Qual mudança torna o teste simples?",
+          "choices": [
+            "Criar um banco de testes com os mesmos dados de produção",
+            "Fazer a função receber os dados por parâmetro e devolver o resultado, deixando a busca fora dela",
+            "Marcar o teste para rodar só no servidor",
+            "Testar pela interface, clicando na tela"
+          ],
+          "answerIndex": 1,
+          "explanation": "Separar decisão de acesso a dado é o que permite teste rápido e determinístico. O teste de integração com banco continua existindo, mas para verificar a ligação, não a regra.",
+          "topics": [
+            "funções",
+            "testes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aval-python-pratica",
+      "title": "Python — prática",
+      "format": "pratica",
+      "summary": "Duas tarefas com código rodando: corrigir uma função que engole erro e implementar um filtro com validação.",
+      "estimatedMinutes": 20,
+      "topics": [
+        "exceções",
+        "validação",
+        "funções"
+      ],
+      "afterItemId": "python-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-py-pratica-total-01",
+          "kind": "pratica",
+          "prompt": "A função abaixo calcula o total de um pedido e falha quando `quantidade` vem nula ou como texto — e às vezes falha em silêncio, produzindo total errado. Corrija: valores não numéricos devem levantar ValueError com a palavra \"inválido\" na mensagem. Lista vazia devolve 0.",
+          "language": "python",
+          "code": {
+            "language": "python",
+            "code": "def calcular_total(itens):\n    total = 0\n    for item in itens:\n        total += item[\"preco\"] * item[\"quantidade\"]\n    return total"
+          },
+          "starter": "def calcular_total(itens):\n    total = 0\n    for item in itens:\n        total += item[\"preco\"] * item[\"quantidade\"]\n    return total\n",
+          "tests": [
+            {
+              "name": "lista vazia",
+              "expression": "calcular_total([])",
+              "expected": 0
+            },
+            {
+              "name": "soma correta",
+              "expression": "calcular_total([{'preco': 10, 'quantidade': 2}, {'preco': 2.5, 'quantidade': 4}])",
+              "expected": 30
+            },
+            {
+              "name": "quantidade nula levanta erro",
+              "expression": "calcular_total([{'preco': 10, 'quantidade': None}])",
+              "expected": null,
+              "expectThrows": true
+            },
+            {
+              "name": "quantidade em texto levanta erro",
+              "expression": "calcular_total([{'preco': 10, 'quantidade': '2'}])",
+              "expected": null,
+              "expectThrows": true,
+              "hidden": true
+            },
+            {
+              "name": "campo ausente levanta erro",
+              "expression": "calcular_total([{'preco': 10}])",
+              "expected": null,
+              "expectThrows": true,
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Pense primeiro no que deve acontecer quando o valor não é um número.",
+            "Verifique os dois campos antes de multiplicar.",
+            "isinstance(valor, (int, float)) aceita bool; descarte bool explicitamente se quiser rigor."
+          ],
+          "criteria": [
+            "Lista vazia devolve 0",
+            "Soma correta para entrada válida",
+            "Valor não numérico levanta ValueError",
+            "A mensagem de erro permite identificar o problema"
+          ],
+          "topics": [
+            "exceções",
+            "validação"
+          ],
+          "solution": "def calcular_total(itens):\n    total = 0\n    for indice, item in enumerate(itens):\n        preco = item.get(\"preco\")\n        quantidade = item.get(\"quantidade\")\n        for nome, valor in ((\"preco\", preco), (\"quantidade\", quantidade)):\n            if isinstance(valor, bool) or not isinstance(valor, (int, float)):\n                raise ValueError(f\"item {indice}: {nome} inválido ({valor!r})\")\n        total += preco * quantidade\n    return total\n"
+        },
+        {
+          "id": "q-py-pratica-filtro-02",
+          "kind": "pratica",
+          "prompt": "O time de suporte precisa filtrar pedidos por status e por período. Implemente `filtrar_pedidos(pedidos, status=None, desde=None, ate=None)`. Cada pedido tem \"status\" e \"criado_em\" (texto no formato AAAA-MM-DD). Filtros ausentes não filtram. As datas são inclusivas. Status desconhecido devolve lista vazia, sem erro.",
+          "language": "python",
+          "starter": "def filtrar_pedidos(pedidos, status=None, desde=None, ate=None):\n    # escreva aqui\n    pass\n",
+          "tests": [
+            {
+              "name": "sem filtro devolve tudo",
+              "expression": "len(filtrar_pedidos([{'status':'pending','criado_em':'2026-01-10'},{'status':'done','criado_em':'2026-02-01'}]))",
+              "expected": 2
+            },
+            {
+              "name": "filtra por status",
+              "expression": "[p['status'] for p in filtrar_pedidos([{'status':'pending','criado_em':'2026-01-10'},{'status':'done','criado_em':'2026-02-01'}], status='pending')]",
+              "expected": [
+                "pending"
+              ]
+            },
+            {
+              "name": "periodo inclusivo",
+              "expression": "len(filtrar_pedidos([{'status':'a','criado_em':'2026-01-10'},{'status':'a','criado_em':'2026-01-20'}], desde='2026-01-10', ate='2026-01-20'))",
+              "expected": 2
+            },
+            {
+              "name": "fora do periodo",
+              "expression": "len(filtrar_pedidos([{'status':'a','criado_em':'2026-01-09'}], desde='2026-01-10'))",
+              "expected": 0
+            },
+            {
+              "name": "status inexistente devolve vazio",
+              "expression": "filtrar_pedidos([{'status':'a','criado_em':'2026-01-10'}], status='zzz')",
+              "expected": [],
+              "hidden": true
+            },
+            {
+              "name": "combina status e periodo",
+              "expression": "len(filtrar_pedidos([{'status':'a','criado_em':'2026-01-10'},{'status':'a','criado_em':'2026-03-01'},{'status':'b','criado_em':'2026-01-11'}], status='a', ate='2026-01-31'))",
+              "expected": 1,
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Data no formato AAAA-MM-DD pode ser comparada como texto: a ordem alfabética coincide com a cronológica.",
+            "Cada filtro é um if que só descarta quando o parâmetro foi informado.",
+            "Não levante erro para status desconhecido: o resultado correto é lista vazia."
+          ],
+          "criteria": [
+            "Filtros ausentes não filtram",
+            "Período é inclusivo nas duas pontas",
+            "Combinação de filtros funciona",
+            "Entrada inesperada não quebra"
+          ],
+          "topics": [
+            "funções",
+            "validação"
+          ],
+          "solution": "def filtrar_pedidos(pedidos, status=None, desde=None, ate=None):\n    resultado = []\n    for pedido in pedidos:\n        if status is not None and pedido.get(\"status\") != status:\n            continue\n        criado_em = pedido.get(\"criado_em\") or \"\"\n        if desde is not None and criado_em < desde:\n            continue\n        if ate is not None and criado_em > ate:\n            continue\n        resultado.append(pedido)\n    return resultado\n"
+        }
+      ]
+    }
+  ]
+}

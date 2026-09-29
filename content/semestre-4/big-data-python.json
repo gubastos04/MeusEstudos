@@ -1,0 +1,711 @@
+{
+  "id": "big-data-python",
+  "semester": 4,
+  "order": 3,
+  "title": "Processamento de dados com Python",
+  "summary": "Limpeza, agregação e pipeline com pandas, e o que fazer quando o arquivo não cabe na memória.",
+  "outcome": "Você monta um pipeline que lê dado sujo, limpa com regras explícitas, agrega e produz um relatório confiável, com registro do que foi descartado.",
+  "tags": [
+    "python",
+    "dados",
+    "pandas"
+  ],
+  "stack": [
+    "python"
+  ],
+  "items": [
+    {
+      "id": "dados-limpeza-01",
+      "type": "lesson",
+      "title": "Dado sujo: limpar sem esconder",
+      "estimatedMinutes": 10,
+      "tags": [
+        "dados"
+      ],
+      "why": "Todo dado real vem sujo. A diferença entre análise confiável e número inventado é o que você faz com as linhas problemáticas.",
+      "goal": "Limpar um conjunto de dados registrando o que foi alterado e o que foi descartado.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "import pandas as pd\n\ndados = pd.read_csv(\"vendas.csv\", encoding=\"utf-8\")\n\nprint(dados.shape)          # (linhas, colunas)\nprint(dados.dtypes)         # tipo inferido de cada coluna\nprint(dados.isna().sum())   # nulos por coluna\nprint(dados.head())"
+        },
+        {
+          "kind": "text",
+          "text": "Esses quatro comandos são o primeiro contato obrigatório. `dtypes` costuma revelar o problema: uma coluna numérica lida como texto significa que existe valor não numérico dentro."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "antes = len(dados)\n\n# converter, marcando o que não converte\ndados[\"valor\"] = pd.to_numeric(dados[\"valor\"], errors=\"coerce\")\ninvalidos = dados[\"valor\"].isna().sum()\n\n# descartar registrando\ndados = dados.dropna(subset=[\"valor\"])\n\nprint(f\"{antes} linhas lidas, {invalidos} descartadas por valor inválido\")"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Descarte silencioso é o pior defeito de um pipeline",
+          "text": "Um dropna() sem contagem pode remover 30% dos dados sem ninguém perceber. O relatório fica bonito e errado. Sempre conte antes e depois."
+        },
+        {
+          "kind": "text",
+          "text": "Decisões de limpeza são decisões de negócio, e precisam ser explícitas:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Situação",
+            "Opções",
+            "Quem decide"
+          ],
+          "rows": [
+            [
+              "valor nulo",
+              "descartar, zerar, imputar média",
+              "quem usa o relatório"
+            ],
+            [
+              "data fora do período",
+              "descartar ou investigar origem",
+              "quem conhece o processo"
+            ],
+            [
+              "duplicata",
+              "manter primeira, última, ou somar",
+              "depende do significado"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Registre as decisões junto do código. Seis meses depois, ninguém lembra por que as linhas de fevereiro foram excluídas."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um pipeline usa `dados.dropna()` no início e o relatório final mostra números menores que o esperado. Qual é a causa provável?",
+          "choices": [
+            "Erro de arredondamento",
+            "dropna() sem subset remove qualquer linha que tenha nulo em QUALQUER coluna, inclusive colunas irrelevantes",
+            "O arquivo está corrompido",
+            "Falta ordenar os dados"
+          ],
+          "answerIndex": 1,
+          "explanation": "Uma coluna opcional preenchida pela metade elimina metade das linhas. Use subset com as colunas realmente obrigatórias, e conte o que saiu."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue qualquer CSV e rode os quatro comandos de inspeção. Anote quantas linhas têm nulo em cada coluna antes de limpar qualquer coisa.",
+        "expected": "Você sabe o tamanho do problema antes de decidir o que fazer."
+      },
+      "ifStuck": [
+        "Se to_numeric falhar sem coerce, o erro mostra o valor problemático. Use isso para entender o dado."
+      ],
+      "commonErrors": [
+        {
+          "error": "Coluna numérica lida como texto.",
+          "why": "Algum valor não numérico: cabeçalho repetido, total no rodapé, traço no lugar de zero.",
+          "fix": "to_numeric com errors=\"coerce\" e inspecione as linhas que viraram nulo antes de descartar."
+        }
+      ],
+      "exercise": {
+        "id": "ex-dados-relatorio-limpeza-01",
+        "title": "Limpeza que presta contas",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `limpar(registros)` sem usar pandas. Cada registro é um dicionário com \"sku\" e \"valor\". Devolva {\"limpos\": [...], \"descartados\": N, \"motivos\": {...}}. Regras: sku vazio ou ausente descarta (motivo \"sku\"); valor não convertível para float descarta (motivo \"valor\"); valor negativo descarta (motivo \"negativo\"). Registro limpo tem valor como float.",
+        "starter": "def limpar(registros):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "lista vazia nao quebra",
+            "expression": "limpar([])",
+            "expected": {
+              "limpos": [],
+              "descartados": 0,
+              "motivos": {}
+            },
+            "expectThrows": false,
+            "hidden": false
+          },
+          {
+            "name": "registro valido",
+            "expression": "limpar([{'sku':'A1','valor':'10.5'}])",
+            "expected": {
+              "limpos": [
+                {
+                  "sku": "A1",
+                  "valor": 10.5
+                }
+              ],
+              "descartados": 0,
+              "motivos": {}
+            }
+          },
+          {
+            "name": "sku ausente",
+            "expression": "limpar([{'valor':'10'}])['motivos']",
+            "expected": {
+              "sku": 1
+            }
+          },
+          {
+            "name": "valor invalido",
+            "expression": "limpar([{'sku':'A1','valor':'abc'}])['motivos']",
+            "expected": {
+              "valor": 1
+            }
+          },
+          {
+            "name": "valor negativo",
+            "expression": "limpar([{'sku':'A1','valor':'-5'}])['motivos']",
+            "expected": {
+              "negativo": 1
+            }
+          },
+          {
+            "name": "conta total de descartados",
+            "expression": "limpar([{'sku':'','valor':'1'},{'sku':'A','valor':'x'},{'sku':'B','valor':'2'}])['descartados']",
+            "expected": 2
+          },
+          {
+            "name": "zero e valido",
+            "expression": "len(limpar([{'sku':'A1','valor':'0'}])['limpos'])",
+            "expected": 1
+          }
+        ],
+        "hints": [
+          "Verifique o sku primeiro; depois converta o valor; depois cheque o sinal.",
+          "Acumule os motivos num dicionário com contagem.",
+          "Zero é válido: a verificação é valor < 0, não `not valor`."
+        ],
+        "solution": "def limpar(registros):\n    limpos = []\n    motivos = {}\n\n    def marcar(motivo):\n        motivos[motivo] = motivos.get(motivo, 0) + 1\n\n    for registro in registros:\n        sku = (registro.get(\"sku\") or \"\").strip()\n        if not sku:\n            marcar(\"sku\")\n            continue\n        try:\n            valor = float(registro.get(\"valor\"))\n        except (TypeError, ValueError):\n            marcar(\"valor\")\n            continue\n        if valor < 0:\n            marcar(\"negativo\")\n            continue\n        limpos.append({\"sku\": sku, \"valor\": valor})\n\n    return {\n        \"limpos\": limpos,\n        \"descartados\": sum(motivos.values()),\n        \"motivos\": motivos,\n    }\n",
+        "solutionNotes": "O dicionário de motivos é o que transforma \"descartei 4.312 linhas\" em informação acionável para quem cuida do dado na origem."
+      },
+      "glossary": [
+        "Exceção",
+        "Log"
+      ]
+    },
+    {
+      "id": "dados-agregacao-escala-01",
+      "type": "lesson",
+      "title": "Agregação e arquivos que não cabem na memória",
+      "estimatedMinutes": 10,
+      "tags": [
+        "dados",
+        "performance"
+      ],
+      "why": "Agregar é o que produz relatório. E cedo ou tarde aparece o arquivo que trava o notebook.",
+      "goal": "Agrupar e agregar com pandas e processar arquivo grande em pedaços.",
+      "blocks": [
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "resumo = (\n    dados\n    .groupby(\"categoria\")\n    .agg(total=(\"valor\", \"sum\"), pedidos=(\"id\", \"count\"), ticket_medio=(\"valor\", \"mean\"))\n    .sort_values(\"total\", ascending=False)\n    .reset_index()\n)"
+        },
+        {
+          "kind": "text",
+          "text": "É o mesmo raciocínio do GROUP BY em SQL: agrupar por uma chave e aplicar funções de agregação."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Média esconde",
+          "text": "Ticket médio de R$ 180 pode ser mil vendas de R$ 100 e dez de R$ 8.000. Apresente mediana e percentis junto, ou a decisão de negócio parte de um número que não descreve ninguém."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "dados[\"valor\"].describe()   # contagem, média, desvio, mínimo, quartis, máximo"
+        },
+        {
+          "kind": "text",
+          "text": "Quando o arquivo não cabe na memória, processe em pedaços e agregue parcialmente:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "totais = {}\n\nfor pedaco in pd.read_csv(\"vendas_grande.csv\", chunksize=100_000):\n    parcial = pedaco.groupby(\"categoria\")[\"valor\"].sum()\n    for categoria, valor in parcial.items():\n        totais[categoria] = totais.get(categoria, 0) + valor"
+        },
+        {
+          "kind": "text",
+          "text": "Soma e contagem se combinam bem entre pedaços. Média não: calcule soma e contagem e divida no fim. Mediana e distinto exato não são combináveis assim."
+        },
+        {
+          "kind": "text",
+          "text": "E a alternativa mais simples de todas: se o dado está num banco, agregue no banco. Ele foi feito para isso e não carrega tudo na memória."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você processa um arquivo em pedaços e precisa da média por categoria. Qual abordagem é correta?",
+          "choices": [
+            "Calcular a média de cada pedaço e tirar a média das médias",
+            "Acumular soma e contagem por categoria e dividir no final",
+            "Processar só o primeiro pedaço e extrapolar",
+            "Carregar o arquivo inteiro: não há alternativa"
+          ],
+          "answerIndex": 1,
+          "explanation": "Média de médias só coincide quando todos os pedaços têm o mesmo número de itens por categoria, o que não acontece. Soma e contagem são combináveis.",
+          "topics": [
+            "dados"
+          ]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa base qualquer, calcule média e mediana da mesma coluna. Veja a diferença e pense no que cada uma diria para quem decide.",
+        "expected": "Você consegue explicar em uma frase por que as duas diferem naquele conjunto."
+      },
+      "ifStuck": [
+        "describe() mostra média e mediana (50%) lado a lado."
+      ],
+      "commonErrors": [
+        {
+          "error": "Média de médias em processamento por pedaços.",
+          "why": "Cada pedaço tem peso diferente.",
+          "fix": "Some os valores e as contagens; divida uma vez, no fim."
+        }
+      ],
+      "glossary": [
+        "Performance",
+        "Query",
+        "sql"
+      ]
+    },
+    {
+      "id": "dados-pipeline-idempotente-01",
+      "type": "lesson",
+      "title": "Pipeline que pode rodar de novo",
+      "estimatedMinutes": 10,
+      "tags": [
+        "dados",
+        "arquitetura"
+      ],
+      "why": "Todo pipeline falha no meio em algum momento. O que decide se isso é um susto ou um problema é poder rodar de novo sem duplicar nada.",
+      "goal": "Escrever uma etapa que produz o mesmo resultado ao ser executada duas vezes.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Idempotente quer dizer: rodar uma vez ou cinco vezes dá o mesmo resultado final."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# não é idempotente: roda de novo, soma de novo\nbanco.executar(\"INSERT INTO resumo_diario (dia, total) VALUES (%s, %s)\", (dia, total))\n\n# é idempotente: o resultado final é o mesmo em qualquer execução\nbanco.executar(\n    \"INSERT INTO resumo_diario (dia, total) VALUES (%s, %s) \"\n    \"ON CONFLICT (dia) DO UPDATE SET total = EXCLUDED.total\",\n    (dia, total),\n)"
+        },
+        {
+          "kind": "text",
+          "text": "A chave da diferença é a restrição de unicidade em `dia`. Sem ela, o banco não tem como saber que aquela linha já existe."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Processar \"tudo desde a última vez\" não é idempotente",
+          "text": "Se o pipeline falhar depois de gravar e antes de marcar o progresso, a próxima execução reprocessa o mesmo intervalo — e soma duas vezes. Prefira recalcular um período fechado a acumular sobre o que já existe."
+        },
+        {
+          "kind": "text",
+          "text": "A regra prática: **recalcule a partir da origem em vez de somar ao que já está lá.**"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# frágil: depende de quantas vezes rodou\nresumo.total += total_do_lote\n\n# estável: o valor vem sempre dos dados de origem\nresumo.total = soma_das_vendas_do_dia(dia)"
+        },
+        {
+          "kind": "text",
+          "text": "O mesmo vale para arquivos: escreva num nome temporário e renomeie no fim. Renomear é atômico, então ninguém lê um arquivo pela metade."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "temporario = destino.with_suffix(\".parcial\")\n\nwith open(temporario, \"w\", encoding=\"utf-8\") as arquivo:\n    escrever_resultado(arquivo)\n\ntemporario.replace(destino)   # só agora o arquivo final existe"
+        },
+        {
+          "kind": "quiz",
+          "question": "Um pipeline diário falhou na metade e foi executado de novo. O relatório saiu com valores maiores que a realidade. Qual é a causa mais provável?",
+          "choices": [
+            "O arquivo de origem estava duplicado",
+            "A etapa soma ao valor existente em vez de recalcular o período, então a segunda execução contou de novo o que já tinha entrado",
+            "O banco estava lento",
+            "Faltou índice na tabela de resumo"
+          ],
+          "answerIndex": 1,
+          "explanation": "Valor maior depois de reexecução é a assinatura da etapa que acumula. Recalcular o período inteiro, ou gravar com chave única e atualizar, faz a segunda execução chegar no mesmo número."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma rotina de processamento que você tenha e responda: se eu rodar agora duas vezes seguidas, o resultado muda? Se mudar, qual etapa causa isso?",
+        "expected": "A etapa que acumula ou insere sem chave única é a responsável."
+      },
+      "ifStuck": [
+        "Procure por `+=`, `INSERT` sem chave única e \"processar desde a última execução\".",
+        "Pergunte de onde vem o valor: da origem ou do que já estava gravado?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Marcar o progresso antes de gravar o resultado.",
+          "why": "Se a gravação falhar, o intervalo fica marcado como processado e o dado nunca entra.",
+          "fix": "Grave o resultado primeiro e marque o progresso depois, de preferência na mesma transação."
+        }
+      ],
+      "exercise": {
+        "id": "ex-dados-consolidar-01",
+        "title": "Consolidar sem duplicar",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `consolidar(resumo, lote)`. `resumo` é um dicionário dia -> total já gravado, e `lote` é uma lista de {'dia', 'valor', 'venda_id'}. Devolva um NOVO dicionário com o total por dia, ignorando vendas com venda_id repetido dentro do lote. O valor de cada dia presente no lote é SUBSTITUÍDO, não somado ao que havia em `resumo`; dias ausentes do lote permanecem como estavam.",
+        "starter": "def consolidar(resumo, lote):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "lote vazio mantem o resumo",
+            "expression": "consolidar({'2026-03-01': 100}, [])",
+            "expected": {
+              "2026-03-01": 100
+            }
+          },
+          {
+            "name": "substitui o dia do lote",
+            "expression": "consolidar({'2026-03-01': 100}, [{'dia': '2026-03-01', 'valor': 30, 'venda_id': 'v1'}])",
+            "expected": {
+              "2026-03-01": 30
+            }
+          },
+          {
+            "name": "dia fora do lote permanece",
+            "expression": "consolidar({'2026-03-01': 100, '2026-03-02': 50}, [{'dia': '2026-03-02', 'valor': 70, 'venda_id': 'v1'}])",
+            "expected": {
+              "2026-03-01": 100,
+              "2026-03-02": 70
+            }
+          },
+          {
+            "name": "ignora venda repetida no lote",
+            "expression": "consolidar({}, [{'dia': '2026-03-01', 'valor': 10, 'venda_id': 'v1'}, {'dia': '2026-03-01', 'valor': 10, 'venda_id': 'v1'}])",
+            "expected": {
+              "2026-03-01": 10
+            }
+          },
+          {
+            "name": "soma vendas distintas do mesmo dia",
+            "expression": "consolidar({}, [{'dia': '2026-03-01', 'valor': 10, 'venda_id': 'v1'}, {'dia': '2026-03-01', 'valor': 5, 'venda_id': 'v2'}])",
+            "expected": {
+              "2026-03-01": 15
+            }
+          },
+          {
+            "name": "rodar duas vezes da o mesmo resultado",
+            "expression": "consolidar(consolidar({}, [{'dia': '2026-03-01', 'valor': 10, 'venda_id': 'v1'}]), [{'dia': '2026-03-01', 'valor': 10, 'venda_id': 'v1'}])",
+            "expected": {
+              "2026-03-01": 10
+            }
+          },
+          {
+            "name": "nao altera o resumo recebido",
+            "expression": "(lambda r: (consolidar(r, [{'dia': '2026-03-01', 'valor': 99, 'venda_id': 'v1'}]), r)[1])({'2026-03-01': 100})",
+            "expected": {
+              "2026-03-01": 100
+            }
+          }
+        ],
+        "hints": [
+          "Comece copiando o resumo: o original não pode ser alterado.",
+          "Um conjunto com os venda_id já vistos resolve a repetição dentro do lote.",
+          "Some os valores do lote num dicionário separado e só então substitua os dias no resultado."
+        ],
+        "solution": "def consolidar(resumo, lote):\n    resultado = dict(resumo)\n\n    vistos = set()\n    totais_do_lote = {}\n\n    for venda in lote:\n        venda_id = venda.get(\"venda_id\")\n        if venda_id in vistos:\n            continue\n        vistos.add(venda_id)\n\n        dia = venda[\"dia\"]\n        totais_do_lote[dia] = totais_do_lote.get(dia, 0) + venda[\"valor\"]\n\n    # Substituir, e nao somar ao que havia: e isso que torna a etapa repetivel.\n    for dia, total in totais_do_lote.items():\n        resultado[dia] = total\n\n    return resultado\n",
+        "solutionNotes": "O teste \"rodar duas vezes dá o mesmo resultado\" é o que vale a pena copiar para o seu projeto: ele descreve a propriedade, não o passo a passo."
+      },
+      "glossary": [
+        "transacao",
+        "indice",
+        "fila",
+        "Log"
+      ]
+    },
+    {
+      "id": "dados-juntar-fontes-01",
+      "type": "lesson",
+      "title": "Juntar duas fontes sem perder linha",
+      "estimatedMinutes": 10,
+      "tags": [
+        "dados"
+      ],
+      "why": "Cruzar planilha com banco é tarefa semanal em qualquer empresa. E o jeito errado de juntar descarta linhas em silêncio, o que produz relatório menor que a realidade.",
+      "goal": "Escolher o tipo de junção pelo que não pode ser perdido e sempre contar o que sobrou de fora.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Juntar duas fontes por uma chave tem quatro resultados possíveis, e a escolha muda o número final:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Junção",
+            "Mantém",
+            "Quando usar"
+          ],
+          "rows": [
+            [
+              "interna",
+              "só quem existe nos dois",
+              "quando a ausência invalida a linha"
+            ],
+            [
+              "à esquerda",
+              "tudo da esquerda",
+              "quando a esquerda é a verdade"
+            ],
+            [
+              "à direita",
+              "tudo da direita",
+              "raro; inverta os lados"
+            ],
+            [
+              "externa",
+              "tudo dos dois",
+              "conferência e auditoria"
+            ]
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Junção interna descarta em silêncio",
+          "text": "Se 3% dos SKUs da planilha não existem no cadastro, a junção interna simplesmente não devolve essas linhas. O relatório sai menor e nada avisa."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "antes = len(vendas)\n\njuntado = vendas.merge(produtos, on=\"sku\", how=\"left\", indicator=True)\n\nsem_cadastro = (juntado[\"_merge\"] == \"left_only\").sum()\nprint(f\"{antes} vendas, {sem_cadastro} sem produto cadastrado\")"
+        },
+        {
+          "kind": "text",
+          "text": "`indicator=True` cria uma coluna dizendo de qual lado veio cada linha. É o que transforma \"sumiu\" em \"sumiram 412, e são estas\"."
+        },
+        {
+          "kind": "text",
+          "text": "O outro erro cresce em vez de encolher: chave repetida do lado direito multiplica as linhas."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "vendas:    1 venda do SKU A1\nprodutos:  2 linhas do SKU A1 (cadastro duplicado)\n\nresultado: 2 linhas para uma venda\n           → o total dobra"
+        },
+        {
+          "kind": "text",
+          "text": "Por isso vale conferir a unicidade antes de juntar, e não depois de o relatório sair errado:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "repetidos = produtos[\"sku\"].duplicated().sum()\nif repetidos:\n    raise ValueError(f\"{repetidos} SKUs repetidos no cadastro: a junção multiplicaria linhas\")"
+        },
+        {
+          "kind": "quiz",
+          "question": "Depois de cruzar vendas com o cadastro de produtos, o total de vendas ficou maior que o do sistema de origem. Qual é a causa mais provável?",
+          "choices": [
+            "A junção deveria ser interna",
+            "A chave se repete no cadastro, e cada venda casou com mais de uma linha de produto",
+            "Faltou converter a coluna de valor para número",
+            "O arquivo de vendas estava duplicado"
+          ],
+          "answerIndex": 1,
+          "explanation": "Junção que aumenta o total aponta para chave repetida do lado direito. Junção que diminui aponta para junção interna descartando o que não casou. O sentido da diferença já diz onde procurar."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa junção que você já fez, conte as linhas antes e depois. Se o número mudou, explique por quê antes de seguir.",
+        "expected": "Toda diferença tem explicação: ou descartou, ou multiplicou."
+      },
+      "ifStuck": [
+        "Diminuiu: junção interna descartando quem não casou.",
+        "Aumentou: chave repetida do outro lado."
+      ],
+      "commonErrors": [
+        {
+          "error": "Juntar por coluna de texto sem normalizar.",
+          "why": "\"A1 \" e \"a1\" não casam, e as linhas somem na junção interna.",
+          "fix": "Normalize os dois lados antes: remova espaços e padronize maiúsculas."
+        }
+      ],
+      "exercise": {
+        "id": "ex-dados-juntar-01",
+        "title": "Junção que presta contas",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `juntar(vendas, produtos)` sem usar pandas. `vendas` tem 'sku' e 'valor'; `produtos` tem 'sku' e 'nome'. Devolva {'linhas': [...], 'sem_cadastro': N}. Toda venda entra em 'linhas' (junção à esquerda), com 'nome' preenchido ou None. Compare SKUs sem diferenciar maiúsculas e ignorando espaços nas pontas. SKU repetido em produtos usa o primeiro e não multiplica linhas.",
+        "starter": "def juntar(vendas, produtos):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          {
+            "name": "listas vazias",
+            "expression": "juntar([], [])",
+            "expected": {
+              "linhas": [],
+              "sem_cadastro": 0
+            }
+          },
+          {
+            "name": "venda com cadastro",
+            "expression": "juntar([{'sku': 'A1', 'valor': 10}], [{'sku': 'A1', 'nome': 'Caneta'}])",
+            "expected": {
+              "linhas": [
+                {
+                  "sku": "A1",
+                  "valor": 10,
+                  "nome": "Caneta"
+                }
+              ],
+              "sem_cadastro": 0
+            }
+          },
+          {
+            "name": "venda sem cadastro nao some",
+            "expression": "juntar([{'sku': 'Z9', 'valor': 10}], [{'sku': 'A1', 'nome': 'Caneta'}])",
+            "expected": {
+              "linhas": [
+                {
+                  "sku": "Z9",
+                  "valor": 10,
+                  "nome": null
+                }
+              ],
+              "sem_cadastro": 1
+            }
+          },
+          {
+            "name": "compara ignorando caixa e espaco",
+            "expression": "juntar([{'sku': ' a1 ', 'valor': 10}], [{'sku': 'A1', 'nome': 'Caneta'}])['linhas'][0]['nome']",
+            "expected": "Caneta"
+          },
+          {
+            "name": "sku repetido no cadastro nao multiplica",
+            "expression": "len(juntar([{'sku': 'A1', 'valor': 10}], [{'sku': 'A1', 'nome': 'Primeiro'}, {'sku': 'A1', 'nome': 'Segundo'}])['linhas'])",
+            "expected": 1
+          },
+          {
+            "name": "sku repetido usa o primeiro",
+            "expression": "juntar([{'sku': 'A1', 'valor': 10}], [{'sku': 'A1', 'nome': 'Primeiro'}, {'sku': 'A1', 'nome': 'Segundo'}])['linhas'][0]['nome']",
+            "expected": "Primeiro"
+          },
+          {
+            "name": "nenhuma venda desaparece",
+            "expression": "len(juntar([{'sku': 'A1', 'valor': 1}, {'sku': 'Z9', 'valor': 2}, {'sku': 'B2', 'valor': 3}], [{'sku': 'A1', 'nome': 'x'}])['linhas'])",
+            "expected": 3
+          }
+        ],
+        "hints": [
+          "Normalize a chave numa função só, usada dos dois lados.",
+          "Monte o índice de produtos com setdefault para o primeiro vencer.",
+          "Toda venda entra no resultado: o que muda é o nome estar preenchido ou não."
+        ],
+        "solution": "def _chave(valor):\n    return str(valor or \"\").strip().lower()\n\n\ndef juntar(vendas, produtos):\n    por_sku = {}\n    for produto in produtos:\n        # setdefault: o primeiro cadastro vence e a linha nao se multiplica.\n        por_sku.setdefault(_chave(produto.get(\"sku\")), produto.get(\"nome\"))\n\n    linhas = []\n    sem_cadastro = 0\n\n    for venda in vendas:\n        nome = por_sku.get(_chave(venda.get(\"sku\")))\n        if nome is None:\n            sem_cadastro += 1\n        linhas.append({\"sku\": venda.get(\"sku\"), \"valor\": venda.get(\"valor\"), \"nome\": nome})\n\n    return {\"linhas\": linhas, \"sem_cadastro\": sem_cadastro}\n",
+        "solutionNotes": "Devolver `sem_cadastro` junto com o resultado é o ponto do exercício: quem usa a função fica sabendo que existe dado sem correspondência, sem precisar conferir."
+      },
+      "glossary": [
+        "sql",
+        "Query",
+        "chave-estrangeira",
+        "normalizacao"
+      ]
+    },
+    {
+      "id": "dados-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "dados"
+      ],
+      "summary": "Você monta um pipeline honesto: inspeciona, limpa com regra explícita, presta contas do descarte e agrega sem estourar a memória.",
+      "learned": [
+        "shape, dtypes, isna e head antes de qualquer transformação",
+        "Coluna numérica como texto indica valor estranho dentro",
+        "dropna() sem subset remove linha por nulo em qualquer coluna",
+        "Todo descarte precisa de contagem e motivo",
+        "Média esconde distribuição: mostre mediana também",
+        "Em pedaços: soma e contagem combinam; média não"
+      ],
+      "nextUp": "Cloud, IoT e eventos."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-dados-pipeline",
+      "title": "Pipeline de dados",
+      "format": "alternativa",
+      "summary": "Quatro decisões que separam relatório confiável de número inventado.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "limpeza",
+        "agregação"
+      ],
+      "afterItemId": "dados-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-dados-dropna-01",
+          "kind": "debugging",
+          "prompt": "Um pipeline com `dados.dropna()` no início produz relatórios com metade do volume esperado. Por quê?",
+          "choices": [
+            "O arquivo está truncado",
+            "dropna() sem subset descarta qualquer linha com nulo em qualquer coluna, inclusive colunas opcionais",
+            "O encoding está errado",
+            "A leitura precisa de chunksize"
+          ],
+          "answerIndex": 1,
+          "explanation": "Uma coluna opcional preenchida pela metade elimina metade das linhas, silenciosamente.",
+          "topics": [
+            "limpeza"
+          ]
+        },
+        {
+          "id": "q-dados-media-02",
+          "kind": "situacao",
+          "prompt": "Ao processar um arquivo em pedaços, você precisa da média por categoria. Qual abordagem dá o resultado correto?",
+          "choices": [
+            "Média das médias de cada pedaço",
+            "Acumular soma e contagem por categoria e dividir no fim",
+            "Usar a mediana em vez da média",
+            "Processar apenas o maior pedaço"
+          ],
+          "answerIndex": 1,
+          "explanation": "Média de médias ignora o peso de cada pedaço. Soma e contagem são agregações combináveis.",
+          "topics": [
+            "agregação"
+          ]
+        },
+        {
+          "id": "q-dados-tipo-03",
+          "kind": "debugging",
+          "prompt": "A coluna \"valor\" foi lida como texto (object) em vez de número. O que isso indica?",
+          "choices": [
+            "Que o arquivo está corrompido",
+            "Que existe pelo menos um valor não numérico na coluna: traço, texto, total no rodapé ou cabeçalho repetido",
+            "Que falta definir o encoding",
+            "Que o arquivo é grande demais"
+          ],
+          "answerIndex": 1,
+          "explanation": "A inferência de tipo cai para texto quando algum valor não converte. Vale inspecionar quais linhas antes de descartar.",
+          "topics": [
+            "limpeza"
+          ]
+        },
+        {
+          "id": "q-dados-media-esconde-04",
+          "kind": "conceitual",
+          "prompt": "Por que apresentar apenas a média em um relatório de vendas pode induzir a erro?",
+          "choices": [
+            "Porque a média é difícil de calcular",
+            "Porque valores extremos deslocam a média, que pode não representar nenhum caso típico",
+            "Porque a média só funciona com números inteiros",
+            "Porque a média exige ordenação"
+          ],
+          "answerIndex": 1,
+          "explanation": "Mediana e percentis mostram a distribuição. Decisão tomada só pela média costuma mirar um cliente que não existe.",
+          "topics": [
+            "agregação"
+          ]
+        }
+      ]
+    }
+  ]
+}

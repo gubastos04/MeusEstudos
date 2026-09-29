@@ -1,0 +1,409 @@
+{
+  "projects": [
+    {
+      "id": "proj-agendamento",
+      "title": "Plataforma de agendamento",
+      "summary": "Reservas com disponibilidade, conflito de horário, cancelamento e notificações. O projeto que ensina regra de negócio de verdade.",
+      "problem": "Negócios que agendam por WhatsApp perdem horário, marcam duas pessoas no mesmo slot e não têm registro de cancelamento. O problema central é impedir conflito quando duas pessoas tentam reservar o mesmo horário ao mesmo tempo — o que exige tratar concorrência, e não apenas validar antes de gravar.",
+      "difficulty": "avancado",
+      "stack": ["python", "fastapi", "postgresql", "sql", "javascript", "docker"],
+      "features": [
+        "Cadastro de profissionais e serviços com duração",
+        "Janelas de disponibilidade por dia da semana",
+        "Bloqueios pontuais (férias, feriado)",
+        "Busca de horários livres",
+        "Reserva com verificação de conflito",
+        "Cancelamento com prazo mínimo",
+        "Notificação de confirmação e lembrete",
+        "Histórico de reservas",
+        "API e testes"
+      ],
+      "architectureNotes": "A verificação de conflito não pode ser apenas uma consulta seguida de inserção: duas requisições simultâneas passariam pelas duas. A garantia precisa estar no banco, com restrição de exclusão por intervalo ou bloqueio explícito no momento da reserva. Notificações saem da requisição e vão para processamento em segundo plano.",
+      "steps": [
+        {
+          "id": "agend-etapa-1",
+          "order": 1,
+          "title": "Regras de agendamento",
+          "goal": "Escrever as regras antes de modelar: elas definem o modelo.",
+          "estimatedMinutes": 90,
+          "tasks": [
+            "Definir duração dos serviços e intervalo entre atendimentos",
+            "Definir como a disponibilidade é declarada",
+            "Definir prazo mínimo para agendar e para cancelar",
+            "Listar os casos de conflito possíveis",
+            "Decidir o comportamento em cada conflito"
+          ],
+          "deliverable": "REQUISITOS.md com as regras e os casos de conflito.",
+          "acceptance": [
+            "Os casos de sobreposição parcial estão previstos, não só o horário idêntico",
+            "Há decisão explícita sobre fuso horário"
+          ],
+          "tips": ["Sobreposição parcial é o caso esquecido: um serviço de 1h às 10h conflita com outro às 10h30."],
+          "moduleIds": ["uml", "matematica-logica"]
+        },
+        {
+          "id": "agend-etapa-2",
+          "order": 2,
+          "title": "Modelo e disponibilidade",
+          "goal": "Modelar e implementar a geração de horários livres.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Modelar profissional, servico, disponibilidade, bloqueio, reserva",
+            "Guardar horários com fuso explícito",
+            "Implementar a função que gera os slots livres de um dia",
+            "Testar a geração com casos de borda: dia sem disponibilidade, bloqueio parcial"
+          ],
+          "deliverable": "Função pura que recebe disponibilidade, bloqueios e reservas e devolve os horários livres.",
+          "acceptance": [
+            "A função não acessa banco: recebe tudo por parâmetro",
+            "Existem testes para dia cheio, dia vazio e bloqueio no meio"
+          ],
+          "tips": ["Essa função é o coração do projeto. Ela precisa ser testável sem infraestrutura."],
+          "moduleIds": ["python-aplicado", "estrutura-dados", "banco-dados"]
+        },
+        {
+          "id": "agend-etapa-3",
+          "order": 3,
+          "title": "Reserva sem conflito",
+          "goal": "Garantir que dois pedidos simultâneos não reservem o mesmo horário.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Endpoint de reserva com validação das regras",
+            "Garantia de exclusividade no banco",
+            "Tratamento do conflito devolvendo 409 com mensagem útil",
+            "Teste de concorrência: duas reservas simultâneas, uma falha"
+          ],
+          "deliverable": "Reserva confiável mesmo sob requisições simultâneas.",
+          "acceptance": [
+            "A garantia está no banco, não apenas no código da aplicação",
+            "Existe teste que dispara duas reservas concorrentes e verifica que só uma passa",
+            "Conflito devolve 409, não 500"
+          ],
+          "tips": ["Verificar e depois inserir, sem proteção, é a definição do problema de concorrência."],
+          "moduleIds": ["banco-dados", "software-seguro"]
+        },
+        {
+          "id": "agend-etapa-4",
+          "order": 4,
+          "title": "Cancelamento e notificações",
+          "goal": "Cancelar com regra de prazo e avisar sem travar a requisição.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Cancelamento respeitando prazo mínimo",
+            "Liberação do horário ao cancelar",
+            "Envio de confirmação fora da requisição",
+            "Registro do que foi enviado, com tratamento de falha e retentativa limitada"
+          ],
+          "deliverable": "Cancelamento funcionando e notificação assíncrona com registro.",
+          "acceptance": [
+            "O envio não acontece dentro da requisição de reserva",
+            "Falha no envio não perde a reserva",
+            "Reenvio não gera aviso duplicado para a pessoa"
+          ],
+          "tips": ["Idempotência aqui evita o cliente receber três confirmações do mesmo agendamento."],
+          "moduleIds": ["cloud-iot", "comunicacao-aplicacoes"]
+        },
+        {
+          "id": "agend-etapa-5",
+          "order": 5,
+          "title": "Interface, testes e publicação",
+          "goal": "Fechar com tela usável, testes e deploy.",
+          "estimatedMinutes": 180,
+          "tasks": [
+            "Tela de busca de horários e reserva, usável no celular",
+            "Estados tratados: carregando, vazio, erro, conflito",
+            "Autenticação e permissões",
+            "Suíte de testes e CI",
+            "Deploy e README"
+          ],
+          "deliverable": "Plataforma publicada, com dados de demonstração.",
+          "acceptance": [
+            "A tela funciona em 360px",
+            "Conflito é comunicado de forma compreensível",
+            "Instruções do README testadas"
+          ],
+          "tips": ["Mensagem de conflito precisa dizer o que fazer: \"esse horário acabou de ser reservado, veja os próximos livres\"."],
+          "moduleIds": ["usabilidade", "engenharia-software", "computacao-nuvem"]
+        }
+      ],
+      "portfolio": {
+        "readmeOutline": [
+          "O que a plataforma faz",
+          "O problema de agendar por mensagem",
+          "Captura de tela da busca de horários",
+          "Stack e escolhas",
+          "Como o conflito de horário é evitado (a parte técnica interessante)",
+          "Funcionalidades",
+          "Como rodar e testar",
+          "Variáveis de ambiente",
+          "Link do deploy",
+          "Limitações"
+        ],
+        "linkedinDraft": "Publiquei uma plataforma de agendamento com disponibilidade, reservas, cancelamento e notificações.\n\nO problema mais interessante não foi a tela: foi impedir que duas pessoas reservassem o mesmo horário. A primeira versão consultava se o horário estava livre e depois inseria a reserva — o que funciona nos testes manuais e falha quando duas requisições chegam juntas. Movi a garantia para o banco e escrevi um teste que dispara as duas reservas ao mesmo tempo para provar que só uma passa.\n\nStack: Python, FastAPI, PostgreSQL, com notificações processadas fora da requisição.",
+        "qualityChecklist": [
+          "Teste de concorrência existe e passa",
+          "Conflito devolve 409 com mensagem útil",
+          "Fuso horário tratado explicitamente",
+          "Notificações fora da requisição, sem duplicar",
+          "README explica a solução de conflito",
+          "Deploy com dados de demonstração"
+        ]
+      }
+    },
+    {
+      "id": "proj-documentos",
+      "title": "Sistema de processamento de documentos",
+      "summary": "Upload, fila de processamento, status, tratamento de erro e armazenamento. O projeto que ensina trabalho assíncrono.",
+      "problem": "Sistemas que processam arquivo dentro da requisição travam com arquivo grande, estouram timeout e perdem o trabalho quando algo falha no meio. A solução é separar recebimento de processamento, com status consultável e possibilidade de reprocessar o que falhou.",
+      "difficulty": "avancado",
+      "stack": ["python", "fastapi", "postgresql", "docker", "javascript"],
+      "features": [
+        "Upload com validação de tipo e tamanho",
+        "Armazenamento fora do disco da aplicação",
+        "Fila de processamento",
+        "Status consultável: recebido, processando, concluído, falhou",
+        "Extração de dados do documento",
+        "Reprocessamento de falhas",
+        "Log por etapa",
+        "Autenticação e isolamento por usuário",
+        "API e testes"
+      ],
+      "architectureNotes": "O upload grava o arquivo e registra a tarefa, respondendo 202. Um processador consome a fila. Cada documento tem estado explícito e registro de tentativas. Falha não some: o documento fica em estado de falha, com motivo, e pode ser reprocessado.",
+      "steps": [
+        {
+          "id": "doc-etapa-1",
+          "order": 1,
+          "title": "Upload seguro",
+          "goal": "Receber arquivo com todas as validações antes de qualquer processamento.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Limite de tamanho e lista de tipos permitidos",
+            "Nome de arquivo gerado pelo sistema, nunca o recebido",
+            "Armazenamento fora da pasta da aplicação",
+            "Registro do documento com estado inicial",
+            "Resposta 202 imediata"
+          ],
+          "deliverable": "Endpoint de upload que responde rápido e guarda o arquivo com segurança.",
+          "acceptance": [
+            "Nome com sequência de diretório é recusado",
+            "Arquivo acima do limite é recusado antes de ser gravado por inteiro",
+            "O endpoint responde sem processar o conteúdo"
+          ],
+          "tips": ["Extensão não prova conteúdo. Verifique a assinatura do arquivo se ele será servido de volta."],
+          "moduleIds": ["software-seguro", "python-aplicado"]
+        },
+        {
+          "id": "doc-etapa-2",
+          "order": 2,
+          "title": "Fila e processamento",
+          "goal": "Processar fora da requisição, com estado visível.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Estrutura de fila (tabela de tarefas já resolve)",
+            "Processador que consome e atualiza o estado",
+            "Transição de estados com registro de data",
+            "Endpoint de consulta de status"
+          ],
+          "deliverable": "Documento que muda de estado até concluir, consultável pela API.",
+          "acceptance": [
+            "O estado é sempre consultável, em qualquer momento do processo",
+            "Um processador que morre no meio não deixa documento preso em processando para sempre"
+          ],
+          "tips": ["Guarde o momento em que o processamento começou: é como você detecta tarefa travada."],
+          "moduleIds": ["cloud-iot", "banco-dados"]
+        },
+        {
+          "id": "doc-etapa-3",
+          "order": 3,
+          "title": "Erros e reprocessamento",
+          "goal": "Falha visível, com motivo e caminho de recuperação.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Registro do motivo da falha por documento",
+            "Limite de tentativas automáticas",
+            "Endpoint de reprocessamento manual",
+            "Listagem dos documentos em falha"
+          ],
+          "deliverable": "Painel de falhas com possibilidade de reprocessar.",
+          "acceptance": [
+            "Nenhuma falha desaparece em silêncio",
+            "Reprocessar um documento já concluído não duplica o resultado",
+            "O motivo da falha é compreensível para quem opera"
+          ],
+          "tips": ["Tentativa infinita trava a fila. Limite e mova para estado de falha."],
+          "moduleIds": ["cloud-iot", "software-seguro"]
+        },
+        {
+          "id": "doc-etapa-4",
+          "order": 4,
+          "title": "Interface, testes e publicação",
+          "goal": "Fechar com tela de acompanhamento, testes e deploy.",
+          "estimatedMinutes": 180,
+          "tasks": [
+            "Tela de envio com progresso e lista com estado de cada documento",
+            "Atualização do estado na tela sem recarregar",
+            "Isolamento por usuário em todos os endpoints",
+            "Testes de upload inválido, processamento e falha",
+            "Deploy e README"
+          ],
+          "deliverable": "Sistema publicado com fluxo completo funcionando.",
+          "acceptance": [
+            "Usuário não acessa documento de outro",
+            "A tela comunica claramente cada estado",
+            "Testes cobrem o caminho de falha, não só o de sucesso"
+          ],
+          "tips": ["Consulta periódica simples já resolve a atualização de estado; não comece por tecnologia de tempo real."],
+          "moduleIds": ["usabilidade", "engenharia-software", "computacao-nuvem"]
+        }
+      ],
+      "portfolio": {
+        "readmeOutline": [
+          "O que o sistema faz",
+          "Por que processar fora da requisição",
+          "Captura de tela da lista de documentos",
+          "Arquitetura: upload, fila, processador",
+          "Estados e transições",
+          "Como rodar e testar",
+          "Variáveis de ambiente",
+          "Link do deploy",
+          "Limitações"
+        ],
+        "linkedinDraft": "Publiquei um sistema de processamento de documentos com upload, fila, acompanhamento de status e reprocessamento de falhas.\n\nO que eu aprendi de mais concreto foi separar recebimento de processamento. Na primeira versão o arquivo era processado dentro da requisição: com arquivo grande, a requisição estourava o tempo limite e o trabalho se perdia sem deixar rastro. Agora o upload responde 202, o processamento acontece fora, e cada documento tem estado consultável com motivo registrado em caso de falha.\n\nStack: Python, FastAPI, PostgreSQL e armazenamento de objetos.",
+        "qualityChecklist": [
+          "Upload valida tipo, tamanho e nome",
+          "Nenhum arquivo é gravado com o nome recebido do usuário",
+          "Estados consultáveis e documentados",
+          "Falha registrada com motivo, com reprocessamento",
+          "Isolamento por usuário testado",
+          "README explica a arquitetura assíncrona"
+        ]
+      }
+    },
+    {
+      "id": "proj-dashboard",
+      "title": "Dashboard operacional",
+      "summary": "Painel com filtros, agregações e gráficos sobre volume real de dados, com foco em performance.",
+      "problem": "Painéis feitos sem cuidado com volume funcionam na demonstração e travam com dado real. O objetivo aqui é construir um painel que responde rápido com centenas de milhares de registros, o que obriga a agregar no banco, indexar corretamente e paginar.",
+      "difficulty": "intermediario",
+      "stack": ["python", "fastapi", "postgresql", "sql", "javascript"],
+      "features": [
+        "Geração de massa de dados realista",
+        "Indicadores agregados por período",
+        "Filtros combináveis",
+        "Série temporal para gráfico",
+        "Listagem paginada com ordenação",
+        "Medição de tempo de resposta",
+        "Índices dimensionados a partir das consultas reais",
+        "API e testes"
+      ],
+      "architectureNotes": "Toda agregação acontece no banco. A API devolve dados prontos para exibição, com paginação obrigatória. Os índices são criados a partir do plano de execução das consultas reais, e o projeto registra o antes e o depois de cada otimização.",
+      "steps": [
+        {
+          "id": "dash-etapa-1",
+          "order": 1,
+          "title": "Massa de dados e medição inicial",
+          "goal": "Ter volume realista antes de escrever qualquer consulta.",
+          "estimatedMinutes": 90,
+          "tasks": [
+            "Script que gera pelo menos 300 mil registros com distribuição realista",
+            "Consulta inicial sem nenhum índice além das chaves",
+            "Medição do tempo e registro do plano de execução"
+          ],
+          "deliverable": "Base populada e uma medição inicial registrada.",
+          "acceptance": [
+            "Os dados têm distribuição variada, não valores idênticos",
+            "O tempo e o plano iniciais estão registrados no repositório"
+          ],
+          "tips": ["Sem volume, nenhuma decisão de performance faz sentido. Comece por aqui."],
+          "moduleIds": ["banco-dados", "big-data-python"]
+        },
+        {
+          "id": "dash-etapa-2",
+          "order": 2,
+          "title": "Indicadores e filtros",
+          "goal": "Agregações corretas e rápidas, com filtros combináveis.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Endpoints de indicadores agregados por período",
+            "Filtros opcionais e combinados, parametrizados",
+            "Série temporal agrupada por dia ou mês",
+            "Validação dos parâmetros com teto de intervalo"
+          ],
+          "deliverable": "API de indicadores funcionando sobre a massa de dados.",
+          "acceptance": [
+            "Nenhuma agregação acontece na aplicação",
+            "Existe limite para o intervalo consultável",
+            "Os números batem com uma verificação manual em amostra"
+          ],
+          "tips": ["Confira os totais com uma consulta manual. Agregação errada passa despercebida."],
+          "moduleIds": ["banco-dados", "comunicacao-aplicacoes"]
+        },
+        {
+          "id": "dash-etapa-3",
+          "order": 3,
+          "title": "Otimização com evidência",
+          "goal": "Reduzir o tempo de resposta a partir de medição, não de palpite.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Analisar o plano de cada consulta lenta",
+            "Criar índices a partir dos filtros e ordenações reais",
+            "Medir novamente e registrar a diferença",
+            "Remover índice que não trouxe ganho"
+          ],
+          "deliverable": "Documento com antes, depois e o que foi mudado.",
+          "acceptance": [
+            "Cada índice criado tem uma consulta que o justifica",
+            "O ganho está medido, não estimado",
+            "Nenhum índice foi criado por precaução"
+          ],
+          "tips": ["Registrar o plano antes e depois é o que transforma isso em portfólio, e não em código qualquer."],
+          "moduleIds": ["banco-dados", "algoritmos-complexidade"]
+        },
+        {
+          "id": "dash-etapa-4",
+          "order": 4,
+          "title": "Interface e publicação",
+          "goal": "Painel usável no celular, com estados tratados e deploy.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Gráficos e indicadores na tela",
+            "Filtros acessíveis por teclado",
+            "Estados: carregando, vazio, erro",
+            "Deploy e README com as medições"
+          ],
+          "deliverable": "Painel publicado, com a documentação das otimizações.",
+          "acceptance": [
+            "Funciona em 360px sem scroll horizontal",
+            "Gráfico não depende apenas de cor para comunicar",
+            "O README mostra as medições de antes e depois"
+          ],
+          "tips": ["As medições no README são o diferencial deste projeto. Não as deixe de fora."],
+          "moduleIds": ["usabilidade", "desenvolvimento-web", "computacao-nuvem"]
+        }
+      ],
+      "portfolio": {
+        "readmeOutline": [
+          "O que o painel mostra",
+          "Volume de dados usado",
+          "Captura de tela",
+          "Consultas e agregações",
+          "Índices criados e por quê",
+          "Medições antes e depois",
+          "Como rodar, incluindo a geração de massa",
+          "Link do deploy",
+          "Limitações"
+        ],
+        "linkedinDraft": "Publiquei um dashboard operacional construído sobre 300 mil registros gerados, com filtros combináveis, série temporal e listagem paginada.\n\nO foco do projeto foi performance com evidência: para cada consulta lenta eu registrei o plano de execução, criei o índice que o plano indicava e medi de novo. A consulta principal saiu de 4,1 s para 38 ms depois do índice composto por status e data — e um dos índices que eu tinha criado \"por precaução\" acabou removido, porque nenhuma consulta o usava.\n\nStack: Python, FastAPI e PostgreSQL. As medições estão no README.",
+        "qualityChecklist": [
+          "Massa de dados realista e script de geração incluído",
+          "Todas as agregações no banco",
+          "Índices justificados por consulta e plano",
+          "Medições antes e depois registradas",
+          "Paginação em toda listagem",
+          "Painel usável no celular",
+          "Nenhum número inventado no README"
+        ]
+      }
+    }
+  ]
+}

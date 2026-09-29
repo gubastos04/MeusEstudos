@@ -1,0 +1,68 @@
+{
+  "tracks": [
+    {
+      "id": "comeco-do-zero",
+      "title": "Começo do zero",
+      "summary": "Da primeira linha de código até entregar uma demanda pequena com Git e banco de dados.",
+      "forWho": "Para quem nunca programou ou só mexeu em tutorial solto.",
+      "moduleIds": [
+        "pensamento-computacional",
+        "python",
+        "desenvolvimento-web",
+        "engenharia-software",
+        "banco-dados",
+        "comunicacao-aplicacoes",
+        "seguranca-informacao",
+        "python-aplicado"
+      ]
+    },
+    {
+      "id": "recomecando",
+      "title": "Recomeçando",
+      "summary": "Retoma a base rápido e vai direto para o que aparece no trabalho: Git, API, banco e segurança.",
+      "forWho": "Para quem já programou algum dia e parou por muito tempo.",
+      "moduleIds": [
+        "python",
+        "engenharia-software",
+        "desenvolvimento-web",
+        "comunicacao-aplicacoes",
+        "banco-dados",
+        "seguranca-informacao",
+        "python-aplicado",
+        "estrutura-dados"
+      ]
+    },
+    {
+      "id": "foco-backend",
+      "title": "Foco em backend",
+      "summary": "Python, API, banco, segurança e deploy. O caminho mais curto para trabalhar em servidor.",
+      "forWho": "Para quem já tem base de programação e quer trabalhar em backend.",
+      "moduleIds": [
+        "python",
+        "comunicacao-aplicacoes",
+        "banco-dados",
+        "python-aplicado",
+        "engenharia-software",
+        "seguranca-informacao",
+        "software-seguro",
+        "computacao-nuvem",
+        "sistemas-operacionais"
+      ]
+    },
+    {
+      "id": "foco-web",
+      "title": "Foco em web",
+      "summary": "HTML, CSS e JavaScript, depois TypeScript e React, com a usabilidade que separa tela feia de tela usável.",
+      "forWho": "Para quem quer construir interfaces e integrar com backend.",
+      "moduleIds": [
+        "desenvolvimento-web",
+        "frontend-moderno",
+        "usabilidade",
+        "comunicacao-aplicacoes",
+        "engenharia-software",
+        "seguranca-informacao",
+        "banco-dados"
+      ]
+    }
+  ]
+}

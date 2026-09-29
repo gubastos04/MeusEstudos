@@ -1,0 +1,717 @@
+{
+  "id": "estrutura-dados",
+  "semester": 2,
+  "order": 3,
+  "title": "Estrutura de dados",
+  "summary": "Lista, dicionário, conjunto, pilha, fila e árvore pelo critério que importa no trabalho: qual acesso você precisa fazer rápido.",
+  "outcome": "Você escolhe a estrutura pelo padrão de acesso, reconhece quando um laço aninhado vai virar problema e sabe o custo aproximado das operações que usa.",
+  "tags": [
+    "algoritmos",
+    "estrutura-dados"
+  ],
+  "stack": [
+    "python",
+    "javascript"
+  ],
+  "items": [
+    {
+      "id": "ed-escolher-estrutura-01",
+      "type": "lesson",
+      "title": "A pergunta que escolhe a estrutura",
+      "estimatedMinutes": 10,
+      "tags": [
+        "estrutura-dados"
+      ],
+      "why": "A escolha errada não dá erro. Ela só fica lenta quando o volume cresce, geralmente em produção.",
+      "goal": "Escolher entre lista, dicionário e conjunto a partir do acesso necessário.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A pergunta é sempre a mesma: **como eu vou acessar esses dados?**"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Preciso de...",
+            "Estrutura",
+            "Custo"
+          ],
+          "rows": [
+            [
+              "ordem e percurso",
+              "lista",
+              "O(n) para buscar"
+            ],
+            [
+              "buscar por identificador",
+              "dicionário",
+              "O(1)"
+            ],
+            [
+              "saber se já vi",
+              "conjunto",
+              "O(1)"
+            ],
+            [
+              "último que entrou",
+              "pilha",
+              "O(1)"
+            ],
+            [
+              "primeiro que entrou",
+              "fila",
+              "O(1)"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O caso mais comum no trabalho é o terceiro: verificar pertencimento dentro de um laço."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# 8.000 x 50.000 comparações no pior caso\nativos = [c[\"id\"] for c in clientes_ativos]\nfor venda in vendas:\n    if venda[\"cliente_id\"] in ativos:\n        processar(venda)\n\n# 8.000 verificações diretas\nativos = {c[\"id\"] for c in clientes_ativos}   # conjunto\nfor venda in vendas:\n    if venda[\"cliente_id\"] in ativos:\n        processar(venda)"
+        },
+        {
+          "kind": "text",
+          "text": "A única diferença visível é `[` virou `{`. A diferença de tempo pode ser de minutos para milissegundos."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O sinal de alerta na leitura de código",
+          "text": "`for` dentro de `for`, ou `in lista` dentro de um `for`. Sempre que ver isso, pergunte quantos itens cada um pode ter."
+        },
+        {
+          "kind": "text",
+          "text": "Pilha e fila aparecem menos explicitamente, mas estão em todo lugar: histórico de navegação e desfazer são pilha; processamento de tarefas é fila."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa remover duplicatas de 200 mil registros pelo campo `documento`, mantendo o primeiro de cada. Qual abordagem é adequada?",
+          "choices": [
+            "Para cada registro, verificar se já existe na lista de saída",
+            "Manter um conjunto com os documentos já vistos e só adicionar quando for novo",
+            "Ordenar a lista e comparar cada item com todos os outros",
+            "Converter para JSON e usar busca de texto"
+          ],
+          "answerIndex": 1,
+          "explanation": "O conjunto de vistos dá verificação direta: 200 mil operações rápidas. A primeira opção é quadrática e pode levar minutos."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva duas versões de uma função que encontra elementos em comum entre duas listas de 10 mil itens: uma com `in lista` e outra com conjunto. Compare o tempo.",
+        "expected": "A versão com conjunto é ordens de magnitude mais rápida."
+      },
+      "ifStuck": [
+        "Em Python, `time.perf_counter()` antes e depois mede o tempo."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar lista para verificar pertencimento em laço.",
+          "why": "Cada verificação percorre a lista inteira no pior caso.",
+          "fix": "Converta para conjunto uma vez, antes do laço."
+        }
+      ],
+      "exercise": {
+        "id": "ex-ed-deduplicar-01",
+        "title": "Remover duplicatas mantendo a ordem",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `removerDuplicados(registros, campo)`: devolve os registros sem repetição pelo valor do campo indicado, mantendo a primeira ocorrência e a ordem original. Registro sem o campo (undefined ou null) é sempre mantido.",
+        "starter": "function removerDuplicados(registros, campo) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "removerDuplicados([], 'doc')",
+            "expected": []
+          },
+          {
+            "name": "remove repetido mantendo o primeiro",
+            "expression": "removerDuplicados([{doc:'a',n:1},{doc:'a',n:2},{doc:'b',n:3}], 'doc').map(r => r.n)",
+            "expected": [
+              1,
+              3
+            ]
+          },
+          {
+            "name": "mantem a ordem original",
+            "expression": "removerDuplicados([{doc:'b'},{doc:'a'},{doc:'b'}], 'doc').map(r => r.doc)",
+            "expected": [
+              "b",
+              "a"
+            ]
+          },
+          {
+            "name": "registro sem o campo e sempre mantido",
+            "expression": "removerDuplicados([{doc:null},{doc:null},{doc:'a'}], 'doc').length",
+            "expected": 3
+          },
+          {
+            "name": "funciona com volume",
+            "expression": "removerDuplicados(Array.from({length: 20000}, (_, i) => ({doc: i % 100})), 'doc').length",
+            "expected": 100
+          }
+        ],
+        "hints": [
+          "Use um Set para guardar os valores já vistos.",
+          "`Set.prototype.has` é verificação direta; `Array.prototype.includes` percorre.",
+          "Valor nulo ou undefined não entra no Set: ele é sempre mantido."
+        ],
+        "solution": "function removerDuplicados(registros, campo) {\n  const vistos = new Set()\n  const saida = []\n\n  for (const registro of registros) {\n    const valor = registro[campo]\n    if (valor === undefined || valor === null) {\n      saida.push(registro)\n      continue\n    }\n    if (vistos.has(valor)) continue\n    vistos.add(valor)\n    saida.push(registro)\n  }\n\n  return saida\n}\n",
+        "solutionNotes": "Com includes em vez de Set, o último teste (20 mil itens) passaria de milissegundos para segundos."
+      },
+      "glossary": [
+        "Big O",
+        "Complexidade",
+        "Performance"
+      ]
+    },
+    {
+      "id": "ed-ordenacao-busca-01",
+      "type": "lesson",
+      "title": "Ordenação e busca: o que você precisa saber de verdade",
+      "estimatedMinutes": 9,
+      "tags": [
+        "algoritmos"
+      ],
+      "why": "Você não vai implementar ordenação no trabalho. Mas vai precisar ordenar por critério composto, e vai encontrar código que compara errado.",
+      "goal": "Ordenar por múltiplos critérios e entender por que busca binária exige lista ordenada.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Toda linguagem já tem ordenação eficiente. O que se erra é a função de comparação."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// erro clássico: ordenação de números como texto\n[10, 9, 100].sort()            // [10, 100, 9]\n\n// correto\n[10, 9, 100].sort((a, b) => a - b)   // [9, 10, 100]"
+        },
+        {
+          "kind": "text",
+          "text": "Ordenação por critério composto: resolva o primeiro critério e, em caso de empate, passe ao próximo."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const prioridade = { urgente: 0, alta: 1, media: 2, baixa: 3 }\n\ntickets.sort((a, b) =>\n  prioridade[a.prioridade] - prioridade[b.prioridade] ||\n  new Date(a.criadoEm) - new Date(b.criadoEm)\n)",
+          "caption": "O || só é avaliado quando o primeiro resultado é 0, isto é, quando houve empate."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "sort altera a lista original",
+          "text": "Em JavaScript, `array.sort()` ordena no lugar. Se a lista vem de um estado compartilhado, copie antes: `[...lista].sort(...)`."
+        },
+        {
+          "kind": "text",
+          "text": "Busca binária corta a lista pela metade a cada passo: 1 milhão de itens em cerca de 20 comparações. Só funciona em lista ordenada — e é exatamente o que um índice de banco de dados faz."
+        },
+        {
+          "kind": "text",
+          "text": "Na prática: ordene no banco, não na aplicação. O banco tem índice e faz isso sem carregar tudo na memória."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma listagem carrega 50 mil registros do banco e ordena na aplicação para mostrar 20 na tela. Qual é o problema?",
+          "choices": [
+            "Nenhum, desde que a ordenação seja eficiente",
+            "Trafega e processa 50 mil registros para usar 20; ordenar e paginar no banco resolve com um índice",
+            "A ordenação em memória sempre dá resultado errado",
+            "Falta usar busca binária"
+          ],
+          "answerIndex": 1,
+          "explanation": "O custo está em transportar e guardar dado que será descartado. ORDER BY com LIMIT no banco usa índice e devolve só o necessário."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Ordene uma lista de tickets por prioridade e, em empate, pelo mais antigo. Confirme que a lista original não foi alterada.",
+        "expected": "A ordem correta, e a lista de entrada intacta."
+      },
+      "ifStuck": [
+        "Mapeie a prioridade textual para número antes de comparar; comparar texto ordena em ordem alfabética."
+      ],
+      "commonErrors": [
+        {
+          "error": "sort() em números sem função de comparação.",
+          "why": "O padrão converte para texto e compara caractere por caractere.",
+          "fix": "sort((a, b) => a - b)"
+        }
+      ],
+      "exercise": {
+        "id": "ex-ed-ordenar-tickets-01",
+        "title": "Ordenar fila de atendimento",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `ordenarFila(tickets)`. Ordene por prioridade (urgente, alta, media, baixa) e, em empate, pelo mais antigo (campo `criadoEm`, texto AAAA-MM-DD). A lista recebida não pode ser alterada. Prioridade desconhecida vai para o fim.",
+        "starter": "function ordenarFila(tickets) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "ordenarFila([])",
+            "expected": []
+          },
+          {
+            "name": "ordena por prioridade",
+            "expression": "ordenarFila([{id:1,prioridade:'baixa',criadoEm:'2026-01-01'},{id:2,prioridade:'urgente',criadoEm:'2026-01-02'}]).map(t => t.id)",
+            "expected": [
+              2,
+              1
+            ]
+          },
+          {
+            "name": "empate resolve pelo mais antigo",
+            "expression": "ordenarFila([{id:1,prioridade:'alta',criadoEm:'2026-02-01'},{id:2,prioridade:'alta',criadoEm:'2026-01-01'}]).map(t => t.id)",
+            "expected": [
+              2,
+              1
+            ]
+          },
+          {
+            "name": "prioridade desconhecida vai para o fim",
+            "expression": "ordenarFila([{id:1,prioridade:'xyz',criadoEm:'2026-01-01'},{id:2,prioridade:'baixa',criadoEm:'2026-06-01'}]).map(t => t.id)",
+            "expected": [
+              2,
+              1
+            ]
+          },
+          {
+            "name": "nao altera a lista recebida",
+            "expression": "(() => { const entrada = [{id:1,prioridade:'baixa',criadoEm:'2026-01-01'},{id:2,prioridade:'urgente',criadoEm:'2026-01-02'}]; ordenarFila(entrada); return entrada[0].id })()",
+            "expected": 1
+          }
+        ],
+        "hints": [
+          "Mapeie a prioridade para número com um objeto.",
+          "Para prioridade desconhecida, use um número alto como padrão.",
+          "Copie a lista antes de ordenar: [...tickets].sort(...)"
+        ],
+        "solution": "const ORDEM = { urgente: 0, alta: 1, media: 2, baixa: 3 }\n\nfunction ordenarFila(tickets) {\n  return [...tickets].sort((a, b) => {\n    const pa = ORDEM[a.prioridade] ?? 99\n    const pb = ORDEM[b.prioridade] ?? 99\n    if (pa !== pb) return pa - pb\n    return String(a.criadoEm).localeCompare(String(b.criadoEm))\n  })\n}\n",
+        "solutionNotes": "Datas no formato AAAA-MM-DD podem ser comparadas como texto. Em outros formatos, converta para data antes."
+      },
+      "glossary": [
+        "Big O",
+        "indice",
+        "paginacao"
+      ]
+    },
+    {
+      "id": "ed-pilha-fila-01",
+      "type": "lesson",
+      "title": "Pilha e fila: desfazer e processar em ordem",
+      "estimatedMinutes": 9,
+      "tags": [
+        "estrutura-dados"
+      ],
+      "why": "As duas aparecem disfarçadas no código do dia a dia. Reconhecer qual é qual evita implementar errado o desfazer e a ordem de processamento.",
+      "goal": "Identificar pilha e fila em situações reais e implementar um desfazer com limite.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A diferença é uma só: **quem sai primeiro.**"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Estrutura",
+            "Sai primeiro",
+            "Onde aparece"
+          ],
+          "rows": [
+            [
+              "Pilha",
+              "o último que entrou",
+              "desfazer, voltar do navegador, stack trace"
+            ],
+            [
+              "Fila",
+              "o primeiro que entrou",
+              "tarefas em segundo plano, envio de email, impressão"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Em JavaScript e Python, a lista já serve para as duas. O que muda é de qual ponta você tira:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// pilha\nconst historico = []\nhistorico.push(acao)      // entra no fim\nhistorico.pop()           // sai do fim: o último\n\n// fila\nconst tarefas = []\ntarefas.push(tarefa)      // entra no fim\ntarefas.shift()           // sai do começo: o primeiro"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "`shift` tem custo",
+          "text": "Remover do começo desloca todos os outros elementos. Com listas pequenas, tanto faz. Numa fila de dezenas de milhares de itens em memória, isso vira gargalo — e é quando a fila deve estar num banco, não numa variável."
+        },
+        {
+          "kind": "text",
+          "text": "Pilha de desfazer precisa de limite. Guardar todas as ações desde a abertura da tela consome memória sem ninguém pedir:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "const LIMITE = 50\n\nfunction registrar(historico, acao) {\n  historico.push(acao)\n  if (historico.length > LIMITE) {\n    historico.shift()   // descarta a ação mais antiga\n  }\n}"
+        },
+        {
+          "kind": "quiz",
+          "question": "O botão \"desfazer\" de um editor está desfazendo as ações na ordem errada: desfaz a primeira coisa que a pessoa fez, não a última. Qual é o defeito?",
+          "choices": [
+            "O histórico está sendo lido como fila, quando deveria ser pilha",
+            "Falta ordenar o histórico por data",
+            "O histórico está grande demais",
+            "As ações estão sendo gravadas duas vezes"
+          ],
+          "answerIndex": 0,
+          "explanation": "Desfazer é pilha: a última ação é a primeira a sair. Tirar do começo da lista (`shift`) em vez do fim (`pop`) produz exatamente esse sintoma."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste três coisas do sistema que você usa todo dia e classifique cada uma como pilha ou fila. Para cada uma, diga o que aconteceria se estivesse invertida.",
+        "expected": "Pelo menos uma inversão com consequência visível para quem usa."
+      },
+      "ifStuck": [
+        "Pergunte: o mais recente é o mais importante, ou o mais antigo é que não pode esperar?",
+        "Desfazer, voltar e stack trace são pilha. Atendimento, impressão e envio são fila."
+      ],
+      "commonErrors": [
+        {
+          "error": "Fila em memória que cresce sem limite.",
+          "why": "O processo acumula tudo até o sistema operacional encerrá-lo por falta de memória.",
+          "fix": "Fila que pode crescer vai para o banco ou para um serviço de fila, não para uma variável."
+        }
+      ],
+      "exercise": {
+        "id": "ex-ed-desfazer-01",
+        "title": "Histórico de desfazer com limite",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `criarHistorico(limite)`, que devolve um objeto com `registrar(acao)`, `desfazer()` e `tamanho()`. `desfazer` remove e devolve a ação mais recente, ou null quando não há nada. Ao passar do limite, a ação mais antiga é descartada. Limite menor que 1 é tratado como 1.",
+        "starter": "function criarHistorico(limite) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "historico novo esta vazio",
+            "expression": "criarHistorico(3).tamanho()",
+            "expected": 0
+          },
+          {
+            "name": "desfazer sem nada devolve null",
+            "expression": "criarHistorico(3).desfazer()",
+            "expected": null
+          },
+          {
+            "name": "desfaz a acao mais recente",
+            "expression": "(() => { const h = criarHistorico(3); h.registrar('a'); h.registrar('b'); return h.desfazer() })()",
+            "expected": "b"
+          },
+          {
+            "name": "desfaz na ordem inversa",
+            "expression": "(() => { const h = criarHistorico(3); h.registrar('a'); h.registrar('b'); h.registrar('c'); return [h.desfazer(), h.desfazer(), h.desfazer()] })()",
+            "expected": [
+              "c",
+              "b",
+              "a"
+            ]
+          },
+          {
+            "name": "descarta a mais antiga ao passar do limite",
+            "expression": "(() => { const h = criarHistorico(2); h.registrar('a'); h.registrar('b'); h.registrar('c'); return [h.tamanho(), h.desfazer(), h.desfazer(), h.desfazer()] })()",
+            "expected": [
+              2,
+              "c",
+              "b",
+              null
+            ]
+          },
+          {
+            "name": "limite invalido vira 1",
+            "expression": "(() => { const h = criarHistorico(0); h.registrar('a'); h.registrar('b'); return [h.tamanho(), h.desfazer()] })()",
+            "expected": [
+              1,
+              "b"
+            ]
+          }
+        ],
+        "hints": [
+          "Uma lista dentro da função guarda o estado; os três métodos fecham sobre ela.",
+          "Registrar entra no fim; desfazer sai do fim.",
+          "O descarte por limite acontece no registrar, logo depois de adicionar."
+        ],
+        "solution": "function criarHistorico(limite) {\n  const maximo = Math.max(1, limite)\n  const acoes = []\n\n  return {\n    registrar(acao) {\n      acoes.push(acao)\n      if (acoes.length > maximo) acoes.shift()\n    },\n    desfazer() {\n      return acoes.length === 0 ? null : acoes.pop()\n    },\n    tamanho() {\n      return acoes.length\n    },\n  }\n}\n",
+        "solutionNotes": "A lista fica fechada dentro da função: quem usa não consegue alterá-la por fora. É o mesmo motivo de guardar estado numa classe em vez de expor um array público."
+      },
+      "glossary": [
+        "fila",
+        "stack-trace",
+        "Complexidade"
+      ]
+    },
+    {
+      "id": "ed-arvores-hierarquia-01",
+      "type": "lesson",
+      "title": "Árvore: hierarquia e busca ordenada",
+      "estimatedMinutes": 10,
+      "tags": [
+        "estrutura-dados",
+        "banco"
+      ],
+      "why": "Categoria com subcategoria, menu, organograma e resposta de comentário são a mesma estrutura. E é ela que o banco usa por dentro para achar seu registro sem ler a tabela inteira.",
+      "goal": "Montar uma hierarquia a partir de uma lista plana e entender por que o índice do banco é uma árvore.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Uma árvore é um conjunto de nós em que cada um aponta para o pai. O banco guarda sempre plano:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "id  nome            pai_id\n1   Eletrônicos     null\n2   Computadores    1\n3   Notebooks       2\n4   Livros          null"
+        },
+        {
+          "kind": "text",
+          "text": "A tela precisa da versão aninhada. Montar isso com uma consulta por nível é o erro clássico: profundidade 5 vira 5 idas ao banco. Traga tudo de uma vez e monte em memória."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// uma consulta, uma passagem: indexa por id e liga cada nó ao pai\nconst porId = new Map(linhas.map((linha) => [linha.id, { ...linha, filhos: [] }]))\nconst raizes = []\n\nfor (const no of porId.values()) {\n  if (no.pai_id === null) raizes.push(no)\n  else porId.get(no.pai_id)?.filhos.push(no)\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Ciclo trava a tela",
+          "text": "Se um dado ruim fizer A apontar para B e B para A, qualquer percurso recursivo entra em laço infinito. Em hierarquia que vem de entrada humana, vale verificar."
+        },
+        {
+          "kind": "text",
+          "text": "A outra árvore é a que você não escreve: o índice. Ele mantém as chaves ordenadas em níveis, e é por isso que a busca não precisa ler a tabela inteira."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Procurar o pedido 4821 entre 1 milhão:\n\nsem índice   até 1.000.000 linhas lidas\ncom índice   cerca de 20 comparações"
+        },
+        {
+          "kind": "text",
+          "text": "É a mesma ideia da busca binária: cada nível descarta uma parte grande do que sobrou. Por isso o índice serve para igualdade, faixa e ordenação — e não serve para `LIKE '%texto%'`, que não tem começo definido para navegar."
+        },
+        {
+          "kind": "quiz",
+          "question": "Por que um índice comum não ajuda numa busca `LIKE '%relatorio%'`?",
+          "choices": [
+            "Porque índices só funcionam com números",
+            "Porque o índice guarda as chaves ordenadas e a busca precisa de um começo conhecido para navegar; com `%` na frente, qualquer posição serve",
+            "Porque LIKE é sempre lento",
+            "Porque o índice precisa ser recriado antes de cada busca"
+          ],
+          "answerIndex": 1,
+          "explanation": "Com `'relatorio%'` o banco sabe por onde entrar na árvore. Com `'%relatorio'`, não há ponto de partida e resta percorrer tudo. Busca por trecho no meio do texto pede outro recurso: índice de texto completo."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma lista plana com pai_id (categorias, menu, comentários) e monte a versão aninhada em uma passagem, sem consulta dentro de laço.",
+        "expected": "Uma única passagem pelos dados, e os nós órfãos tratados de propósito."
+      },
+      "ifStuck": [
+        "Primeiro indexe todos os nós por id. Só depois faça as ligações.",
+        "Nó cujo pai não está na lista é órfão: decida se descarta, se vira raiz ou se é erro."
+      ],
+      "commonErrors": [
+        {
+          "error": "Montar a árvore com uma consulta por nível.",
+          "why": "O número de consultas cresce com a profundidade e com a quantidade de nós.",
+          "fix": "Uma consulta traz tudo; a montagem acontece em memória."
+        }
+      ],
+      "exercise": {
+        "id": "ex-ed-montar-arvore-01",
+        "title": "Montar a hierarquia de categorias",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `montarArvore(linhas)`. Cada linha tem `id`, `nome` e `paiId` (null na raiz). Devolva a lista de raízes, cada nó com `id`, `nome` e `filhos` (lista, possivelmente vazia), preservando a ordem de entrada. Nó cujo pai não existe na lista é tratado como raiz.",
+        "starter": "function montarArvore(linhas) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "lista vazia",
+            "expression": "montarArvore([])",
+            "expected": []
+          },
+          {
+            "name": "uma raiz sem filhos",
+            "expression": "montarArvore([{id:1, nome:'Livros', paiId:null}])",
+            "expected": [
+              {
+                "id": 1,
+                "nome": "Livros",
+                "filhos": []
+              }
+            ]
+          },
+          {
+            "name": "dois niveis",
+            "expression": "montarArvore([{id:1,nome:'A',paiId:null},{id:2,nome:'B',paiId:1}]).map(n => [n.nome, n.filhos.map(f => f.nome)])",
+            "expected": [
+              [
+                "A",
+                [
+                  "B"
+                ]
+              ]
+            ]
+          },
+          {
+            "name": "tres niveis",
+            "expression": "montarArvore([{id:1,nome:'A',paiId:null},{id:2,nome:'B',paiId:1},{id:3,nome:'C',paiId:2}])[0].filhos[0].filhos[0].nome",
+            "expected": "C"
+          },
+          {
+            "name": "filho antes do pai na lista",
+            "expression": "montarArvore([{id:2,nome:'B',paiId:1},{id:1,nome:'A',paiId:null}]).map(n => n.nome)",
+            "expected": [
+              "A"
+            ]
+          },
+          {
+            "name": "pai inexistente vira raiz",
+            "expression": "montarArvore([{id:5,nome:'Orfao',paiId:99}]).map(n => n.nome)",
+            "expected": [
+              "Orfao"
+            ]
+          },
+          {
+            "name": "preserva a ordem de entrada",
+            "expression": "montarArvore([{id:1,nome:'A',paiId:null},{id:2,nome:'B',paiId:null}]).map(n => n.nome)",
+            "expected": [
+              "A",
+              "B"
+            ]
+          }
+        ],
+        "hints": [
+          "Primeira passagem: crie todos os nós num Map, cada um já com `filhos: []`.",
+          "Segunda passagem: ligue cada nó ao pai, ou coloque nas raízes.",
+          "Filho antes do pai funciona porque todos os nós já existem antes de qualquer ligação."
+        ],
+        "solution": "function montarArvore(linhas) {\n  const porId = new Map()\n  for (const linha of linhas) {\n    porId.set(linha.id, { id: linha.id, nome: linha.nome, filhos: [] })\n  }\n\n  const raizes = []\n  for (const linha of linhas) {\n    const no = porId.get(linha.id)\n    const pai = linha.paiId === null ? undefined : porId.get(linha.paiId)\n    // Pai ausente na lista: o nó não pode sumir, então vira raiz.\n    if (pai) pai.filhos.push(no)\n    else raizes.push(no)\n  }\n\n  return raizes\n}\n",
+        "solutionNotes": "Duas passagens e nenhuma consulta dentro de laço: o custo cresce junto com o número de nós, não com a profundidade da hierarquia."
+      },
+      "glossary": [
+        "indice",
+        "Query",
+        "Big O",
+        "sql",
+        "Performance"
+      ]
+    },
+    {
+      "id": "ed-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "estrutura-dados"
+      ],
+      "summary": "O critério de escolha é o padrão de acesso, e o sinal de alerta na leitura de código é o laço dentro de laço.",
+      "learned": [
+        "Dicionário e conjunto para acesso direto; lista para ordem e percurso",
+        "Verificação de pertencimento em laço pede conjunto",
+        "sort() sem comparador ordena números como texto",
+        "sort() altera a lista original em JavaScript",
+        "Ordenar e paginar no banco, não na aplicação"
+      ],
+      "nextUp": "Computação em nuvem: ambiente, container e variável de ambiente."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-ed-escolhas",
+      "title": "Escolha de estrutura",
+      "format": "alternativa",
+      "summary": "Quatro decisões com impacto de desempenho.",
+      "estimatedMinutes": 7,
+      "topics": [
+        "estruturas",
+        "complexidade",
+        "ordenação"
+      ],
+      "afterItemId": "ed-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-ed-set-01",
+          "kind": "situacao",
+          "prompt": "Uma rotina compara 30 mil pedidos contra uma lista de 40 mil ids bloqueados usando `in`. Leva 4 minutos. Qual mudança resolve?",
+          "choices": [
+            "Dividir em lotes de mil",
+            "Converter a lista de bloqueados em conjunto antes do laço",
+            "Rodar a rotina de madrugada",
+            "Adicionar mais memória"
+          ],
+          "answerIndex": 1,
+          "explanation": "São até 1,2 bilhão de comparações. Com conjunto, cada verificação é direta e o total cai para 30 mil operações.",
+          "topics": [
+            "estruturas",
+            "complexidade"
+          ]
+        },
+        {
+          "id": "q-ed-sort-02",
+          "kind": "codigo",
+          "prompt": "Qual é o resultado?",
+          "code": {
+            "language": "javascript",
+            "code": "console.log([10, 9, 100].sort())"
+          },
+          "choices": [
+            "[9, 10, 100]",
+            "[10, 100, 9]",
+            "[100, 10, 9]",
+            "Erro"
+          ],
+          "answerIndex": 1,
+          "explanation": "Sem comparador, sort converte para texto: \"10\" < \"100\" < \"9\" na ordem de caracteres.",
+          "topics": [
+            "ordenação"
+          ]
+        },
+        {
+          "id": "q-ed-pilha-03",
+          "kind": "conceitual",
+          "prompt": "Qual estrutura descreve o comportamento de um recurso de \"desfazer\"?",
+          "choices": [
+            "Fila",
+            "Pilha",
+            "Conjunto",
+            "Árvore"
+          ],
+          "answerIndex": 1,
+          "explanation": "Desfazer remove a última ação realizada: último a entrar, primeiro a sair.",
+          "topics": [
+            "estruturas"
+          ]
+        },
+        {
+          "id": "q-ed-paginar-04",
+          "kind": "situacao",
+          "prompt": "Uma API devolve todos os registros e o frontend pagina em memória. A tabela passou de 3 mil para 400 mil linhas. Qual é a correção?",
+          "choices": [
+            "Comprimir a resposta",
+            "Paginar e ordenar no banco, devolvendo só a página pedida",
+            "Aumentar o timeout e a memória do navegador",
+            "Carregar em segundo plano e guardar em cache"
+          ],
+          "answerIndex": 1,
+          "explanation": "O problema é transportar dado que será descartado. Paginação precisa começar no banco, com LIMIT, OFFSET ou cursor, e índice adequado.",
+          "topics": [
+            "complexidade"
+          ]
+        }
+      ]
+    }
+  ]
+}

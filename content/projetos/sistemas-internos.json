@@ -1,0 +1,487 @@
+{
+  "projects": [
+    {
+      "id": "proj-atendimento",
+      "title": "Sistema interno de atendimento",
+      "summary": "Um sistema de tickets com usuários, permissões, histórico e API — o tipo de software que existe em quase toda empresa.",
+      "problem": "Times de suporte que trabalham por email e planilha perdem chamados, não sabem quem está atendendo o quê e não conseguem responder quanto tempo levam para resolver. Um sistema de tickets resolve isso ao dar a cada solicitação um identificador, um responsável, um estado e um histórico auditável.",
+      "difficulty": "intermediario",
+      "stack": ["python", "fastapi", "postgresql", "sql", "javascript", "html", "css", "docker", "git"],
+      "features": [
+        "Cadastro e login com senha protegida",
+        "Perfis: solicitante, atendente e administrador",
+        "Abertura de ticket com prioridade e categoria",
+        "Atribuição de responsável",
+        "Comentários com histórico",
+        "Mudança de status com registro de quem mudou e quando",
+        "Filtros por status, prioridade, responsável e período",
+        "Listagem paginada",
+        "API documentada",
+        "Logs de ações sensíveis",
+        "Testes automatizados",
+        "Deploy publicado"
+      ],
+      "architectureNotes": "Três camadas: rotas (HTTP), serviços (regras) e repositórios (banco). As regras não importam nada de HTTP nem de SQL, o que permite testá-las sem infraestrutura. O histórico de status é uma tabela separada, append-only: nada é sobrescrito. Autorização acontece no servidor, em toda rota, a partir da sessão.",
+      "steps": [
+        {
+          "id": "atend-etapa-1",
+          "order": 1,
+          "title": "Requisitos e modelagem",
+          "goal": "Sair com os requisitos escritos e o modelo de dados desenhado, antes de qualquer código.",
+          "estimatedMinutes": 90,
+          "tasks": [
+            "Escrever em uma frase o problema que o sistema resolve",
+            "Listar os perfis de usuário e o que cada um pode fazer",
+            "Escrever de 8 a 12 requisitos verificáveis",
+            "Desenhar as entidades: usuario, ticket, comentario, historico_status",
+            "Definir a cardinalidade de cada relação",
+            "Decidir os status possíveis de um ticket e as transições permitidas"
+          ],
+          "deliverable": "Um arquivo REQUISITOS.md com requisitos, perfis e o diagrama do modelo em texto.",
+          "acceptance": [
+            "Nenhum requisito usa palavras como rápido, fácil ou intuitivo",
+            "Cada relação tem cardinalidade definida",
+            "As transições de status estão explícitas: de qual estado para qual"
+          ],
+          "tips": [
+            "Status e transições evitam metade dos bugs futuros: sem isso, qualquer estado vira qualquer estado.",
+            "Guarde o histórico em tabela separada desde o começo. Adicionar depois é migração de dado."
+          ],
+          "moduleIds": ["uml", "banco-dados"]
+        },
+        {
+          "id": "atend-etapa-2",
+          "order": 2,
+          "title": "Banco e estrutura inicial",
+          "goal": "Projeto rodando, com banco criado por migration e estrutura de pastas definida.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Criar o repositório Git com .gitignore e README inicial",
+            "Montar o ambiente virtual e o arquivo de dependências",
+            "Criar a estrutura de pastas: rotas, servicos, repositorios, modelos",
+            "Escrever as migrations das tabelas do modelo",
+            "Configurar variáveis de ambiente com .env.example versionado",
+            "Subir o projeto e confirmar que responde numa rota de verificação"
+          ],
+          "deliverable": "Repositório que outra pessoa clona, segue o README e roda.",
+          "acceptance": [
+            ".env está no .gitignore e .env.example está versionado",
+            "O banco é criado por migration, não por script manual",
+            "O README tem os passos de instalação e eles funcionam numa pasta limpa"
+          ],
+          "tips": ["Teste o README numa pasta nova antes de considerar a etapa pronta."],
+          "moduleIds": ["computacao-nuvem", "engenharia-software", "banco-dados"]
+        },
+        {
+          "id": "atend-etapa-3",
+          "order": 3,
+          "title": "Autenticação",
+          "goal": "Cadastro, login, logout e sessão funcionando, com senha protegida.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Cadastro com validação de email e senha",
+            "Hash de senha com função adequada (bcrypt, argon2 ou scrypt)",
+            "Login com mensagem idêntica para email inexistente e senha errada",
+            "Sessão em cookie HttpOnly, Secure e SameSite",
+            "Logout invalidando a sessão no servidor",
+            "Proteção das rotas que exigem autenticação"
+          ],
+          "deliverable": "Fluxo completo de entrar e sair, com rota protegida devolvendo 401 sem sessão.",
+          "acceptance": [
+            "Nenhuma senha aparece em log ou resposta de API",
+            "O token da sessão é guardado no banco apenas como hash",
+            "Rota protegida sem sessão devolve 401",
+            "Existe teste do fluxo cadastro, login e acesso a rota protegida"
+          ],
+          "tips": ["Não escreva criptografia própria. Use a biblioteca estabelecida da linguagem."],
+          "moduleIds": ["seguranca-informacao", "python-aplicado"]
+        },
+        {
+          "id": "atend-etapa-4",
+          "order": 4,
+          "title": "Criação e listagem de tickets",
+          "goal": "Abrir ticket e ver a lista, com paginação desde o início.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Endpoint de criação com validação de título, descrição e prioridade",
+            "O autor vem da sessão, nunca do corpo da requisição",
+            "Endpoint de listagem paginado, com limite máximo",
+            "Endpoint de detalhe",
+            "Tela simples de criação e listagem",
+            "Os quatro estados na tela: carregando, vazio, erro e sucesso"
+          ],
+          "deliverable": "É possível abrir um ticket pela tela e vê-lo na lista.",
+          "acceptance": [
+            "Criação devolve 201 e o recurso criado",
+            "Dado inválido devolve 422 indicando o campo",
+            "A listagem tem limite máximo de itens por página",
+            "A tela mostra mensagem adequada quando não há tickets"
+          ],
+          "tips": ["Paginação agora custa dez minutos; depois de ter cliente integrado, custa uma quebra de contrato."],
+          "moduleIds": ["python-aplicado", "comunicacao-aplicacoes", "usabilidade"]
+        },
+        {
+          "id": "atend-etapa-5",
+          "order": 5,
+          "title": "Filtros e busca",
+          "goal": "Encontrar tickets por status, prioridade, responsável e período.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Filtros opcionais e combináveis na listagem",
+            "Filtragem no banco, com consulta parametrizada",
+            "Índice adequado para o filtro mais usado",
+            "Ordenação por prioridade e, em empate, pelo mais antigo",
+            "Filtro inválido devolve 422",
+            "Tela com os campos de filtro, acessíveis por teclado"
+          ],
+          "deliverable": "Fila de atendimento com filtros funcionando e resposta rápida.",
+          "acceptance": [
+            "Todos os filtros funcionam combinados",
+            "Nenhuma filtragem acontece na aplicação ou no navegador",
+            "O plano de execução da consulta usa índice",
+            "Cada campo de filtro tem rótulo associado"
+          ],
+          "tips": ["Gere alguns milhares de tickets de teste. Filtro que parece rápido com 20 registros não diz nada."],
+          "moduleIds": ["banco-dados", "usabilidade", "estrutura-dados"]
+        },
+        {
+          "id": "atend-etapa-6",
+          "order": 6,
+          "title": "Permissões e isolamento",
+          "goal": "Cada perfil vê e faz apenas o que lhe cabe.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Solicitante vê apenas os próprios tickets",
+            "Atendente vê todos e pode assumir",
+            "Administrador gerencia usuários",
+            "Verificação centralizada, reutilizada em todas as rotas",
+            "Recurso de outro usuário devolve 404, não 403",
+            "Testes de isolamento para cada recurso"
+          ],
+          "deliverable": "Matriz de permissões implementada e verificada por testes.",
+          "acceptance": [
+            "Existe teste \"usuário A não acessa recurso de B\" para cada endpoint com id",
+            "A permissão é verificada no servidor, e não apenas escondendo botões",
+            "Nenhuma rota usa identificador de usuário vindo do cliente"
+          ],
+          "tips": ["Escreva a matriz de permissões numa tabela antes de implementar. Ela vira o roteiro dos testes."],
+          "moduleIds": ["seguranca-informacao", "software-seguro"]
+        },
+        {
+          "id": "atend-etapa-7",
+          "order": 7,
+          "title": "Comentários e histórico de status",
+          "goal": "Registrar a conversa e cada mudança de estado, sem sobrescrever nada.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Comentários vinculados ao ticket, com autor e data",
+            "Mudança de status validando a transição permitida",
+            "Tabela de histórico append-only: quem, de qual status, para qual, quando",
+            "Exibição da linha do tempo do ticket",
+            "Conteúdo de comentário exibido como texto, nunca como HTML"
+          ],
+          "deliverable": "Ticket com linha do tempo completa de comentários e mudanças.",
+          "acceptance": [
+            "Transição não permitida é recusada com mensagem clara",
+            "O histórico não é alterado nem apagado por nenhuma operação",
+            "Comentário com HTML aparece como texto na tela"
+          ],
+          "tips": ["A transição válida sai da etapa 1. Se você não definiu, defina agora, antes de codar."],
+          "moduleIds": ["banco-dados", "desenvolvimento-web", "seguranca-informacao"]
+        },
+        {
+          "id": "atend-etapa-8",
+          "order": 8,
+          "title": "Testes",
+          "goal": "Rede de segurança suficiente para alterar o sistema sem medo.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Testes das regras de negócio em funções puras",
+            "Testes de contrato dos endpoints: status e formato",
+            "Testes de autorização e isolamento entre usuários",
+            "Teste do fluxo completo: cadastro, login, criar ticket, comentar, fechar",
+            "Configurar o pipeline de CI rodando os testes a cada push"
+          ],
+          "deliverable": "Suíte de testes verde, rodando no CI.",
+          "acceptance": [
+            "Os testes rodam do zero numa máquina limpa",
+            "Existe pelo menos um teste por regra de negócio",
+            "O CI falha quando um teste quebra"
+          ],
+          "tips": ["Se a suíte demora demais, o problema costuma ser testar regra pelo endpoint em vez da função."],
+          "moduleIds": ["engenharia-software", "python-aplicado"]
+        },
+        {
+          "id": "atend-etapa-9",
+          "order": 9,
+          "title": "Logs e tratamento de erros",
+          "goal": "Conseguir investigar um problema em produção sem adivinhar.",
+          "estimatedMinutes": 90,
+          "tasks": [
+            "Log estruturado com identificador de requisição",
+            "Registro de ações sensíveis: login, falha de login, mudança de permissão",
+            "Tratamento central de erro devolvendo mensagem adequada por tipo",
+            "Nenhum stack trace exposto na resposta",
+            "Nenhum dado sensível no log"
+          ],
+          "deliverable": "Log que permite reconstruir o que aconteceu numa requisição.",
+          "acceptance": [
+            "Toda requisição tem identificador correlacionável nas linhas de log",
+            "Erro do cliente e erro do servidor têm status distintos",
+            "Nenhuma senha, token ou dado pessoal desnecessário aparece no log"
+          ],
+          "tips": ["Provoque um erro de propósito e tente investigar pelo log. Se não der, o log não está pronto."],
+          "moduleIds": ["software-seguro", "sistemas-operacionais"]
+        },
+        {
+          "id": "atend-etapa-10",
+          "order": 10,
+          "title": "Deploy",
+          "goal": "Sistema no ar, acessível por uma URL, com banco gerenciado.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Banco PostgreSQL gerenciado provisionado",
+            "Variáveis de ambiente configuradas no destino",
+            "Migrations aplicadas no ambiente de produção",
+            "Deploy da aplicação",
+            "Verificação pós-deploy: abrir, criar um ticket, checar o log",
+            "Documentar como reverter"
+          ],
+          "deliverable": "URL pública funcionando, com dados de demonstração.",
+          "acceptance": [
+            "Nenhum segredo no repositório",
+            "O sistema funciona em outro dispositivo, fora da sua máquina",
+            "Existe um caminho documentado para voltar à versão anterior"
+          ],
+          "tips": ["Crie um usuário de demonstração com dados de exemplo: quem for ver seu portfólio não vai se cadastrar."],
+          "moduleIds": ["computacao-nuvem", "engenharia-software"]
+        },
+        {
+          "id": "atend-etapa-11",
+          "order": 11,
+          "title": "Documentação e portfólio",
+          "goal": "Transformar o projeto em algo que comunica competência para quem vai avaliar.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "README com problema, decisões, stack, arquitetura e instruções",
+            "Capturas de tela das telas principais",
+            "Documentação da API com exemplos executados",
+            "Registro das decisões técnicas e do que você faria diferente",
+            "Texto para o LinkedIn descrevendo o problema resolvido",
+            "Revisão final: segredo vazado, dado de teste sensível, link quebrado"
+          ],
+          "deliverable": "Repositório público pronto para ser lido por alguém que nunca viu o projeto.",
+          "acceptance": [
+            "O README explica o problema antes da tecnologia",
+            "As instruções funcionam numa máquina limpa",
+            "Nenhum dado real ou segredo no repositório",
+            "Nenhuma métrica inventada no texto de divulgação"
+          ],
+          "tips": [
+            "Quem avalia lê o README e olha dois arquivos. Faça o README valer.",
+            "Escreva o que foi difícil e como você resolveu: isso diferencia mais que a lista de tecnologias."
+          ],
+          "moduleIds": ["engenharia-software"]
+        }
+      ],
+      "portfolio": {
+        "readmeOutline": [
+          "Uma frase dizendo o que o sistema faz e para quem",
+          "O problema real que ele resolve",
+          "Captura de tela da tela principal",
+          "Stack e por que cada escolha",
+          "Arquitetura em um parágrafo e um diagrama simples",
+          "Funcionalidades implementadas",
+          "Decisões técnicas e alternativas descartadas",
+          "Como rodar localmente, passo a passo",
+          "Variáveis de ambiente documentadas",
+          "Como rodar os testes",
+          "Link do deploy e credenciais de demonstração",
+          "O que ficou de fora e por quê"
+        ],
+        "linkedinDraft": "Terminei um sistema interno de atendimento: abertura de chamados, fila com prioridade, atribuição de responsável, histórico de status e API documentada.\n\nO que me deu mais trabalho não foi a tela: foi o controle de acesso. A primeira versão verificava permissão só na listagem, e o detalhe ficou aberto — dava para trocar o id na URL e ver o chamado de outra pessoa. Refiz a verificação num lugar só, criei teste de isolamento para cada endpoint e passei a responder 404 em vez de 403, para não revelar a existência do registro.\n\nStack: Python com FastAPI, PostgreSQL, front em JavaScript puro, testes com pytest e deploy com banco gerenciado.\n\nCódigo e instruções no repositório.",
+          "qualityChecklist": [
+            "README explica o problema antes da tecnologia",
+            "Instruções testadas em pasta limpa",
+            "Variáveis de ambiente documentadas em .env.example",
+            "Nenhum segredo no histórico do Git",
+            "Testes rodando e documentados",
+            "Capturas de tela atualizadas",
+            "Deploy acessível com usuário de demonstração",
+            "Decisões técnicas registradas",
+            "Nenhuma métrica ou resultado inventado",
+            "Commits com mensagens legíveis"
+          ]
+      }
+    },
+    {
+      "id": "proj-estoque",
+      "title": "Sistema de gestão de estoque",
+      "summary": "Controle de produtos, movimentações e saldo, com alertas de mínimo e relatórios.",
+      "problem": "Empresas que controlam estoque em planilha descobrem a falta de produto quando o cliente pede. Não há histórico confiável de entrada e saída, e o saldo diverge do físico sem que ninguém consiga reconstruir o que aconteceu. Um sistema de movimentações resolve isso ao tratar o saldo como consequência do histórico, e não como número editável.",
+      "difficulty": "intermediario",
+      "stack": ["python", "fastapi", "postgresql", "sql", "javascript", "docker"],
+      "features": [
+        "Cadastro de produtos com SKU único",
+        "Fornecedores",
+        "Movimentações de entrada e saída",
+        "Saldo calculado a partir das movimentações",
+        "Alerta de estoque mínimo",
+        "Histórico auditável por produto",
+        "Relatório de giro por período",
+        "Importação de planilha com relatório de rejeições",
+        "Autenticação e permissões",
+        "API e testes"
+      ],
+      "architectureNotes": "O saldo nunca é um campo editável: é derivado das movimentações. Isso garante que histórico e saldo não divirjam. Para desempenho, um saldo consolidado pode ser mantido, desde que atualizado na mesma transação da movimentação e reconstruível a partir do histórico.",
+      "steps": [
+        {
+          "id": "est-etapa-1",
+          "order": 1,
+          "title": "Modelagem e regras de movimentação",
+          "goal": "Definir entidades e as regras que governam entrada e saída.",
+          "estimatedMinutes": 90,
+          "tasks": [
+            "Modelar produto, fornecedor, movimentacao",
+            "Definir se saldo negativo é permitido e o que acontece ao tentar",
+            "Definir os tipos de movimentação e o efeito de cada um no saldo",
+            "Escrever os requisitos verificáveis"
+          ],
+          "deliverable": "REQUISITOS.md com modelo e regras de movimentação.",
+          "acceptance": [
+            "Está definido o que acontece ao tentar retirar mais do que existe",
+            "O saldo está definido como derivado, não como campo editável"
+          ],
+          "tips": ["A decisão sobre saldo negativo é de negócio: pergunte antes de escolher sozinho."],
+          "moduleIds": ["uml", "banco-dados"]
+        },
+        {
+          "id": "est-etapa-2",
+          "order": 2,
+          "title": "Produtos e fornecedores",
+          "goal": "CRUD de produtos com SKU único e vínculo com fornecedor.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Migrations das tabelas",
+            "Endpoints de cadastro, edição e listagem paginada",
+            "SKU único garantido pelo banco, não só pelo código",
+            "Validação de campos com mensagens úteis"
+          ],
+          "deliverable": "Produtos cadastráveis e listáveis pela API.",
+          "acceptance": [
+            "SKU duplicado devolve 409, com mensagem clara",
+            "A unicidade é garantida por restrição no banco"
+          ],
+          "tips": ["Verificar duplicidade só no código falha sob concorrência: duas requisições simultâneas passam."],
+          "moduleIds": ["banco-dados", "python-aplicado"]
+        },
+        {
+          "id": "est-etapa-3",
+          "order": 3,
+          "title": "Movimentações e saldo",
+          "goal": "Registrar entradas e saídas com saldo sempre coerente.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Endpoint de movimentação com validação de quantidade",
+            "Atualização de saldo e registro da movimentação na mesma transação",
+            "Regra de saldo insuficiente conforme definido na etapa 1",
+            "Consulta de saldo por produto e histórico por produto"
+          ],
+          "deliverable": "Movimentar altera o saldo e deixa rastro.",
+          "acceptance": [
+            "Falha no meio da operação não deixa saldo alterado sem movimentação",
+            "Existe teste que verifica a coerência entre saldo e soma das movimentações"
+          ],
+          "tips": ["Este é o ponto do projeto que exige transação. Sem ela, os dados divergem com o tempo."],
+          "moduleIds": ["banco-dados", "python-aplicado"]
+        },
+        {
+          "id": "est-etapa-4",
+          "order": 4,
+          "title": "Importação de planilha",
+          "goal": "Importar produtos e movimentações prestando contas de tudo.",
+          "estimatedMinutes": 150,
+          "tasks": [
+            "Leitura de CSV com tratamento de encoding",
+            "Validação por linha, com motivo de rejeição",
+            "Relatório final: lidas, importadas, rejeitadas e motivos",
+            "Nenhuma linha descartada em silêncio"
+          ],
+          "deliverable": "Importação com relatório que o time consegue usar para corrigir a planilha.",
+          "acceptance": [
+            "Importadas mais rejeitadas é igual ao total de linhas",
+            "Cada rejeição indica o número da linha"
+          ],
+          "tips": ["Teste com um arquivo real, sujo. Arquivo que você mesmo criou é sempre limpo demais."],
+          "moduleIds": ["big-data-python", "python"]
+        },
+        {
+          "id": "est-etapa-5",
+          "order": 5,
+          "title": "Alertas e relatórios",
+          "goal": "Mostrar o que precisa de atenção e como o estoque se move.",
+          "estimatedMinutes": 120,
+          "tasks": [
+            "Estoque mínimo por produto e listagem do que está abaixo",
+            "Relatório de entradas e saídas por período",
+            "Agregação no banco, com índice adequado",
+            "Tela com filtros e estados tratados"
+          ],
+          "deliverable": "Painel com produtos em alerta e relatório de giro.",
+          "acceptance": [
+            "A agregação acontece no banco",
+            "O relatório responde rápido com volume realista"
+          ],
+          "tips": ["Gere dados de teste em volume antes de avaliar desempenho."],
+          "moduleIds": ["banco-dados", "usabilidade"]
+        },
+        {
+          "id": "est-etapa-6",
+          "order": 6,
+          "title": "Autenticação, testes e deploy",
+          "goal": "Fechar o projeto com acesso controlado, testes e publicação.",
+          "estimatedMinutes": 180,
+          "tasks": [
+            "Autenticação e permissões por perfil",
+            "Testes de regra, de contrato e de isolamento",
+            "Pipeline de CI",
+            "Deploy com banco gerenciado",
+            "README e capturas de tela"
+          ],
+          "deliverable": "Sistema publicado e documentado.",
+          "acceptance": [
+            "Nenhum endpoint sem verificação de permissão",
+            "CI verde",
+            "Instruções do README testadas em pasta limpa"
+          ],
+          "tips": ["Antes de publicar, revise o histórico do Git procurando segredo."],
+          "moduleIds": ["seguranca-informacao", "computacao-nuvem", "engenharia-software"]
+        }
+      ],
+      "portfolio": {
+        "readmeOutline": [
+          "O que o sistema faz, em uma frase",
+          "O problema de controlar estoque em planilha",
+          "Captura de tela do painel",
+          "Stack e motivo das escolhas",
+          "Modelo de dados e por que o saldo é derivado",
+          "Funcionalidades",
+          "Como rodar e como testar",
+          "Variáveis de ambiente",
+          "Link do deploy",
+          "Limitações conhecidas"
+        ],
+        "linkedinDraft": "Publiquei um sistema de gestão de estoque com produtos, fornecedores, movimentações e relatórios.\n\nA decisão que mais mudou o projeto foi tratar o saldo como resultado das movimentações, e não como um campo editável. Isso obrigou a usar transação em toda operação que altera estoque, e tornou possível reconstruir o saldo a partir do histórico — o que resolveu a divergência que aparecia nos meus primeiros testes.\n\nA importação de planilha também rendeu aprendizado: a primeira versão descartava linhas problemáticas em silêncio. Agora ela devolve um relatório com número da linha e motivo de cada rejeição.\n\nStack: Python, FastAPI, PostgreSQL e testes com pytest.",
+        "qualityChecklist": [
+          "README explica o problema antes da stack",
+          "Saldo e histórico coerentes, com teste que prova",
+          "Importação com relatório de rejeições",
+          "Nenhum segredo no repositório",
+          "Testes rodando no CI",
+          "Deploy acessível com dados de demonstração",
+          "Limitações documentadas honestamente"
+        ]
+      }
+    }
+  ]
+}

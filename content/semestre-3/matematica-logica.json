@@ -1,0 +1,716 @@
+{
+  "id": "matematica-logica",
+  "semester": 3,
+  "order": 1,
+  "title": "Matemática e lógica aplicada",
+  "summary": "Só o que tem uso direto: lógica booleana sem erro de sinal, conjuntos, porcentagem e probabilidade para decidir com números.",
+  "outcome": "Você escreve condições compostas corretas, usa operações de conjunto para comparar listas e calcula porcentagem e média sem os erros clássicos.",
+  "tags": [
+    "logica",
+    "matematica"
+  ],
+  "stack": [
+    "javascript",
+    "python"
+  ],
+  "items": [
+    {
+      "id": "mat-logica-booleana-01",
+      "type": "lesson",
+      "title": "Lógica booleana: negar uma condição composta",
+      "estimatedMinutes": 9,
+      "tags": [
+        "logica"
+      ],
+      "why": "Negar `and` e `or` errado é uma fonte silenciosa de bug em validação e permissão. A regra é simples e quase ninguém aprende.",
+      "goal": "Negar condições compostas corretamente e simplificar expressões confusas.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A negação inverte o operador. Esta é a regra (leis de De Morgan):"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "not (A and B)   ==   (not A) or  (not B)\nnot (A or  B)   ==   (not A) and (not B)"
+        },
+        {
+          "kind": "text",
+          "text": "Em português fica evidente: \"não é verdade que tem sessão E tem permissão\" significa \"falta sessão OU falta permissão\"."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# regra: pode editar se está logado e é o autor\npode_editar = logado and eh_autor\n\n# negação errada — bloqueia quem deveria poder\nnao_pode = not logado and not eh_autor    # só bloqueia quem falha nas DUAS\n\n# negação correta\nnao_pode = not logado or not eh_autor",
+          "highlight": [
+            5
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Onde isso vira falha de segurança",
+          "text": "A versão errada acima libera acesso para quem está logado e não é o autor. O sistema funciona nos testes felizes e vaza dado no caso do meio."
+        },
+        {
+          "kind": "text",
+          "text": "Avaliação em curto-circuito: o segundo lado só é avaliado quando necessário. Isso é usado como proteção:"
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// se usuario for null, o segundo lado não é avaliado e não dá erro\nif (usuario && usuario.permissoes.includes('editar')) { ... }\n\n// a ordem importa: isto quebra quando usuario é null\nif (usuario.permissoes.includes('editar') && usuario) { ... }"
+        },
+        {
+          "kind": "text",
+          "text": "Quando a condição tem três ou mais partes, extraia para uma função com nome. Ninguém revisa corretamente uma linha com cinco operadores."
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual é a negação correta de `idade >= 18 and tem_documento`?",
+          "choices": [
+            "idade < 18 and not tem_documento",
+            "idade < 18 or not tem_documento",
+            "not idade >= 18 and tem_documento",
+            "idade <= 18 or not tem_documento"
+          ],
+          "answerIndex": 1,
+          "explanation": "A negação de um E é um OU com as partes negadas. A quarta opção também erra o limite: a negação de >= 18 é < 18, não <= 18."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva a condição \"pode cancelar o pedido\" com três requisitos e depois escreva a negação dela. Teste mentalmente os casos em que só um requisito falha.",
+        "expected": "A negação usa OU, e cada requisito que falha sozinho já bloqueia."
+      },
+      "ifStuck": [
+        "Monte uma tabela com as combinações de verdadeiro e falso e verifique as duas expressões lado a lado."
+      ],
+      "commonErrors": [
+        {
+          "error": "Negar mantendo o operador.",
+          "why": "Confusão entre \"nenhum dos dois\" e \"não os dois\".",
+          "fix": "Ao negar, troque and por or e vice-versa, negando cada parte."
+        }
+      ],
+      "exercise": {
+        "id": "ex-mat-negacao-01",
+        "title": "Bloquear o acesso corretamente",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "A regra é: pode ver o relatório quem está autenticado E (é do time financeiro OU é administrador). Implemente `deveBloquear(autenticado, doFinanceiro, admin)`, que devolve true quando o acesso NÃO é permitido.",
+        "starter": "function deveBloquear(autenticado, doFinanceiro, admin) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "financeiro autenticado passa",
+            "expression": "deveBloquear(true, true, false)",
+            "expected": false
+          },
+          {
+            "name": "admin autenticado passa",
+            "expression": "deveBloquear(true, false, true)",
+            "expected": false
+          },
+          {
+            "name": "autenticado sem papel e bloqueado",
+            "expression": "deveBloquear(true, false, false)",
+            "expected": true
+          },
+          {
+            "name": "nao autenticado e bloqueado mesmo sendo admin",
+            "expression": "deveBloquear(false, false, true)",
+            "expected": true
+          },
+          {
+            "name": "nao autenticado e do financeiro tambem bloqueia",
+            "expression": "deveBloquear(false, true, false)",
+            "expected": true
+          },
+          {
+            "name": "nada verdadeiro bloqueia",
+            "expression": "deveBloquear(false, false, false)",
+            "expected": true
+          }
+        ],
+        "hints": [
+          "Escreva primeiro a condição de permitir e negue a expressão inteira.",
+          "A negação de (A && (B || C)) é (!A || (!B && !C)).",
+          "Se ficar confuso, devolva `!(autenticado && (doFinanceiro || admin))`."
+        ],
+        "solution": "function deveBloquear(autenticado, doFinanceiro, admin) {\n  const podeVer = autenticado && (doFinanceiro || admin)\n  return !podeVer\n}\n",
+        "solutionNotes": "Escrever a regra positiva e negar no fim é mais seguro que montar a negação à mão. Menos chance de errar o operador, e o nome documenta a regra."
+      },
+      "glossary": [
+        "autorizacao"
+      ]
+    },
+    {
+      "id": "mat-conjuntos-porcentagem-01",
+      "type": "lesson",
+      "title": "Conjuntos e porcentagem sem erro",
+      "estimatedMinutes": 9,
+      "tags": [
+        "matematica"
+      ],
+      "why": "Comparar duas listas e calcular variação percentual aparecem em todo relatório. Os dois têm erro clássico.",
+      "goal": "Usar operações de conjunto para comparar coleções e calcular variação percentual corretamente.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Comparar duas listas é operação de conjunto. Em vez de laços aninhados, use a linguagem:"
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "no_sistema = {\"A1\", \"A2\", \"B3\"}\nna_planilha = {\"A1\", \"B3\", \"C4\"}\n\nno_sistema & na_planilha    # {'A1', 'B3'}  em ambos\nno_sistema - na_planilha    # {'A2'}       só no sistema\nna_planilha - no_sistema    # {'C4'}       só na planilha\nno_sistema ^ na_planilha    # {'A2', 'C4'} divergências"
+        },
+        {
+          "kind": "text",
+          "text": "Essa é a base de qualquer conferência: o que sobra de cada lado é exatamente o relatório de divergência que alguém pediu."
+        },
+        {
+          "kind": "text",
+          "text": "Variação percentual: a referência é sempre o valor antigo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "variação = (novo - antigo) / antigo * 100\n\nde 200 para 250:  (250 - 200) / 200 = 25% de aumento\nde 250 para 200:  (200 - 250) / 250 = -20% de queda"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Aumentar 25% e cair 25% não volta ao início",
+          "text": "200 aumentado em 25% dá 250. 250 reduzido em 25% dá 187,50. A base muda, e é por isso que \"subiu 30% e caiu 30%\" não se anula em nenhum relatório."
+        },
+        {
+          "kind": "text",
+          "text": "E o caso que quebra o relatório: valor antigo igual a zero."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "def variacao(antigo, novo):\n    if antigo == 0:\n        # não existe variação percentual a partir de zero\n        return None if novo == 0 else float(\"inf\")\n    return (novo - antigo) / antigo * 100"
+        },
+        {
+          "kind": "text",
+          "text": "Na tela, `inf` deve aparecer como \"novo\" ou \"—\", não como número. Mostrar \"aumento de infinito por cento\" destrói a credibilidade do relatório."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um relatório mostra \"aumento de 999999%\" numa linha. Qual é a causa mais provável?",
+          "choices": [
+            "Erro de arredondamento",
+            "O valor de referência era zero ou próximo de zero, e a divisão explodiu",
+            "Os dados estão duplicados",
+            "Falta ordenação"
+          ],
+          "answerIndex": 1,
+          "explanation": "Divisão por valor muito pequeno produz percentual gigante. O tratamento é detectar o caso e exibir um rótulo, não um número."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Dadas duas listas de SKUs (sistema e planilha), produza três listas: presentes nos dois, só no sistema e só na planilha.",
+        "expected": "Nenhum laço aninhado: três operações de conjunto."
+      },
+      "ifStuck": [
+        "Em JavaScript não há operador: use Set com filter, ou a API de Set se disponível no seu ambiente."
+      ],
+      "commonErrors": [
+        {
+          "error": "ZeroDivisionError em cálculo de variação.",
+          "why": "O valor do período anterior era zero.",
+          "fix": "Trate o caso antes de dividir e escolha o que mostrar na tela."
+        }
+      ],
+      "exercise": {
+        "id": "ex-mat-divergencia-01",
+        "title": "Relatório de divergência de estoque",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 9,
+        "prompt": "Implemente `conferir(sistema, planilha)`. As duas entradas são listas de códigos (texto). Devolva { emAmbos, soNoSistema, soNaPlanilha }, cada um ordenado alfabeticamente. Duplicatas na entrada não devem aparecer repetidas no resultado.",
+        "starter": "function conferir(sistema, planilha) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "listas vazias",
+            "expression": "conferir([], [])",
+            "expected": {
+              "emAmbos": [],
+              "soNoSistema": [],
+              "soNaPlanilha": []
+            }
+          },
+          {
+            "name": "divergencia simples",
+            "expression": "conferir(['A1','A2','B3'], ['A1','B3','C4'])",
+            "expected": {
+              "emAmbos": [
+                "A1",
+                "B3"
+              ],
+              "soNoSistema": [
+                "A2"
+              ],
+              "soNaPlanilha": [
+                "C4"
+              ]
+            }
+          },
+          {
+            "name": "remove duplicatas",
+            "expression": "conferir(['A1','A1','A1'], ['A1']).emAmbos",
+            "expected": [
+              "A1"
+            ]
+          },
+          {
+            "name": "resultado ordenado",
+            "expression": "conferir(['C1','A1','B1'], []).soNoSistema",
+            "expected": [
+              "A1",
+              "B1",
+              "C1"
+            ]
+          },
+          {
+            "name": "sem interseccao",
+            "expression": "conferir(['A1'], ['B1']).emAmbos",
+            "expected": []
+          }
+        ],
+        "hints": [
+          "Converta as duas listas em Set: isso remove duplicatas e dá verificação direta.",
+          "Interseção: filtrar um Set pelos que existem no outro.",
+          "Não esqueça de ordenar cada resultado com sort()."
+        ],
+        "solution": "function conferir(sistema, planilha) {\n  const a = new Set(sistema)\n  const b = new Set(planilha)\n\n  const emAmbos = [...a].filter((codigo) => b.has(codigo)).sort()\n  const soNoSistema = [...a].filter((codigo) => !b.has(codigo)).sort()\n  const soNaPlanilha = [...b].filter((codigo) => !a.has(codigo)).sort()\n\n  return { emAmbos, soNoSistema, soNaPlanilha }\n}\n",
+        "solutionNotes": "Com listas grandes, a versão com Set é ordens de magnitude mais rápida que comparar com includes dentro de filter."
+      },
+      "glossary": [
+        "Big O",
+        "Complexidade"
+      ]
+    },
+    {
+      "id": "mat-estimativa-capacidade-01",
+      "type": "lesson",
+      "title": "Contas de guardanapo antes de construir",
+      "estimatedMinutes": 10,
+      "tags": [
+        "matematica",
+        "performance"
+      ],
+      "why": "Uma conta de trinta segundos evita semanas de trabalho na solução errada. E é o tipo de pergunta que aparece em reunião de planejamento e em entrevista.",
+      "goal": "Estimar volume, crescimento e espaço antes de escolher a solução.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Estimar não é adivinhar: é multiplicar números que você conhece e olhar a ordem de grandeza do resultado."
+        },
+        {
+          "kind": "text",
+          "text": "Exemplo real. \"Vamos guardar cada evento de clique dos usuários.\" Antes de escolher banco, faça a conta:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "10.000 usuários ativos por dia\n×  50 cliques por usuário\n= 500.000 eventos por dia\n\n× 365 dias\n= 182 milhões de eventos por ano\n\n× 200 bytes por evento\n= cerca de 36 GB por ano, só de dado bruto"
+        },
+        {
+          "kind": "text",
+          "text": "Agora a decisão mudou de assunto: não é mais \"qual tabela\", é \"por quanto tempo guardamos o bruto\" e \"o que agregamos\"."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Ordem de grandeza basta",
+          "text": "A diferença que importa é entre milhares, milhões e bilhões. Errar 30% na estimativa não muda decisão nenhuma; errar mil vezes muda todas."
+        },
+        {
+          "kind": "text",
+          "text": "Números que vale ter na cabeça para estimar:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Referência",
+            "Valor aproximado"
+          ],
+          "rows": [
+            [
+              "segundos num dia",
+              "86.400"
+            ],
+            [
+              "requisições por dia a 10/s",
+              "864 mil"
+            ],
+            [
+              "linha simples no banco",
+              "100 a 500 bytes"
+            ],
+            [
+              "1 GB em linhas de 200 bytes",
+              "cerca de 5 milhões"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Crescimento também se estima. Crescimento de 10% ao mês parece pouco e dobra em pouco mais de sete meses:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "1,1 ^ 7  ≈ 1,95\n1,1 ^ 12 ≈ 3,14\n\nO que hoje leva 1 segundo vai levar 3 no fim do ano,\nse o custo crescer junto com o volume."
+        },
+        {
+          "kind": "quiz",
+          "question": "O time quer guardar um registro de auditoria por ação de usuário. São 2.000 usuários ativos por dia, 30 ações cada, e o registro ocupa cerca de 300 bytes. Qual é a ordem de grandeza em um ano?",
+          "choices": [
+            "Poucos megabytes: qualquer tabela resolve",
+            "Cerca de 6 GB e 22 milhões de linhas: precisa de índice pensado e política de retenção",
+            "Mais de 1 TB: precisa de um banco especializado",
+            "Não dá para estimar sem medir em produção"
+          ],
+          "answerIndex": 1,
+          "explanation": "2.000 × 30 = 60 mil por dia, cerca de 22 milhões por ano, a 300 bytes dá aproximadamente 6,5 GB. É volume que um banco relacional aguenta bem — desde que a consulta use índice e exista decisão sobre quanto tempo guardar."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma funcionalidade que você quer construir e estime: quantos registros por dia, quantos em um ano, e quanto ocupam. Escreva a conta, não só o resultado.",
+        "expected": "A conta escrita permite outra pessoa discordar de um número específico, em vez do palpite inteiro."
+      },
+      "ifStuck": [
+        "Comece pelo número de pessoas, multiplique pela frequência e depois pelo tempo.",
+        "Se você não sabe a frequência, estime um intervalo: entre 10 e 100. A ordem de grandeza já decide."
+      ],
+      "commonErrors": [
+        {
+          "error": "Estimar só o dado bruto e esquecer índices e backup.",
+          "why": "Índice ocupa espaço, e backup multiplica o total pelo número de cópias guardadas.",
+          "fix": "Some uma margem: o espaço real costuma ser bem maior que a soma das linhas."
+        }
+      ],
+      "exercise": {
+        "id": "ex-mat-estimativa-01",
+        "title": "Estimar volume e espaço",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `estimar({ usuariosPorDia, acoesPorUsuario, bytesPorRegistro, dias })`. Devolva { registrosPorDia, registrosNoPeriodo, gigabytes }, com `gigabytes` arredondado para uma casa decimal (1 GB = 1.000.000.000 bytes). Qualquer entrada não numérica ou negativa é tratada como 0.",
+        "starter": "function estimar(entrada) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "exemplo da aula",
+            "expression": "estimar({usuariosPorDia: 10000, acoesPorUsuario: 50, bytesPorRegistro: 200, dias: 365})",
+            "expected": {
+              "registrosPorDia": 500000,
+              "registrosNoPeriodo": 182500000,
+              "gigabytes": 36.5
+            }
+          },
+          {
+            "name": "um dia",
+            "expression": "estimar({usuariosPorDia: 100, acoesPorUsuario: 10, bytesPorRegistro: 1000, dias: 1})",
+            "expected": {
+              "registrosPorDia": 1000,
+              "registrosNoPeriodo": 1000,
+              "gigabytes": 0
+            }
+          },
+          {
+            "name": "tudo zero",
+            "expression": "estimar({usuariosPorDia: 0, acoesPorUsuario: 0, bytesPorRegistro: 0, dias: 0})",
+            "expected": {
+              "registrosPorDia": 0,
+              "registrosNoPeriodo": 0,
+              "gigabytes": 0
+            }
+          },
+          {
+            "name": "entrada invalida vira zero",
+            "expression": "estimar({usuariosPorDia: 'muitos', acoesPorUsuario: 10, bytesPorRegistro: 100, dias: 30})",
+            "expected": {
+              "registrosPorDia": 0,
+              "registrosNoPeriodo": 0,
+              "gigabytes": 0
+            }
+          },
+          {
+            "name": "negativo vira zero",
+            "expression": "estimar({usuariosPorDia: -5, acoesPorUsuario: 10, bytesPorRegistro: 100, dias: 30}).registrosPorDia",
+            "expected": 0
+          },
+          {
+            "name": "arredonda para uma casa",
+            "expression": "estimar({usuariosPorDia: 1000, acoesPorUsuario: 100, bytesPorRegistro: 350, dias: 30}).gigabytes",
+            "expected": 1.1
+          }
+        ],
+        "hints": [
+          "Uma função auxiliar que normaliza cada número deixa o resto limpo.",
+          "Number.isFinite descarta texto, null e NaN; Math.max(0, valor) resolve o negativo.",
+          "Para uma casa decimal: Math.round(valor * 10) / 10."
+        ],
+        "solution": "function estimar(entrada) {\n  const numero = (valor) => (Number.isFinite(valor) ? Math.max(0, valor) : 0)\n\n  const usuarios = numero(entrada?.usuariosPorDia)\n  const acoes = numero(entrada?.acoesPorUsuario)\n  const bytes = numero(entrada?.bytesPorRegistro)\n  const dias = numero(entrada?.dias)\n\n  const registrosPorDia = usuarios * acoes\n  const registrosNoPeriodo = registrosPorDia * dias\n  const gigabytes = Math.round(((registrosNoPeriodo * bytes) / 1e9) * 10) / 10\n\n  return { registrosPorDia, registrosNoPeriodo, gigabytes }\n}\n",
+        "solutionNotes": "Usar 1e9 e não 2^30 é uma escolha: fabricantes de disco e provedores de nuvem cobram em GB decimal. Para memória, a base 2 é a certa — e a diferença de 7% não muda a ordem de grandeza."
+      },
+      "glossary": [
+        "Performance",
+        "indice",
+        "Latência"
+      ]
+    },
+    {
+      "id": "mat-probabilidade-aplicada-01",
+      "type": "lesson",
+      "title": "Probabilidade que aparece no código",
+      "estimatedMinutes": 9,
+      "tags": [
+        "matematica",
+        "logica"
+      ],
+      "why": "Retentativa, disponibilidade e alerta que dispara à toa são problemas de probabilidade. Sem a conta, a intuição erra feio.",
+      "goal": "Calcular a chance de sucesso com retentativa e entender por que alerta raro gera tanto alarme falso.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Eventos independentes se multiplicam. Se uma chamada falha 10% das vezes, duas tentativas falham juntas em:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "0,10 × 0,10 = 0,01  →  1%\n\nOu seja: a chance de sucesso sobe de 90% para 99%."
+        },
+        {
+          "kind": "text",
+          "text": "É por isso que três tentativas costumam ser suficientes. A quarta melhora de 99,9% para 99,99%: ganho pequeno, espera longa."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "A multiplicação só vale se as falhas forem independentes",
+          "text": "Quando o serviço está fora do ar, as tentativas não são independentes: todas falham. Retentativa resolve falha passageira, não indisponibilidade."
+        },
+        {
+          "kind": "text",
+          "text": "O outro lado da multiplicação: disponibilidade em cadeia. Uma requisição que depende de quatro serviços com 99,9% cada não tem 99,9%."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "0,999 ^ 4 ≈ 0,996\n\n99,6% significa cerca de 3 horas fora por mês,\ncontra 43 minutos de um serviço sozinho."
+        },
+        {
+          "kind": "text",
+          "text": "E o caso que engana quase todo mundo: um alerta muito preciso para um evento muito raro dispara mais alarme falso que acerto."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Fraude real:            1 em 1.000 transações\nDetector acerta:        99% das fraudes\nDetector erra:          1% das transações normais\n\nEm 100.000 transações:\n  100 fraudes    → 99 detectadas\n  99.900 normais → 999 marcadas por engano\n\nDos 1.098 alertas, 91% são falsos."
+        },
+        {
+          "kind": "text",
+          "text": "O detector não está ruim: 99% de acerto é muito. O que domina é a raridade do evento. Por isso alerta de evento raro precisa de segunda checagem antes de virar ação automática."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma chamada externa falha 20% das vezes, de forma independente. Qual a chance de sucesso com até três tentativas?",
+          "choices": [
+            "60%",
+            "80%",
+            "99,2%",
+            "100%"
+          ],
+          "answerIndex": 2,
+          "explanation": "As três falham juntas em 0,2 × 0,2 × 0,2 = 0,008, ou seja 0,8%. O sucesso é 99,2%. Vale lembrar que isso só se sustenta se as falhas forem independentes."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Some quantos serviços externos uma requisição do seu sistema toca. Assuma 99,9% para cada um e calcule a disponibilidade da cadeia.",
+        "expected": "O número final é sempre menor que o do serviço mais frágil da cadeia."
+      },
+      "ifStuck": [
+        "Para \"falha em todas\", multiplique as probabilidades de falha.",
+        "Para \"funciona em todas\", multiplique as probabilidades de sucesso."
+      ],
+      "commonErrors": [
+        {
+          "error": "Somar probabilidades em vez de multiplicar.",
+          "why": "Soma responde \"ou\" em eventos que não acontecem juntos; cadeia de serviços é \"e\".",
+          "fix": "Se a pergunta tem um \"e\" no meio, multiplique."
+        }
+      ],
+      "exercise": {
+        "id": "ex-mat-retentativa-01",
+        "title": "Chance de sucesso com retentativa",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `chanceDeSucesso(taxaDeFalha, tentativas)`, devolvendo a probabilidade de pelo menos uma tentativa dar certo, arredondada para quatro casas decimais. `taxaDeFalha` vai de 0 a 1. Zero tentativa devolve 0. Taxa fora da faixa ou não numérica devolve null.",
+        "starter": "function chanceDeSucesso(taxaDeFalha, tentativas) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "uma tentativa a 10% de falha",
+            "expression": "chanceDeSucesso(0.1, 1)",
+            "expected": 0.9
+          },
+          {
+            "name": "duas tentativas a 10%",
+            "expression": "chanceDeSucesso(0.1, 2)",
+            "expected": 0.99
+          },
+          {
+            "name": "tres tentativas a 20%",
+            "expression": "chanceDeSucesso(0.2, 3)",
+            "expected": 0.992
+          },
+          {
+            "name": "nunca falha",
+            "expression": "chanceDeSucesso(0, 1)",
+            "expected": 1
+          },
+          {
+            "name": "sempre falha",
+            "expression": "chanceDeSucesso(1, 5)",
+            "expected": 0
+          },
+          {
+            "name": "zero tentativa",
+            "expression": "chanceDeSucesso(0.1, 0)",
+            "expected": 0
+          },
+          {
+            "name": "taxa invalida",
+            "expression": "chanceDeSucesso(1.5, 2)",
+            "expected": null
+          },
+          {
+            "name": "taxa nao numerica",
+            "expression": "chanceDeSucesso('alta', 2)",
+            "expected": null
+          }
+        ],
+        "hints": [
+          "A chance de falhar em todas é a taxa elevada ao número de tentativas.",
+          "O sucesso é 1 menos esse valor.",
+          "Para quatro casas: Math.round(valor * 10000) / 10000."
+        ],
+        "solution": "function chanceDeSucesso(taxaDeFalha, tentativas) {\n  if (!Number.isFinite(taxaDeFalha) || taxaDeFalha < 0 || taxaDeFalha > 1) return null\n  if (!Number.isFinite(tentativas) || tentativas <= 0) return 0\n\n  const falhaEmTodas = taxaDeFalha ** tentativas\n  return Math.round((1 - falhaEmTodas) * 10000) / 10000\n}\n",
+        "solutionNotes": "A conta pressupõe falhas independentes. Quando o serviço cai por inteiro, a taxa deixa de ser constante e nenhuma quantidade de tentativas ajuda — é aí que entra parar de tentar por um tempo."
+      },
+      "glossary": [
+        "Latência",
+        "fila",
+        "api"
+      ]
+    },
+    {
+      "id": "mat-checkpoint-01",
+      "type": "checkpoint",
+      "title": "Onde você está",
+      "estimatedMinutes": 3,
+      "tags": [
+        "logica"
+      ],
+      "summary": "Duas ferramentas de uso diário: negação correta de condição composta e cálculo percentual que não quebra.",
+      "learned": [
+        "not (A and B) é (not A) or (not B)",
+        "Escreva a regra positiva e negue no fim: menos chance de erro",
+        "Curto-circuito protege acesso a campo de objeto nulo, e a ordem importa",
+        "Comparação de listas é operação de conjunto",
+        "Variação percentual tem o valor antigo como base",
+        "Base zero não tem variação percentual: trate antes de dividir"
+      ],
+      "nextUp": "Sistemas operacionais e terminal."
+    }
+  ],
+  "assessments": [
+    {
+      "id": "aval-mat-logica",
+      "title": "Lógica aplicada",
+      "format": "alternativa",
+      "summary": "Quatro questões de lógica e cálculo com consequência em código.",
+      "estimatedMinutes": 6,
+      "topics": [
+        "lógica",
+        "conjuntos",
+        "percentual"
+      ],
+      "afterItemId": "mat-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-mat-negacao-01",
+          "kind": "debugging",
+          "prompt": "A regra é \"pode editar se está logado e é o autor\". Este bloqueio está correto?",
+          "code": {
+            "language": "python",
+            "code": "if not logado and not eh_autor:\n    raise SemPermissao()"
+          },
+          "choices": [
+            "Sim, está correto",
+            "Não: só bloqueia quem falha nas duas condições. Quem está logado e não é o autor passa",
+            "Não: deveria usar not (logado and eh_autor) com and mantido",
+            "Sim, mas é ineficiente"
+          ],
+          "answerIndex": 1,
+          "explanation": "A negação de um E é um OU: `not logado or not eh_autor`. Como está, um usuário logado acessa o recurso de outro.",
+          "topics": [
+            "lógica"
+          ]
+        },
+        {
+          "id": "q-mat-percentual-02",
+          "kind": "conceitual",
+          "prompt": "Um valor sobe 25% e depois cai 25%. Ele volta ao valor inicial?",
+          "choices": [
+            "Sim, sempre",
+            "Não: a segunda variação usa a nova base, então o resultado fica abaixo do inicial",
+            "Sim, se o valor for inteiro",
+            "Depende do arredondamento"
+          ],
+          "answerIndex": 1,
+          "explanation": "200 → 250 → 187,50. A base da segunda operação é 250, não 200. É a causa de divergência em relatório de variação.",
+          "topics": [
+            "percentual"
+          ]
+        },
+        {
+          "id": "q-mat-conjunto-03",
+          "kind": "situacao",
+          "prompt": "Você precisa listar os SKUs que existem na planilha e não no sistema, com 80 mil itens em cada lado. Qual abordagem?",
+          "choices": [
+            "Dois laços aninhados comparando item a item",
+            "Converter o sistema em conjunto e filtrar a planilha pelos que não estão nele",
+            "Ordenar as duas listas e comparar visualmente",
+            "Importar tudo no banco e usar LIKE"
+          ],
+          "answerIndex": 1,
+          "explanation": "Laço aninhado daria 6,4 bilhões de comparações. Com conjunto são 80 mil verificações diretas.",
+          "topics": [
+            "conjuntos"
+          ]
+        },
+        {
+          "id": "q-mat-zero-04",
+          "kind": "debugging",
+          "prompt": "O relatório mensal quebra com ZeroDivisionError ao calcular variação. Quando isso acontece?",
+          "choices": [
+            "Quando o valor novo é zero",
+            "Quando o valor do período anterior é zero, que é a base da divisão",
+            "Quando os dois valores são iguais",
+            "Quando o valor é negativo"
+          ],
+          "answerIndex": 1,
+          "explanation": "A base é o valor antigo. Produto que não vendeu no mês anterior gera divisão por zero: é caso previsto e precisa de tratamento explícito.",
+          "topics": [
+            "percentual"
+          ]
+        }
+      ]
+    }
+  ]
+}
