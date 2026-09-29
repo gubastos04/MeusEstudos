@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { reloadContent } from '@/lib/content/loader'
+import { stripTypes } from '@/lib/runner/run-js'
 
 /**
  * Conteudo.
@@ -182,5 +183,103 @@ describe('integridade de referências', () => {
       .map((projeto) => projeto.id)
 
     expect(foraDeOrdem).toEqual([])
+  })
+})
+
+describe('a solução oficial resolve o próprio exercício', () => {
+  /**
+   * Executa a solucao contra os testes do proprio exercicio.
+   *
+   * E a unica verificacao que prova que o exercicio funciona: schema e regra
+   * de produto nao pegam um caso de teste com valor errado, e quem estuda
+   * levaria a culpa por um defeito do conteudo.
+   *
+   * Replica js-worker-source.ts: mesma construcao por new Function com eval
+   * por expressao, e o mesmo deepEqual com tolerancia de ponto flutuante.
+   * Python fica de fora — depende do Pyodide, que so existe no navegador.
+   */
+  function iguais(a: unknown, b: unknown): boolean {
+    if (a === b) return true
+    if (typeof a === 'number' && typeof b === 'number') {
+      if (Number.isNaN(a) && Number.isNaN(b)) return true
+      if (Number.isFinite(a) && Number.isFinite(b)) return Math.abs(a - b) < 1e-9
+      return false
+    }
+    if (a === null || b === null || a === undefined || b === undefined) return false
+    if (typeof a !== typeof b || typeof a !== 'object') return false
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+    if (Array.isArray(a)) {
+      const outro = b as unknown[]
+      return a.length === outro.length && a.every((item, i) => iguais(item, outro[i]))
+    }
+    const ca = a as Record<string, unknown>
+    const cb = b as Record<string, unknown>
+    const chaves = Object.keys(ca)
+    if (chaves.length !== Object.keys(cb).length) return false
+    return chaves.every((k) => Object.prototype.hasOwnProperty.call(cb, k) && iguais(ca[k], cb[k]))
+  }
+
+  type Caso = { name: string; expression: string; expected?: unknown; expectThrows?: boolean }
+
+  function rodar(codigo: string, linguagem: string, casos: Caso[]): string[] {
+    const fonte = linguagem === 'typescript' ? stripTypes(codigo) : codigo
+    const mudo = { log() {}, info() {}, warn() {}, error() {}, debug() {}, table() {} }
+
+    let avaliar: (expressao: string) => unknown
+    try {
+      const fabrica = new Function(
+        'console',
+        '"use strict";\n' + fonte + '\n;return function (__expressao) { return eval(__expressao); };',
+      )
+      avaliar = fabrica(mudo) as (e: string) => unknown
+    } catch (erro) {
+      return ['a solução não carrega: ' + (erro as Error).message]
+    }
+
+    const falhas: string[] = []
+    for (const caso of casos) {
+      try {
+        const recebido = avaliar(caso.expression)
+        if (caso.expectThrows) falhas.push(`${caso.name}: esperava erro, devolveu ${JSON.stringify(recebido)}`)
+        else if (!iguais(recebido, caso.expected))
+          falhas.push(`${caso.name}: esperado ${JSON.stringify(caso.expected)}, recebido ${JSON.stringify(recebido)}`)
+      } catch (erro) {
+        if (!caso.expectThrows) falhas.push(`${caso.name}: lançou ${(erro as Error).message}`)
+      }
+    }
+    return falhas
+  }
+
+  const executaveis = ['javascript', 'typescript']
+
+  const exercicios = conteudo.modules.flatMap((modulo) =>
+    modulo.items.flatMap((item) => {
+      const exercicio = item.type === 'lesson' ? item.exercise : undefined
+      if (!exercicio || exercicio.kind !== 'code') return []
+      if (!executaveis.includes(exercicio.language)) return []
+      if (!exercicio.solution || exercicio.tests.length === 0) return []
+      return [{ onde: `${modulo.id} / ${exercicio.id}`, exercicio }]
+    }),
+  )
+
+  const questoes = conteudo.modules.flatMap((modulo) =>
+    modulo.assessments.flatMap((avaliacao) =>
+      avaliacao.questions.flatMap((questao) => {
+        if (questao.kind !== 'pratica') return []
+        if (!executaveis.includes(questao.language)) return []
+        if (!questao.solution || questao.tests.length === 0) return []
+        return [{ onde: `${modulo.id} / ${avaliacao.id} / ${questao.id}`, exercicio: questao }]
+      }),
+    ),
+  )
+
+  it('há exercícios executáveis para verificar', () => {
+    // Guarda contra o teste virar vazio em silêncio depois de um refactor.
+    expect(exercicios.length).toBeGreaterThan(20)
+  })
+
+  it.each([...exercicios, ...questoes])('$onde', ({ exercicio }) => {
+    const falhas = rodar(exercicio.solution!, exercicio.language, exercicio.tests)
+    expect(falhas).toEqual([])
   })
 })

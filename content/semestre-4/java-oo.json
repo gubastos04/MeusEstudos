@@ -503,7 +503,7 @@
         ],
         "hints": [
           "A estrutura é: var erro = assertThrows(Tipo.class, () -> chamada());",
-          "Depois: assertTrue(erro.getMessage().contains(\"quantidade\"));"
+          "Depois de capturar o erro, confira a mensagem: getMessage() devolve o texto, e contains procura um trecho dentro dele."
         ],
         "solution": "class CalculadoraDeTotalTest {\n\n    @Test\n    void quantidadeNegativaEhRecusada() {\n        var itens = List.of(new Item(10, -1));\n\n        var erro = assertThrows(\n            IllegalArgumentException.class,\n            () -> CalculadoraDeTotal.calcular(itens)\n        );\n\n        assertTrue(erro.getMessage().contains(\"quantidade\"));\n    }\n}\n"
       },
