@@ -127,6 +127,12 @@ registra em `issues` e carrega o resto.
 Adicionar um módulo = adicionar um JSON + `npm run content:validate` +
 `npm run content:sync`. Nada de CMS.
 
+Isso vale em produção a cada deploy que mexe em `/content`. O texto da aula vem
+dos arquivos, então ela aparece na tela mesmo sem sincronizar — mas
+`ExerciseAttempt.exerciseId` tem chave estrangeira para `Exercise`, e a primeira
+tentativa num exercício que não está no espelho falha. Deploy de código não
+sincroniza banco.
+
 ### Sem enum e sem Json no Prisma
 
 O mesmo `schema.prisma` roda em SQLite e PostgreSQL. Por isso todos os campos

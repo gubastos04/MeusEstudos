@@ -279,6 +279,12 @@ O conteúdo é JSON versionado em `/content`. Não há CMS.
    exercício de código com testes, termo de glossário existente.
 3. `npm run content:sync`.
 
+**O passo 3 vale para produção também, em todo deploy que mexe em `/content`.**
+As tabelas de conteúdo são espelho, e `ExerciseAttempt` tem chave estrangeira
+para `Exercise`: com o espelho desatualizado, a aula nova aparece na tela —
+porque o texto vem dos arquivos — mas a primeira tentativa de exercício falha
+com violação de chave estrangeira. Publicar o código não sincroniza o banco.
+
 Conteúdo inválido não derruba a aplicação: o arquivo com problema é isolado e o
 resto continua carregando.
 
