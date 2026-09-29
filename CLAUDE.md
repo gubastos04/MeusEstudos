@@ -252,6 +252,12 @@ Três peças:
    Next.
 2. `src/lib/offline.ts` — cache de conteúdo (Cache Storage) e fila de progresso
    (localStorage).
+   Guardar a casca HTML da tela offline NÃO basta: sem o JavaScript da rota
+   ela abre, mostra "Carregando" e fica nisso para sempre, porque o React não
+   hidrata. Por isso `baixarModulo` lê os `/_next/static/...` do próprio HTML
+   da casca e guarda também. Os nomes mudam a cada build, então não podem ser
+   escritos à mão. Coberto por `tests/offline-cache.test.ts`.
+
 3. `/leitura-offline` — pública de propósito, porque é a única página que o
    service worker guarda em cache. Renderiza com os mesmos componentes da tela
    online.

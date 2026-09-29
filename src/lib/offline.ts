@@ -23,6 +23,9 @@
 
 export const CACHE_CONTEUDO = 'meus-estudos-conteudo-v1'
 export const CACHE_PAGINAS = 'meus-estudos-paginas-v1'
+// Precisa bater com o nome em public/sw.js: o service worker serve
+// /_next/static a partir deste cache, e ele nao pode importar deste modulo.
+export const CACHE_ESTATICO = 'meus-estudos-estatico-v1'
 
 const CHAVE_FILA = 'meus-estudos:fila-progresso'
 const ROTA_OFFLINE = '/leitura-offline'
@@ -63,6 +66,37 @@ function urlDoModulo(moduloId: string): string {
   return `/api/conteudo/modulo/${moduloId}`
 }
 
+/**
+ * Guarda o JavaScript e o CSS que a casca da leitura offline referencia.
+ *
+ * Guardar so o HTML nao basta, e a falha e silenciosa: a tela abre, mostra
+ * "Carregando" e fica nisso para sempre, porque sem o bundle da rota o React
+ * nunca hidrata. Os nomes dos arquivos mudam a cada build, entao sao lidos do
+ * proprio HTML em vez de escritos aqui.
+ */
+async function guardarAssetsDaCasca(html: string): Promise<void> {
+  const estatico = await caches.open(CACHE_ESTATICO)
+  const urls = new Set<string>()
+
+  for (const achado of html.matchAll(/(?:src|href)="(\/_next\/static\/[^"]+)"/g)) {
+    const url = achado[1]
+    if (url) urls.add(url)
+  }
+
+  await Promise.all(
+    [...urls].map(async (url) => {
+      if (await estatico.match(url)) return
+      try {
+        const resposta = await fetch(url)
+        if (resposta.ok) await estatico.put(url, resposta)
+      } catch {
+        // Um arquivo a menos nao invalida o download do modulo. O que faltar
+        // volta a ser buscado na proxima vez que houver rede.
+      }
+    }),
+  )
+}
+
 export function cacheDisponivel(): boolean {
   return typeof window !== 'undefined' && 'caches' in window
 }
@@ -91,7 +125,11 @@ export async function baixarModulo(moduloId: string): Promise<{ ok: true } | { o
     // A casca da leitura offline precisa estar em cache antes de faltar rede.
     const paginas = await caches.open(CACHE_PAGINAS)
     const casca = await fetch(ROTA_OFFLINE)
-    if (casca.ok) await paginas.put(ROTA_OFFLINE, casca.clone())
+    if (casca.ok) {
+      const html = await casca.clone().text()
+      await paginas.put(ROTA_OFFLINE, casca.clone())
+      await guardarAssetsDaCasca(html)
+    }
 
     return { ok: true }
   } catch {
