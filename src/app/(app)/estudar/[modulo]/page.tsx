@@ -148,7 +148,7 @@ export default async function PaginaModulo({ params }: Props) {
 
                   <p className="text-ink-faint text-xs">Avalia: {avaliacao.topics.join(', ')}</p>
 
-                  <BotaoLink href={`/avaliacoes/${avaliacao.id}`} variante="secundario" tamanho="sm">
+                  <BotaoLink href={`/avaliacoes/${avaliacao.id}`} variante="secundario">
                     Abrir avaliação
                   </BotaoLink>
                 </Cartao>

@@ -321,7 +321,11 @@ Ao criar um recurso por usuário, o teste de isolamento ("A não alcança o de B
   `role="alert"` e texto (nunca só a cor da borda).
 - Foco sempre visível (`:focus-visible` global). Nunca `outline: none` sem
   substituto.
-- Alvo de toque mínimo de 44px nos botões.
+- Alvo de toque mínimo de 44px nos botões. `Botao` e `BotaoLink` têm um
+  tamanho só, justamente para que não exista como burlar isso.
+- Campo de senha traz botão "Mostrar/Ocultar senha". O rótulo muda com o
+  estado e o sufixo fica em `sr-only`: o nome acessível diz a ação, sem
+  alargar o botão em 360px.
 - Layout mobile first: testar em 360px, sem scroll horizontal.
 
 ## Ao adicionar conteúdo

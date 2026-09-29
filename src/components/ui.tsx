@@ -18,7 +18,6 @@ function juntar(...classes: (string | false | null | undefined)[]): string {
 // --- Botao -------------------------------------------------------------------
 
 type Variante = 'primario' | 'secundario' | 'discreto' | 'perigo'
-type Tamanho = 'md' | 'sm'
 
 const variantes: Record<Variante, string> = {
   primario: 'bg-accent text-ink-inverse hover:bg-accent-hover border-transparent',
@@ -27,21 +26,18 @@ const variantes: Record<Variante, string> = {
   perigo: 'bg-transparent text-danger border-danger/40 hover:bg-danger-soft',
 }
 
-const tamanhos: Record<Tamanho, string> = {
-  // 44px de altura: alvo de toque confortavel.
-  md: 'min-h-11 px-4 text-sm',
-  sm: 'min-h-9 px-3 text-sm',
-}
+// 44px de altura, sem excecao. Existia um tamanho `sm` de 36px que quebrava o
+// minimo de toque justamente nos botoes mais usados no celular; ele diferia do
+// padrao so na folga horizontal, o que nao pagava o custo.
+const tamanhoUnico = 'min-h-11 px-4 text-sm'
 
 type BotaoProps = {
   variante?: Variante
-  tamanho?: Tamanho
   larguraTotal?: boolean
 } & ComponentProps<'button'>
 
 export function Botao({
   variante = 'secundario',
-  tamanho = 'md',
   larguraTotal = false,
   className,
   ...props
@@ -52,7 +48,7 @@ export function Botao({
       className={juntar(
         'inline-flex items-center justify-center gap-2 rounded border font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
         variantes[variante],
-        tamanhos[tamanho],
+        tamanhoUnico,
         larguraTotal && 'w-full',
         className,
       )}
@@ -62,13 +58,11 @@ export function Botao({
 
 type BotaoLinkProps = {
   variante?: Variante
-  tamanho?: Tamanho
   larguraTotal?: boolean
 } & ComponentProps<typeof Link>
 
 export function BotaoLink({
   variante = 'secundario',
-  tamanho = 'md',
   larguraTotal = false,
   className,
   ...props
@@ -79,7 +73,7 @@ export function BotaoLink({
       className={juntar(
         'inline-flex items-center justify-center gap-2 rounded border font-medium transition',
         variantes[variante],
-        tamanhos[tamanho],
+        tamanhoUnico,
         larguraTotal && 'w-full',
         className,
       )}

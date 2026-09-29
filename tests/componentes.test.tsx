@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { BlocoQuiz } from '@/components/bloco-quiz'
+import { Campo } from '@/components/campos'
 import { MarkdownSimples } from '@/components/markdown-simples'
 import { TextoInline } from '@/components/texto-inline'
 
@@ -133,5 +134,35 @@ describe('resposta da IA', () => {
     const { container } = render(<MarkdownSimples texto={'Exemplo:\n```js\nconst a = 1'} />)
 
     expect(container.textContent).toContain('const a = 1')
+  })
+})
+
+describe('campo de senha', () => {
+  it('começa oculto e revela ao pedir', async () => {
+    const usuario = userEvent.setup()
+    render(<Campo rotulo="Senha" type="password" obrigatorio defaultValue="minha-senha-1234" />)
+
+    const campo = screen.getByLabelText(/Senha/)
+    expect(campo.getAttribute('type')).toEqual('password')
+
+    await usuario.click(screen.getByRole('button', { name: 'Mostrar senha' }))
+    expect(campo.getAttribute('type')).toEqual('text')
+
+    await usuario.click(screen.getByRole('button', { name: 'Ocultar senha' }))
+    expect(campo.getAttribute('type')).toEqual('password')
+  })
+
+  it('o nome acessível diz a ação, não só "Mostrar"', () => {
+    render(<Campo rotulo="Senha" type="password" />)
+
+    // Botão sem contexto ("Mostrar") não diz nada a quem navega por lista de
+    // controles. O sufixo oculto completa o nome sem alargar o botão na tela.
+    expect(screen.getByRole('button', { name: 'Mostrar senha' })).toBeTruthy()
+  })
+
+  it('campo comum não ganha botão nenhum', () => {
+    render(<Campo rotulo="Email" type="email" />)
+
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })

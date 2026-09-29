@@ -254,7 +254,6 @@ export function Exercicio({ exercicio, moduloId, aulaId, codigoSalvo, tamanhoFon
           <Botao
             type="button"
             variante="secundario"
-            tamanho="sm"
             className="mt-3"
             onClick={() => setPermitiuPython(true)}
           >

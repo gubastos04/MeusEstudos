@@ -256,7 +256,6 @@ export function TrabalhoProjeto({
                     <Botao
                       type="button"
                       variante={feita ? 'discreto' : 'primario'}
-                      tamanho="sm"
                       onClick={() => chamar(feita ? 'reabrir-etapa' : 'concluir-etapa', { etapaId: etapa.id })}
                       disabled={ocupado}
                     >

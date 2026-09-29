@@ -106,7 +106,6 @@ export function Desafio({
           <Botao
             type="button"
             variante="secundario"
-            tamanho="sm"
             className="mt-3"
             onClick={() => setPermitiuPython(true)}
           >

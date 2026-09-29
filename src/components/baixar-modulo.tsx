@@ -80,12 +80,12 @@ export function BaixarModulo({ moduloId, titulo }: { moduloId: string; titulo: s
             >
               Abrir leitura offline
             </Link>
-            <Botao type="button" variante="discreto" tamanho="sm" onClick={remover} disabled={ocupado}>
+            <Botao type="button" variante="discreto" onClick={remover} disabled={ocupado}>
               Remover do aparelho
             </Botao>
           </>
         ) : (
-          <Botao type="button" variante="secundario" tamanho="sm" onClick={baixar} disabled={ocupado}>
+          <Botao type="button" variante="secundario" onClick={baixar} disabled={ocupado}>
             {ocupado ? 'Baixando…' : 'Baixar para ler offline'}
           </Botao>
         )}

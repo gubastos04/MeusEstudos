@@ -65,27 +65,39 @@ export function sameOrigin(request: Request): boolean {
   return allowed.has(origin)
 }
 
-type HandlerContext<TBody> = {
+type HandlerContext<TBody, TUser> = {
   request: Request
-  user: SessionUser
+  user: TUser
   body: TBody
   params: Record<string, string>
 }
 
-type HandlerOptions<TSchema extends z.ZodTypeAny | undefined> = {
+type HandlerOptions<TSchema extends z.ZodTypeAny | undefined, TAuth extends boolean> = {
   schema?: TSchema
-  requireAuth?: boolean
+  requireAuth?: TAuth
 }
 
 type Inferred<TSchema> = TSchema extends z.ZodTypeAny ? z.infer<TSchema> : undefined
 
 /**
+ * Rota com sessao recebe `user` garantido; rota que dispensa sessao recebe
+ * `SessionUser | null` e o compilador cobra a checagem.
+ *
+ * Antes, o wrapper entregava um usuario falso com `id: ''` nesse caso. Nenhuma
+ * rota chegou a usar, mas uma futura consultaria com userId vazio em silencio,
+ * sem erro de tipo — o tipo de furo de isolamento que nao aparece em review.
+ */
+type UsuarioDoHandler<TAuth extends boolean> = TAuth extends false ? SessionUser | null : SessionUser
+
+/**
  * Envolve um handler de rota com: checagem de origem, sessao, validacao do
  * corpo e tratamento de erro. Erros inesperados nunca vazam stack para o cliente.
  */
-export function handler<TSchema extends z.ZodTypeAny | undefined = undefined>(
-  options: HandlerOptions<TSchema>,
-  run: (ctx: HandlerContext<Inferred<TSchema>>) => Promise<NextResponse> | NextResponse,
+export function handler<TSchema extends z.ZodTypeAny | undefined = undefined, TAuth extends boolean = true>(
+  options: HandlerOptions<TSchema, TAuth>,
+  run: (
+    ctx: HandlerContext<Inferred<TSchema>, UsuarioDoHandler<TAuth>>,
+  ) => Promise<NextResponse> | NextResponse,
 ) {
   // O segundo argumento e declarado como obrigatorio porque e assim que o Next
   // tipa os route handlers; em rotas sem parametro ele chega sem `params`.
@@ -121,7 +133,9 @@ export function handler<TSchema extends z.ZodTypeAny | undefined = undefined>(
 
       return await run({
         request,
-        user: (user ?? { id: '', email: '', name: '', onboardedAt: null, theme: 'system' }) as SessionUser,
+        // Com sessao exigida, o caminho acima ja retornou 401 se nao houvesse
+        // usuario — aqui ele existe. Sem sessao exigida, vai null mesmo.
+        user: user as UsuarioDoHandler<TAuth>,
         body: body as Inferred<TSchema>,
         params,
       })

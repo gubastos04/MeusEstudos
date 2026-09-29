@@ -73,7 +73,6 @@ export function TenhoTempo({ minutosPreferidos = 20 }: { minutosPreferidos?: num
           <Botao
             key={opcao.minutos}
             type="button"
-            tamanho="sm"
             variante={
               selecionado === opcao.minutos
                 ? 'primario'

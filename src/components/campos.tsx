@@ -1,6 +1,6 @@
 'use client'
 
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 
 import { juntar } from './ui'
@@ -77,16 +77,38 @@ export function Campo({
   const gerado = useId()
   const id = props.id ?? gerado
 
+  // Campo de senha ganha um botao para revelar o que foi digitado. Digitar
+  // senha no celular erra facil, e a alternativa e a pessoa apagar tudo e
+  // tentar de novo sem saber onde errou.
+  const [senhaVisivel, setSenhaVisivel] = useState(false)
+  const ehSenha = props.type === 'password'
+
   return (
     <Envolucro rotulo={rotulo} ajuda={ajuda} erro={erro} obrigatorio={obrigatorio} id={id}>
       {({ descrito }) => (
-        <input
-          {...props}
-          id={id}
-          aria-invalid={erro ? true : undefined}
-          aria-describedby={descrito || undefined}
-          className={juntar(classeCampo, erro && classeErro, className)}
-        />
+        <div className={ehSenha ? 'relative' : undefined}>
+          <input
+            {...props}
+            type={ehSenha && senhaVisivel ? 'text' : props.type}
+            id={id}
+            aria-invalid={erro ? true : undefined}
+            aria-describedby={descrito || undefined}
+            className={juntar(classeCampo, ehSenha && 'pr-24', erro && classeErro, className)}
+          />
+
+          {ehSenha ? (
+            <button
+              type="button"
+              onClick={() => setSenhaVisivel((visivel) => !visivel)}
+              className="text-ink-muted hover:text-ink focus-visible:text-ink absolute inset-y-0 right-0 flex min-h-11 items-center rounded px-3 text-sm font-medium"
+            >
+              {/* O rotulo muda com o estado: dispensa aria-pressed e sempre diz
+                  a acao. O sufixo oculto completa o nome acessivel. */}
+              {senhaVisivel ? 'Ocultar' : 'Mostrar'}
+              <span className="sr-only"> senha</span>
+            </button>
+          ) : null}
+        </div>
       )}
     </Envolucro>
   )
