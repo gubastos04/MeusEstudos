@@ -463,49 +463,62 @@
       ],
       "exercise": {
         "id": "ex-java-teste-excecao-01",
-        "title": "Teste que verifica a exceção certa",
+        "title": "Teste de regra sem banco",
         "kind": "structural",
         "language": "java",
-        "estimatedMinutes": 7,
-        "prompt": "Escreva um teste JUnit chamado quantidadeNegativaEhRecusada: chama CalculadoraDeTotal.calcular com um item de quantidade -1, verifica que lança IllegalArgumentException e que a mensagem menciona quantidade.",
-        "starter": "class CalculadoraDeTotalTest {\n\n}\n",
+        "estimatedMinutes": 10,
+        "prompt": "O exemplo da aula testa o caso que falha. Escreva o teste do caso que dá certo — e que o exemplo não cobre: um ticket fechado há 3 dias é reaberto, e depois disso o repositório devolve esse ticket com o status já atualizado. Use `RepositorioEmMemoria`, sem banco e sem biblioteca de mock. Dê ao método um nome que descreva a regra.",
+        "starter": "class ServicoTicketsTest {\n\n    @Test\n    void /* nome que diz a regra */() {\n        // escreva aqui\n    }\n}\n",
         "checks": [
           {
-            "name": "marca o metodo como teste",
-            "type": "contains",
-            "value": "@Test",
-            "hint": "O JUnit descobre os testes pela anotação."
-          },
-          {
-            "name": "usa o nome pedido",
-            "type": "contains",
-            "value": "quantidadeNegativaEhRecusada",
-            "hint": "O enunciado define o nome do método."
-          },
-          {
-            "name": "verifica a excecao",
-            "type": "contains",
-            "value": "assertThrows",
-            "hint": "Como se verifica que uma exceção foi lançada?"
-          },
-          {
-            "name": "usa o tipo especifico",
-            "type": "contains",
-            "value": "IllegalArgumentException.class",
-            "hint": "Exception.class passaria para qualquer falha."
-          },
-          {
-            "name": "verifica a mensagem",
+            "name": "usa o repositorio em memoria",
             "type": "regex",
-            "value": "getMessage\\(\\)",
-            "hint": "Só o tipo não garante que falhou pelo motivo certo."
+            "value": "new\\s+RepositorioEmMemoria\\s*\\(",
+            "hint": "A dependência entra pelo construtor do serviço; o teste passa a implementação em memória."
+          },
+          {
+            "name": "prepara um ticket dentro do prazo",
+            "type": "regex",
+            "value": "ticketFechadoHa\\s*\\(\\s*[123]\\s*\\)",
+            "hint": "Três dias é dentro do prazo; quarenta não era."
+          },
+          {
+            "name": "chama reabrir",
+            "type": "regex",
+            "value": "reabrir\\s*\\(",
+            "hint": "É a ação sob teste."
+          },
+          {
+            "name": "confere o estado gravado",
+            "type": "regex",
+            "value": "buscarPorId\\s*\\(",
+            "hint": "Não basta o retorno: o exemplo da aula nunca pergunta ao repositório se a mudança ficou lá."
+          },
+          {
+            "name": "afirma o status esperado",
+            "type": "regex",
+            "value": "assert\\w*\\([\\s\\S]*(aberto|ABERTO|Aberto)",
+            "hint": "A asserção precisa dizer qual status você espera encontrar."
+          },
+          {
+            "name": "nao usa mock de biblioteca",
+            "type": "notContains",
+            "value": "Mockito",
+            "hint": "A aula escreve a implementação de teste à mão de propósito."
+          },
+          {
+            "name": "o nome do metodo descreve a regra",
+            "type": "regex",
+            "value": "void\\s+(reabre|permiteReabrir|ticketDentroDoPrazo)\\w*\\s*\\(",
+            "hint": "`teste1` não diz nada daqui a seis meses."
           }
         ],
         "hints": [
-          "A estrutura é: var erro = assertThrows(Tipo.class, () -> chamada());",
-          "Depois de capturar o erro, confira a mensagem: getMessage() devolve o texto, e contains procura um trecho dentro dele."
+          "A montagem é a mesma do exemplo que falha: repositório em memória, ticket preparado, serviço recebendo o repositório.",
+          "A diferença está no fim: depois de reabrir, pergunte ao repositório o que ficou guardado, em vez de olhar só o retorno."
         ],
-        "solution": "class CalculadoraDeTotalTest {\n\n    @Test\n    void quantidadeNegativaEhRecusada() {\n        var itens = List.of(new Item(10, -1));\n\n        var erro = assertThrows(\n            IllegalArgumentException.class,\n            () -> CalculadoraDeTotal.calcular(itens)\n        );\n\n        assertTrue(erro.getMessage().contains(\"quantidade\"));\n    }\n}\n"
+        "solution": "class ServicoTicketsTest {\n\n    @Test\n    void reabreTicketDentroDoPrazoEGravaOEstado() {\n        var repositorio = new RepositorioEmMemoria();\n        repositorio.salvar(ticketFechadoHa(3));\n\n        var servico = new ServicoTickets(repositorio);\n        servico.reabrir(1L, autor());\n\n        var guardado = repositorio.buscarPorId(1L).orElseThrow();\n        assertEquals(Status.ABERTO, guardado.status());\n    }\n}\n",
+        "solutionNotes": "Verificar o retorno prova que o método devolveu algo; perguntar ao repositório prova que a mudança foi gravada. São falhas diferentes: um serviço que devolve o ticket atualizado sem salvar passa no primeiro teste e quebra em produção."
       },
       "glossary": [
         "Teste unitário",

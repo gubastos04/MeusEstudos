@@ -284,6 +284,281 @@
       "glossary": ["indice", "transacao", "migration", "orm", "Query"]
     },
     {
+      "id": "bd-null-tres-valores-01",
+      "type": "lesson",
+      "title": "NULL: o valor que não é zero nem vazio",
+      "estimatedMinutes": 10,
+      "tags": [
+        "sql"
+      ],
+      "why": "Um relatório de \"pedidos não cancelados\" que some com metade das linhas quase sempre é NULL. Ele não é zero, não é string vazia e não é igual a nada — nem a ele mesmo.",
+      "goal": "Escrever filtros, contagens e junções que não perdem linha silenciosamente por causa de NULL.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "NULL quer dizer **desconhecido**. Comparar algo desconhecido com um valor não dá verdadeiro nem falso: dá desconhecido. E `WHERE` só devolve a linha quando a condição é verdadeira."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- a tabela tem 1000 pedidos, 200 com status NULL\nSELECT count(*) FROM pedido WHERE status <> 'cancelado';\n-- 750, não 950: as 200 linhas com NULL sumiram\n\n-- as três formas de incluir o desconhecido de volta\nSELECT count(*) FROM pedido WHERE status <> 'cancelado' OR status IS NULL;\nSELECT count(*) FROM pedido WHERE status IS DISTINCT FROM 'cancelado';\nSELECT count(*) FROM pedido WHERE coalesce(status, '') <> 'cancelado';",
+          "caption": "As três devolvem 950. A segunda é a mais direta no PostgreSQL."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "NOT IN é a armadilha pior",
+          "text": "Se a subconsulta devolver uma única linha NULL, `WHERE id NOT IN (...)` devolve **nenhuma linha**, sempre — porque \"id é diferente de desconhecido\" nunca é verdadeiro. Use `NOT EXISTS`, que não tem esse comportamento."
+        },
+        {
+          "kind": "text",
+          "text": "Nas contagens a diferença também aparece: `count(*)` conta linhas, `count(coluna)` conta valores não nulos. Quando as duas dão números diferentes, a diferença é exatamente a quantidade de NULL."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "SELECT\n  count(*)            AS linhas,        -- 1000\n  count(status)       AS com_status,    -- 800\n  count(*) FILTER (WHERE status IS NULL) AS sem_status  -- 200\nFROM pedido;"
+        },
+        {
+          "kind": "text",
+          "text": "Em agregação, `sum` e `avg` ignoram NULL em vez de devolver NULL. Isso ajuda em `sum`, mas em `avg` significa que a média é calculada só sobre quem tem valor — e não é isso que o relatório costuma querer dizer."
+        },
+        {
+          "kind": "text",
+          "text": "A decisão de modelagem vem antes de tudo isso: se a coluna nunca deveria ficar vazia, declare `NOT NULL` e escolha um padrão. NULL é para o que é genuinamente desconhecido, não para \"ainda não preenchi\"."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma consulta usa `WHERE cliente_id NOT IN (SELECT cliente_id FROM bloqueado)` e devolve zero linhas, mesmo existindo clientes liberados. Qual é a causa mais provável?",
+          "choices": [
+            "A subconsulta está lenta e expirou",
+            "A tabela bloqueado tem ao menos uma linha com cliente_id NULL",
+            "Falta um índice em cliente_id",
+            "NOT IN não aceita subconsulta"
+          ],
+          "answerIndex": 1,
+          "explanation": "Com um NULL na lista, a comparação \"diferente de desconhecido\" nunca é verdadeira para nenhuma linha, e o filtro elimina tudo. `NOT EXISTS` resolve porque testa existência, não igualdade."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Numa tabela do seu projeto, compare `count(*)` com `count(coluna)` de uma coluna que aceita nulo. Depois rode um filtro com `<>` sobre ela e veja quantas linhas somem.",
+        "expected": "Você consegue dizer quantas linhas têm valor desconhecido e se algum filtro seu está perdendo essas linhas."
+      },
+      "ifStuck": [
+        "Pense em NULL como \"não sei\". A pergunta \"não sei é diferente de cancelado?\" não tem resposta sim ou não."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar `= NULL` ou `<> NULL`.",
+          "why": "Igualdade com desconhecido devolve desconhecido, nunca verdadeiro — a condição jamais passa.",
+          "fix": "Use `IS NULL` e `IS NOT NULL`."
+        },
+        {
+          "error": "LEFT JOIN seguido de filtro na tabela da direita no WHERE.",
+          "why": "As linhas sem correspondência vêm com NULL nas colunas da direita, e o filtro no WHERE as elimina — o LEFT JOIN vira INNER.",
+          "fix": "Mova a condição para o ON, ou aceite o NULL explicitamente no WHERE."
+        }
+      ],
+      "exercise": {
+        "id": "ex-bd-null-01",
+        "title": "Relatório que não perde linha",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "A tabela `pedido` tem `status` que aceita nulo. Escreva a consulta que lista, por status, quantos pedidos existem — tratando os nulos como o texto `sem status` e ordenando do maior total para o menor. Pedidos com status `cancelado` ficam de fora, e os de status desconhecido **não** podem sumir junto com eles.",
+        "starter": "-- escreva aqui\n",
+        "checks": [
+          {
+            "name": "agrupa por status",
+            "type": "regex",
+            "value": "GROUP\\s+BY",
+            "hint": "O relatório é por status."
+          },
+          {
+            "name": "conta os pedidos",
+            "type": "regex",
+            "value": "count\\s*\\(",
+            "hint": "Um total por grupo."
+          },
+          {
+            "name": "troca o nulo por um rotulo",
+            "type": "regex",
+            "value": "coalesce\\s*\\(|CASE\\s+WHEN[\\s\\S]*IS\\s+NULL",
+            "hint": "`coalesce(status, ...)` devolve o segundo valor quando o primeiro é nulo."
+          },
+          {
+            "name": "o rotulo pedido",
+            "type": "contains",
+            "value": "sem status",
+            "hint": "O texto exato que o enunciado pede."
+          },
+          {
+            "name": "o filtro nao engole os nulos",
+            "type": "regex",
+            "value": "IS\\s+DISTINCT\\s+FROM|IS\\s+NULL|coalesce\\s*\\([\\s\\S]*<>",
+            "hint": "Um `<>` sozinho descarta as linhas nulas junto com as canceladas."
+          },
+          {
+            "name": "ordena do maior para o menor",
+            "type": "regex",
+            "value": "ORDER\\s+BY[\\s\\S]*DESC",
+            "hint": "Do maior total para o menor."
+          }
+        ],
+        "hints": [
+          "Duas coisas diferentes: rotular o nulo na saída e não perdê-lo no filtro. Resolver uma não resolve a outra.",
+          "Se você filtrar depois de trocar o nulo por texto, o problema do filtro desaparece sozinho."
+        ],
+        "solution": "SELECT\n  coalesce(status, 'sem status') AS status,\n  count(*) AS total\nFROM pedido\nWHERE status IS DISTINCT FROM 'cancelado'\nGROUP BY coalesce(status, 'sem status')\nORDER BY total DESC;",
+        "solutionNotes": "`IS DISTINCT FROM` trata NULL como um valor comparável: desconhecido é distinto de cancelado, então a linha fica. Escrever `status <> 'cancelado'` eliminaria os 200 pedidos sem status sem nenhum aviso."
+      },
+      "glossary": [
+        "sql",
+        "query"
+      ]
+    },
+    {
+      "id": "bd-migration-01",
+      "type": "lesson",
+      "title": "Migration: mudar o esquema com a aplicação no ar",
+      "estimatedMinutes": 10,
+      "tags": [
+        "sql"
+      ],
+      "why": "Alterar tabela na mão em produção funciona até o dia em que alguém precisa recriar o banco, descobrir o que mudou ou voltar atrás. Migration é o histórico da estrutura, versionado junto do código.",
+      "goal": "Escrever uma alteração de esquema que roda em produção sem derrubar a aplicação que está no ar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Migration é um arquivo com a alteração do esquema, guardado no repositório e aplicado em ordem. O banco registra quais já rodaram, então aplicar duas vezes não repete a alteração."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- 20260311_1030_adiciona_prioridade.sql\nALTER TABLE ticket ADD COLUMN prioridade TEXT;\nUPDATE ticket SET prioridade = 'normal' WHERE prioridade IS NULL;\nALTER TABLE ticket ALTER COLUMN prioridade SET NOT NULL;\nALTER TABLE ticket ALTER COLUMN prioridade SET DEFAULT 'normal';",
+          "caption": "O nome começa com a data para a ordem ser óbvia na listagem."
+        },
+        {
+          "kind": "text",
+          "text": "Repare na ordem. Criar a coluna já como `NOT NULL` sem default falha se a tabela tiver qualquer linha: não existe valor para as linhas antigas. Adicionar aceitando nulo, preencher e só então exigir é o caminho que funciona com dado dentro."
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Durante o deploy, duas versões do código rodam juntas",
+          "text": "É a mesma regra do deploy: renomear ou remover coluna em um passo derruba a versão antiga, que ainda está atendendo requisição. Adicionar é seguro; remover exige dois deploys — primeiro o código para de usar, depois a coluna sai."
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Deploy 1: migration adiciona a coluna nova; o código passa a escrever nas duas e ler da nova.",
+            "Deploy 2: o código para de escrever na antiga.",
+            "Deploy 3: migration remove a coluna antiga."
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Migration não se edita depois de aplicada em qualquer ambiente que não seja o seu. Quem já rodou aquele arquivo não vai rodar de novo, e os bancos ficam diferentes entre si. Alteração errada se corrige com uma migration nova."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Índice em tabela grande trava escrita",
+          "text": "Um `CREATE INDEX` comum bloqueia a tabela enquanto constrói. No PostgreSQL, `CREATE INDEX CONCURRENTLY` evita o bloqueio em troca de demorar mais — e não roda dentro de transação."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você precisa adicionar a coluna `cpf TEXT NOT NULL` numa tabela com 2 milhões de clientes. Qual sequência funciona?",
+          "choices": [
+            "ALTER TABLE ... ADD COLUMN cpf TEXT NOT NULL, numa migration só",
+            "Adicionar aceitando nulo, preencher os existentes, depois exigir NOT NULL",
+            "Apagar a tabela e recriar com a coluna",
+            "Adicionar a coluna direto no banco de produção pelo cliente de SQL"
+          ],
+          "answerIndex": 1,
+          "explanation": "Não existe valor de CPF para as linhas que já estão lá, então exigir NOT NULL de saída falha. Em três passos, cada um é válido sobre o estado anterior."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Olhe a última alteração de esquema que você fez num projeto. Ela está registrada em algum arquivo versionado? Se não, escreva a migration que recriaria aquela alteração do zero.",
+        "expected": "Você consegue recriar o banco inteiro a partir do repositório, sem depender do que está na sua máquina."
+      },
+      "ifStuck": [
+        "Pergunte a cada passo: essa migration rodaria numa tabela que já tem um milhão de linhas e uma aplicação atendendo requisição?"
+      ],
+      "commonErrors": [
+        {
+          "error": "Editar uma migration que já rodou em outro ambiente.",
+          "why": "O banco guarda que aquele arquivo já foi aplicado e não o executa de novo; os ambientes passam a ter estruturas diferentes.",
+          "fix": "Corrija com uma migration nova, mesmo que ela desfaça a anterior."
+        },
+        {
+          "error": "Renomear coluna no mesmo deploy que altera o código.",
+          "why": "Durante o deploy a versão antiga continua atendendo e procura a coluna pelo nome velho.",
+          "fix": "Adicione a nova, migre a leitura e a escrita, remova a antiga num deploy posterior."
+        }
+      ],
+      "exercise": {
+        "id": "ex-bd-migration-01",
+        "title": "Coluna obrigatória em tabela com dado",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "A tabela `ticket` já tem 800 mil linhas em produção. Escreva a migration que acrescenta a coluna `canal`, obrigatória, com valor padrão `web` — de forma que rode sem falhar sobre as linhas existentes e sem exigir janela de manutenção. Não remova nem renomeie nada.",
+        "starter": "-- escreva aqui\n",
+        "checks": [
+          {
+            "name": "acrescenta a coluna",
+            "type": "regex",
+            "value": "ADD\\s+COLUMN\\s+canal",
+            "hint": "O nome da coluna é `canal`."
+          },
+          {
+            "name": "preenche as linhas existentes",
+            "type": "regex",
+            "value": "UPDATE\\s+ticket[\\s\\S]*canal",
+            "hint": "As 800 mil linhas antigas precisam de um valor antes de a coluna virar obrigatória."
+          },
+          {
+            "name": "so entao exige NOT NULL",
+            "type": "regex",
+            "value": "SET\\s+NOT\\s+NULL",
+            "hint": "Um passo separado, depois do preenchimento."
+          },
+          {
+            "name": "define o padrao",
+            "type": "regex",
+            "value": "DEFAULT\\s+'web'",
+            "hint": "As linhas novas precisam de um valor sem que ninguém informe."
+          },
+          {
+            "name": "nao cria a coluna ja obrigatoria",
+            "type": "regex",
+            "value": "^(?![\\s\\S]*ADD\\s+COLUMN\\s+canal\\s+TEXT\\s+NOT\\s+NULL\\s*;)[\\s\\S]*$",
+            "hint": "Criar já como NOT NULL sem default falha: não há valor para as linhas que já existem."
+          },
+          {
+            "name": "nao remove nada",
+            "type": "notContains",
+            "value": "DROP",
+            "hint": "A migration só acrescenta."
+          }
+        ],
+        "hints": [
+          "São quatro comandos, e a ordem é o exercício inteiro.",
+          "Pergunte a cada linha: isto rodaria agora, sobre as 800 mil linhas que já estão lá?"
+        ],
+        "solution": "ALTER TABLE ticket ADD COLUMN canal TEXT;\nUPDATE ticket SET canal = 'web' WHERE canal IS NULL;\nALTER TABLE ticket ALTER COLUMN canal SET NOT NULL;\nALTER TABLE ticket ALTER COLUMN canal SET DEFAULT 'web';",
+        "solutionNotes": "O default entra por último de propósito: ele vale para linhas novas, e as antigas já foram resolvidas pelo UPDATE. Em tabela muito maior, o UPDATE em lotes evita segurar a transação por muito tempo."
+      },
+      "glossary": [
+        "migration",
+        "sql",
+        "deploy"
+      ]
+    },
+    {
       "id": "bd-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

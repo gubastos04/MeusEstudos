@@ -205,6 +205,16 @@
         },
         {
           "kind": "text",
+          "text": "Um pipeline cresce em jobs, não em passos soltos. Por padrão os jobs rodam em paralelo: `needs` cria dependência entre eles e `if` decide se um job roda. São essas duas peças que impedem uma publicação de acontecer com o teste vermelho, ou de sair de um branch qualquer."
+        },
+        {
+          "kind": "code",
+          "language": "yaml",
+          "code": "needs: outro_job          # só começa depois que outro_job passar\nif: github.ref == 'refs/heads/main'   # só neste branch",
+          "caption": "As duas linhas, isoladas. Montar o job é com você."
+        },
+        {
+          "kind": "text",
           "text": "Depois do deploy, olhe três coisas: log de erro, tempo de resposta e uma operação real feita por você mesmo."
         },
         {
@@ -234,25 +244,51 @@
       ],
       "exercise": {
         "id": "ex-nuvem-ci-01",
-        "title": "Pipeline de verificação",
+        "title": "Publicação atrás da verificação",
         "kind": "structural",
         "language": "yaml",
-        "estimatedMinutes": 7,
-        "prompt": "Escreva um workflow de CI que, a cada push e pull request, instale as dependências, rode a verificação de tipos, os testes e o build.",
-        "starter": "name: ci\n\n",
+        "estimatedMinutes": 8,
+        "prompt": "O pipeline da aula verifica o código, mas publica nada. Acrescente um segundo job chamado `publicar` que só roda depois de `verificar` terminar bem, e só quando o push foi para o branch `main`. O job de publicação roda `npm run deploy`. Mantenha o job de verificação como está.",
+        "starter": "name: ci\non: [push, pull_request]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n      - run: npm run build\n\n  # escreva o job publicar aqui\n",
         "checks": [
-          { "name": "dispara em push", "type": "contains", "value": "push", "hint": "O gatilho fica em on." },
-          { "name": "dispara em pull request", "type": "regex", "value": "pull_request", "hint": "A verificação vale principalmente no PR." },
-          { "name": "instala dependencias", "type": "regex", "value": "npm ci|npm install|pip install", "hint": "Sem dependências nada roda." },
-          { "name": "roda os testes", "type": "regex", "value": "npm test|npm run test|pytest", "hint": "O passo mais importante." },
-          { "name": "roda o build", "type": "regex", "value": "npm run build|build", "hint": "Erro de compilação precisa aparecer no CI, não no deploy." }
+          {
+            "name": "existe um job publicar",
+            "type": "regex",
+            "value": "publicar:",
+            "hint": "Um segundo job, no mesmo nível de `verificar`."
+          },
+          {
+            "name": "publicar espera a verificacao",
+            "type": "regex",
+            "value": "needs:\\s*\\[?\\s*verificar",
+            "hint": "Sem `needs`, os dois jobs começam juntos e a publicação não espera o teste."
+          },
+          {
+            "name": "publicar so no branch main",
+            "type": "regex",
+            "value": "if:.*refs/heads/main|if:.*'main'|if:.*\"main\"",
+            "hint": "O `if` do job compara `github.ref` com o branch principal."
+          },
+          {
+            "name": "publica de fato",
+            "type": "regex",
+            "value": "npm run deploy",
+            "hint": "O passo que publica."
+          },
+          {
+            "name": "a verificacao continua inteira",
+            "type": "regex",
+            "value": "npm run typecheck[\\s\\S]*npm test[\\s\\S]*npm run build",
+            "hint": "O job `verificar` original não deve perder passos."
+          }
         ],
         "hints": [
-          "A estrutura é: name, on, jobs, steps.",
-          "Cada comando é um item com `- run:`."
+          "Um job novo fica no mesmo nível de `verificar`, dentro de `jobs:`.",
+          "Duas condições diferentes: uma espera outro job terminar, a outra olha em que branch o push caiu."
         ],
-        "solution": "name: ci\non: [push, pull_request]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n          cache: npm\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n      - run: npm run build\n"
-        },
+        "solution": "name: ci\non: [push, pull_request]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n      - run: npm run build\n\n  publicar:\n    needs: verificar\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n      - run: npm ci\n      - run: npm run deploy\n",
+        "solutionNotes": "O `pull_request` continua disparando o pipeline, mas o `if` impede a publicação: em PR o `github.ref` aponta para a referência do PR, não para `refs/heads/main`. Verificação em todo mundo, publicação só no principal."
+      },
       "glossary": ["deploy", "migration", "versionamento", "Docker"]
     },
     {

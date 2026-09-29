@@ -282,6 +282,138 @@
       "glossary": ["Refatoração", "Teste unitário", "code-review", "commit"]
     },
     {
+      "id": "es-padroes-projeto-01",
+      "type": "lesson",
+      "title": "Padrões de projeto: o nome que já existia",
+      "estimatedMinutes": 10,
+      "tags": [
+        "arquitetura"
+      ],
+      "why": "Padrão não é receita para aplicar: é nome para solução que já aparece sozinha. O valor está em conseguir dizer \"isso é um repositório\" e a outra pessoa entender a estrutura inteira sem ler o código.",
+      "goal": "Reconhecer três padrões que você já usou neste curso e identificar quando aplicar um deles só piora o código.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Padrão de projeto é uma solução recorrente que ganhou nome. Quase sempre você já chegou nela sozinho, resolvendo o problema — o nome vem depois, e serve para conversar."
+        },
+        {
+          "kind": "text",
+          "text": "**Repositório.** A regra de negócio não conhece o banco: ela conversa com uma interface, e quem implementa decide se vai a PostgreSQL ou a um mapa em memória. Você usou isso nos testes em Java e nas camadas da API em Python — a `RepositorioEmMemoria` escrita à mão é a segunda implementação da mesma interface."
+        },
+        {
+          "kind": "text",
+          "text": "**Estratégia.** Quando uma cadeia de `if/else` cresce a cada regra nova, o que varia é o comportamento, não a decisão. Guardar os comportamentos numa tabela transforma \"mudar código\" em \"acrescentar entrada\"."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// cresce a cada tipo novo, e cada crescimento mexe na mesma função\nfunction calcular(tipo, valor) {\n  if (tipo === 'a') return valor * 2\n  else if (tipo === 'b') return valor + 10\n  else if (tipo === 'c') return 0\n  return null\n}\n\n// a tabela separa o que varia do que decide\nconst regras = {\n  a: (valor) => valor * 2,\n  b: (valor) => valor + 10,\n  c: () => 0,\n}\n\nfunction calcular(tipo, valor) {\n  const regra = regras[tipo]\n  return regra ? regra(valor) : null\n}",
+          "caption": "A segunda versão também responde de graça a \"quais tipos existem?\"."
+        },
+        {
+          "kind": "text",
+          "text": "**Adaptador.** Duas coisas fazem o mesmo trabalho com interfaces diferentes: um provedor de email por HTTP e outro que só escreve no log. Em vez de espalhar `if` por todo lado, cada um ganha um invólucro com a mesma forma, e quem chama não sabe qual está ativo."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O custo aparece antes do benefício",
+          "text": "Padrão aplicado cedo demais é a forma mais comum de código difícil sem motivo. Uma interface com uma implementação só, uma fábrica que devolve sempre a mesma coisa, uma estratégia com dois casos fixos — tudo isso é indireção que você paga em toda leitura e nunca recebe de volta. A mesma pergunta de otimização vale aqui: **quantas variações isso pode ter de verdade?**"
+        },
+        {
+          "kind": "text",
+          "text": "O sinal honesto para extrair um padrão é a terceira repetição, não a primeira. Até lá, código direto e repetido é mais fácil de ler — e de apagar, se a hipótese estava errada."
+        },
+        {
+          "kind": "quiz",
+          "question": "Seu sistema exporta relatório só em CSV. O time acha que \"um dia\" pode precisar de PDF e Excel. Qual é a decisão mais sensata hoje?",
+          "choices": [
+            "Criar uma interface Exportador e uma fábrica, prontas para os três formatos",
+            "Escrever a exportação CSV direta, e extrair a interface quando o segundo formato existir",
+            "Criar as três implementações, deixando PDF e Excel lançando erro",
+            "Guardar o formato numa variável de ambiente"
+          ],
+          "answerIndex": 1,
+          "explanation": "A interface certa só fica clara quando existe uma segunda implementação de verdade. Desenhada sobre um caso hipotético, ela quase sempre é a forma errada, e ainda assim custa leitura em todo mundo que passar pelo código."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Procure num projeto seu uma cadeia de if/else que já foi alterada mais de uma vez pelo mesmo motivo. Escreva como ficaria em tabela — e depois decida, com honestidade, se o resultado ficou mais fácil de ler.",
+        "expected": "Você consegue defender a troca ou descartá-la com um motivo concreto, em vez de aplicar o padrão por hábito."
+      },
+      "ifStuck": [
+        "Se você não consegue citar a terceira variação que vai existir, provavelmente ainda não é hora de extrair o padrão."
+      ],
+      "commonErrors": [
+        {
+          "error": "Criar interface com uma implementação só, \"para facilitar teste\".",
+          "why": "Na maior parte dos casos a função já era testável direto; a interface só acrescentou um arquivo e um salto de leitura.",
+          "fix": "Extraia a interface quando existir a segunda implementação — inclusive se ela for a de teste, mas só quando ela realmente existir."
+        },
+        {
+          "error": "Trocar if/else por tabela sem tratar a chave desconhecida.",
+          "why": "A cadeia de if tinha um `else` final; a tabela devolve `undefined` em silêncio e o erro aparece longe dali.",
+          "fix": "Decida explicitamente o que acontece com chave ausente: valor padrão ou erro claro."
+        }
+      ],
+      "exercise": {
+        "id": "ex-es-estrategia-01",
+        "title": "Tabela no lugar da cadeia de if",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `calcularFrete(tipo, peso)` e `tiposDisponiveis()`. As regras são: `economico` custa 10 mais 2 por quilo; `expresso` custa 20 mais 4 por quilo; `retirada` custa 0. Tipo desconhecido devolve `null`. `tiposDisponiveis()` devolve os tipos aceitos em ordem alfabética — e precisa continuar correta quando alguém acrescentar um tipo novo sem tocar nela.",
+        "starter": "function calcularFrete(tipo, peso) {\n  // escreva aqui\n}\n\nfunction tiposDisponiveis() {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "economico com 3kg",
+            "expression": "calcularFrete('economico', 3)",
+            "expected": 16
+          },
+          {
+            "name": "expresso com 3kg",
+            "expression": "calcularFrete('expresso', 3)",
+            "expected": 32
+          },
+          {
+            "name": "retirada nao cobra",
+            "expression": "calcularFrete('retirada', 3)",
+            "expected": 0
+          },
+          {
+            "name": "peso zero cobra so a base",
+            "expression": "calcularFrete('economico', 0)",
+            "expected": 10
+          },
+          {
+            "name": "tipo desconhecido devolve null",
+            "expression": "calcularFrete('drone', 1)",
+            "expected": null
+          },
+          {
+            "name": "lista os tipos em ordem",
+            "expression": "tiposDisponiveis()",
+            "expected": [
+              "economico",
+              "expresso",
+              "retirada"
+            ]
+          }
+        ],
+        "checks": [],
+        "hints": [
+          "Guarde cada regra como uma função dentro de um objeto, com o tipo como chave.",
+          "`tiposDisponiveis` não deve repetir a lista de tipos: ela pode perguntar ao próprio objeto quais chaves existem."
+        ],
+        "solution": "const FRETES = {\n  economico: (peso) => 10 + 2 * peso,\n  expresso: (peso) => 20 + 4 * peso,\n  retirada: () => 0,\n}\n\nfunction calcularFrete(tipo, peso) {\n  const regra = FRETES[tipo]\n  if (!regra) return null\n  return regra(peso)\n}\n\nfunction tiposDisponiveis() {\n  return Object.keys(FRETES).sort()\n}\n",
+        "solutionNotes": "O teste de `tiposDisponiveis` é o que separa as duas soluções: com cadeia de if você teria de manter a lista à mão, e ela ficaria desatualizada no primeiro tipo novo. A tabela responde sozinha."
+      },
+      "glossary": [
+        "refatoracao",
+        "teste-unitario"
+      ]
+    },
+    {
       "id": "eng-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",
