@@ -423,7 +423,12 @@ export function Avaliacao({ avaliacaoId, formato, questoes, tamanhoFonte = 14 }:
         ) : null}
 
         {feedbackAlternativa ? (
+          // A correção aparece sem mover o foco, então sem region o leitor de
+          // tela não anuncia nada e a pessoa não sabe que a resposta foi
+          // avaliada. `status` (não `alert`) porque não é erro: é resultado.
           <div
+            role="status"
+            aria-live="polite"
             className={juntar(
               'rounded border p-3 text-sm',
               feedbackAlternativa.correta

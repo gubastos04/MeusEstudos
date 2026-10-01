@@ -36,7 +36,10 @@ function conferir() {
   }
 
   const doClient = providerDe(readFileSync(clientPath, 'utf8'))
-  console.log(`schema: ${doSchema}  |  client gerado: ${doClient}`)
+  const url = urlDoAmbiente()
+  const dialeto = url === null ? null : url.startsWith('file:') ? 'sqlite' : 'postgresql'
+
+  console.log(`schema: ${doSchema}  |  client gerado: ${doClient}  |  DATABASE_URL: ${dialeto ?? '(ausente)'}`)
 
   if (doSchema !== doClient) {
     console.error(
@@ -47,8 +50,38 @@ function conferir() {
     process.exit(1)
   }
 
-  console.log('ok: o client corresponde ao schema.')
+  // Schema e client podem concordar e a URL ainda ser do outro banco. O Prisma
+  // so reclama disso quando a primeira consulta roda — ou seja, com a tela na
+  // cara da pessoa. Falhar aqui antecipa o erro para antes de subir o servidor.
+  if (dialeto !== null && dialeto !== doSchema) {
+    console.error(
+      `\nO provider é "${doSchema}", mas DATABASE_URL aponta para ${dialeto}.\n` +
+        'A aplicação sobe e quebra na primeira consulta ao banco.',
+    )
+    process.exit(1)
+  }
+
+  console.log(
+    dialeto === null
+      ? 'ok: client e schema combinam. DATABASE_URL não definida — confira antes de rodar.'
+      : 'ok: schema, client e DATABASE_URL combinam.',
+  )
   process.exit(0)
+}
+
+/** DATABASE_URL do ambiente, com o .env como segunda opção — a ordem que o Prisma usa. */
+function urlDoAmbiente() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL
+
+  const envPath = resolve(raiz, '.env')
+  if (!existsSync(envPath)) return null
+
+  const linha = readFileSync(envPath, 'utf8')
+    .split('\n')
+    .find((l) => l.trimStart().startsWith('DATABASE_URL='))
+
+  if (!linha) return null
+  return linha.slice(linha.indexOf('=') + 1).trim().replace(/^['"]|['"]$/g, '')
 }
 
 const VALID = new Set(['sqlite', 'postgresql'])

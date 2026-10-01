@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { atualizar, enviar } from '@/lib/cliente-api'
 import { Botao, Cartao, Nota, Selo, juntar } from './ui'
@@ -59,6 +59,15 @@ export function PainelPerfil(props: Props) {
   const [senhaExclusao, setSenhaExclusao] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
   const [zonaPerigoAberta, setZonaPerigoAberta] = useState(false)
+  const campoSenhaExclusao = useRef<HTMLInputElement>(null)
+
+  // O botao que abre esta zona sai do DOM quando ela aparece, e o foco cairia
+  // no body: quem navega por teclado teria de tabular a pagina inteira de novo
+  // para alcancar a confirmacao, e o leitor de tela nao anunciaria nada. Levar
+  // o foco ao primeiro campo resolve as duas coisas.
+  useEffect(() => {
+    if (zonaPerigoAberta) campoSenhaExclusao.current?.focus()
+  }, [zonaPerigoAberta])
 
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -474,6 +483,7 @@ export function PainelPerfil(props: Props) {
               </label>
               <input
                 id="senha-exclusao"
+                ref={campoSenhaExclusao}
                 type="password"
                 value={senhaExclusao}
                 onChange={(evento) => setSenhaExclusao(evento.target.value)}
