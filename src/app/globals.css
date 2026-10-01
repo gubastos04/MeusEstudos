@@ -31,7 +31,7 @@
 
     --ink: 28 28 27;
     --ink-muted: 91 91 87;
-    --ink-faint: 130 130 124;
+    --ink-faint: 115 115 109;
     --ink-inverse: 255 255 255;
 
     /* Acento unico, sobrio. Usado em acao primaria e progresso. */
@@ -69,7 +69,7 @@
 
     --ink: 235 236 237;
     --ink-muted: 165 168 172;
-    --ink-faint: 124 128 133;
+    --ink-faint: 132 136 141;
     --ink-inverse: 22 23 24;
 
     --accent: 126 180 224;
@@ -104,7 +104,7 @@
 
       --ink: 235 236 237;
       --ink-muted: 165 168 172;
-      --ink-faint: 124 128 133;
+      --ink-faint: 132 136 141;
       --ink-inverse: 22 23 24;
 
       --accent: 126 180 224;
