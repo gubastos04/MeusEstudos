@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { BlocoQuiz } from '@/components/bloco-quiz'
+import Carregamento from '@/app/(app)/loading'
 import { Campo } from '@/components/campos'
 import { MarkdownSimples } from '@/components/markdown-simples'
 import { TextoInline } from '@/components/texto-inline'
@@ -164,5 +165,24 @@ describe('campo de senha', () => {
     render(<Campo rotulo="Email" type="email" />)
 
     expect(screen.queryByRole('button')).toBeNull()
+  })
+})
+
+describe('esqueleto de carregamento', () => {
+  it('anuncia o carregamento uma vez, não em cada bloco', () => {
+    const { container } = render(<Carregamento />)
+
+    // Repetir o componente faria o leitor de tela dizer "Carregando" várias
+    // vezes para um único carregamento.
+    expect(screen.getAllByText('Carregando')).toHaveLength(1)
+    expect(container.querySelectorAll('[aria-live]')).toHaveLength(1)
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy()
+  })
+
+  it('imita a moldura da página para o conteúdo não fazer o layout pular', () => {
+    const { container } = render(<Carregamento />)
+
+    // Título, subtítulo e corpo: as formas que a página real ocupa.
+    expect(container.querySelectorAll('.esqueleto').length).toBeGreaterThanOrEqual(5)
   })
 })
