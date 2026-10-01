@@ -414,3 +414,151 @@ describe('IA desligada', () => {
     expect(registro?.status).toEqual('sem-chave')
   })
 })
+
+describe('avaliação sob tentativa de burla', () => {
+  const alternativa = getAssessments().find((item) => item.format === 'alternativa')!
+  const pratica = getAssessments().find((item) =>
+    item.questions.some((questao) => questao.kind === 'pratica'),
+  )!
+
+  it('não responde mais numa tentativa finalizada', async () => {
+    await criarUsuario('finalizada@teste.local')
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: alternativa.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    await rotaAvaliacao(pedido({ acao: 'finalizar', tentativaId }), comParams({ id: alternativa.id }))
+
+    const questao = alternativa.questions[0]!
+    const depois = await rotaAvaliacao(
+      pedido({ acao: 'responder', tentativaId, questaoId: questao.id, escolha: 0 }),
+      comParams({ id: alternativa.id }),
+    )
+
+    expect(depois.status).toEqual(409)
+  })
+
+  it('não finaliza duas vezes', async () => {
+    await criarUsuario('duplo-fim@teste.local')
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: alternativa.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    const primeira = await rotaAvaliacao(
+      pedido({ acao: 'finalizar', tentativaId }),
+      comParams({ id: alternativa.id }),
+    )
+    const segunda = await rotaAvaliacao(
+      pedido({ acao: 'finalizar', tentativaId }),
+      comParams({ id: alternativa.id }),
+    )
+
+    expect(primeira.status).toEqual(200)
+    expect(segunda.status).toEqual(409)
+  })
+
+  it('não usa a tentativa de uma avaliação para responder outra', async () => {
+    await criarUsuario('troca-avaliacao@teste.local')
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: alternativa.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    // Mesmo usuário, mesma tentativa, outra avaliação na URL.
+    const outra = getAssessments().find((item) => item.id !== alternativa.id)!
+    const resposta = await rotaAvaliacao(
+      pedido({ acao: 'responder', tentativaId, questaoId: outra.questions[0]!.id, escolha: 0 }),
+      comParams({ id: outra.id }),
+    )
+
+    expect(resposta.status).toEqual(404)
+  })
+
+  it('questão prática não registra mais casos passados do que existem', async () => {
+    await criarUsuario('inflar-casos@teste.local')
+
+    const questao = pratica.questions.find((item) => item.kind === 'pratica')!
+    if (questao.kind !== 'pratica') throw new Error('esperava questão prática')
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: pratica.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    await rotaAvaliacao(
+      pedido({
+        acao: 'responder',
+        tentativaId,
+        questaoId: questao.id,
+        codigo: 'def total(itens): return 0',
+        passouTestes: true,
+        // Números impossíveis, como um cliente modificado mandaria.
+        casosPassaram: 99,
+        totalCasos: 0,
+      }),
+      comParams({ id: pratica.id }),
+    )
+
+    const registro = await db.answer.findFirst({ where: { attemptId: tentativaId } })
+
+    // O servidor sabe quantos casos a questão tem: o cliente não decide isso.
+    expect(registro?.totalCases).toEqual(questao.tests.length)
+    expect(registro?.passedCases).toBeLessThanOrEqual(registro?.totalCases ?? 0)
+  })
+
+  it('resultado parcial honesto é guardado como veio', async () => {
+    await criarUsuario('parcial@teste.local')
+
+    const questao = pratica.questions.find((item) => item.kind === 'pratica')!
+    if (questao.kind !== 'pratica') throw new Error('esperava questão prática')
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: pratica.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    await rotaAvaliacao(
+      pedido({
+        acao: 'responder',
+        tentativaId,
+        questaoId: questao.id,
+        codigo: 'def total(itens): return 1',
+        passouTestes: false,
+        casosPassaram: 3,
+      }),
+      comParams({ id: pratica.id }),
+    )
+
+    const registro = await db.answer.findFirst({ where: { attemptId: tentativaId } })
+
+    // O limite existe para barrar número impossível, não para achatar o que é
+    // verdade: três de cinco continua três.
+    expect(registro?.passedCases).toEqual(3)
+    expect(registro?.totalCases).toEqual(questao.tests.length)
+    expect(registro?.correct).toBe(false)
+  })
+
+  it('o registro diz que a execução foi informada pelo navegador', async () => {
+    await criarUsuario('execucao-informada@teste.local')
+
+    const questao = pratica.questions.find((item) => item.kind === 'pratica')!
+
+    const inicio = await rotaAvaliacao(pedido({ acao: 'iniciar' }), comParams({ id: pratica.id }))
+    const { tentativaId } = (await inicio.json()) as { tentativaId: string }
+
+    await rotaAvaliacao(
+      pedido({
+        acao: 'responder',
+        tentativaId,
+        questaoId: questao.id,
+        codigo: 'def total(itens): return 0',
+        passouTestes: true,
+        casosPassaram: 5,
+        totalCasos: 5,
+      }),
+      comParams({ id: pratica.id }),
+    )
+
+    const registro = await db.answer.findFirst({ where: { attemptId: tentativaId } })
+
+    // O código de quem estuda nunca roda no servidor, então o resultado dos
+    // testes chega do navegador. O registro não pode confundir isso com
+    // verificação feita aqui — é a regra 9 do produto aplicada ao dado.
+    expect(registro?.report).toContain('execucao-informada')
+  })
+})

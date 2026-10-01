@@ -126,9 +126,13 @@ export const POST = handler({ schema }, async ({ user, body, params }) => {
     const estruturais = questao.checks.length > 0 ? runStructuralChecks(codigo, questao.checks) : []
     const estruturaisOk = estruturais.every((caso) => caso.passed)
 
-    const totalCasos = body.totalCasos ?? questao.tests.length
-    const casosPassaram = body.casosPassaram ?? 0
-    const testesOk = questao.tests.length === 0 ? true : Boolean(body.passouTestes)
+    // Quantos casos a questao tem e informacao do servidor: ele conhece a
+    // questao. Do cliente vem apenas quantos passaram, limitado ao que existe —
+    // sem isso um cliente modificado gravaria 99 de 0, um registro impossivel.
+    const totalDeTestes = questao.tests.length
+    const casosInformados = Math.min(Math.max(body.casosPassaram ?? 0, 0), totalDeTestes)
+
+    const testesOk = totalDeTestes === 0 ? true : Boolean(body.passouTestes)
     const correta = testesOk && estruturaisOk && codigo.trim().length > 0
 
     await db.answer.create({
@@ -138,10 +142,23 @@ export const POST = handler({ schema }, async ({ user, body, params }) => {
         questionId: questao.id,
         code: codigo.slice(0, 20000),
         correct: correta,
-        totalCases: totalCasos + estruturais.length,
-        passedCases: casosPassaram + estruturais.filter((caso) => caso.passed).length,
+        totalCases: totalDeTestes + estruturais.length,
+        passedCases: casosInformados + estruturais.filter((caso) => caso.passed).length,
+        // O registro distingue o que o servidor verificou do que recebeu: codigo
+        // de quem estuda nunca roda aqui, entao o resultado dos testes chega do
+        // navegador. Guardar os dois como iguais seria afirmar uma certeza que
+        // nao existe (regra 9 do produto, aplicada ao dado e nao so a tela).
         report: toJson([
           ...estruturais.map((caso) => ({ nome: caso.name, passou: caso.passed, modo: 'estrutura' })),
+          ...(totalDeTestes > 0
+            ? [
+                {
+                  nome: `${casosInformados} de ${totalDeTestes} casos`,
+                  passou: testesOk,
+                  modo: 'execucao-informada',
+                },
+              ]
+            : []),
         ]),
         hintsUsed: body.dicasUsadas,
       },

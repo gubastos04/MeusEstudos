@@ -220,6 +220,22 @@ acontece em `POST /api/avaliacoes/[id]`.
 Em questão prática, os testes rodam no navegador e o servidor reexecuta as
 verificações estruturais (determinísticas). A interface diz isso.
 
+O que o servidor **não** pode reexecutar é o resultado dos testes: código de
+quem estuda nunca roda aqui. Então esse resultado chega do cliente, e três
+coisas seguem disso:
+
+- o número de casos vem do servidor, que conhece a questão; do cliente vem só
+  quantos passaram, limitado ao que existe — sem isso um cliente modificado
+  gravaria "99 de 0";
+- o registro marca a parte informada com `modo: "execucao-informada"`, para o
+  dado não confundir o que foi verificado aqui com o que foi recebido;
+- o limite não achata resultado honesto: três de cinco continua três.
+
+Burlar isso só prejudica quem burla — não há nota, ranking nem certificado. O
+ponto não é desconfiar da pessoa, é o registro não afirmar uma certeza que não
+existe. Coberto em `tests/integracao.test.ts`, junto das guardas de tentativa
+finalizada, dupla finalização e tentativa de outra avaliação.
+
 Tentativas nunca são apagadas.
 
 ### IA
