@@ -158,7 +158,6 @@ falha se divergirem.** Essa divergência não dá erro por si: um client antigo
 aceita a URL do banco para o qual foi gerado e grava no lugar errado em
 silêncio. Foi assim que um `content:sync` destinado à produção escreveu no
 SQLite local relatando sucesso. `deploy:preparar` termina com essa conferência.
-é específico do banco.
 
 **O fluxo de schema é `prisma db push`**, nos dois ambientes. É suficiente
 enquanto não há dados de usuário que importem, e evita cerimônia sem retorno.
