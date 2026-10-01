@@ -21,7 +21,7 @@ type Variante = 'primario' | 'secundario' | 'discreto' | 'perigo'
 
 const variantes: Record<Variante, string> = {
   primario: 'bg-accent text-ink-inverse hover:bg-accent-hover border-transparent',
-  secundario: 'bg-surface-raised text-ink border-line-strong hover:bg-surface-sunken',
+  secundario: 'bg-surface-raised text-ink border-line-control hover:bg-surface-sunken',
   discreto: 'bg-transparent text-ink-muted border-transparent hover:bg-surface-sunken hover:text-ink',
   perigo: 'bg-transparent text-danger border-danger/40 hover:bg-danger-soft',
 }

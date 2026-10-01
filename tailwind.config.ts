@@ -25,6 +25,7 @@ const config: Config = {
         line: {
           DEFAULT: 'rgb(var(--line) / <alpha-value>)',
           strong: 'rgb(var(--line-strong) / <alpha-value>)',
+          control: 'rgb(var(--line-control) / <alpha-value>)',
         },
         ink: {
           DEFAULT: 'rgb(var(--ink) / <alpha-value>)',

@@ -349,12 +349,19 @@ Ao criar um recurso por usuário, o teste de isolamento ("A não alcança o de B
   `role="alert"` e texto (nunca só a cor da borda).
 - Foco sempre visível (`:focus-visible` global). Nunca `outline: none` sem
   substituto.
-- Alvo de toque mínimo de 44px nos botões. `Botao` e `BotaoLink` têm um
-  tamanho só, justamente para que não exista como burlar isso.
+- Alvo de toque mínimo de 44px nos botões. `Botao` e `BotaoLink` têm um tamanho
+  só, então quem usa o componente não consegue furar a regra. **Botão escrito à
+  mão fura:** uma varredura por `min-h-8` e `min-h-9` encontrou dez elementos
+  clicáveis entre 32 e 40px (filtros, chips, botão de copiar). Eles passam o
+  mínimo da WCAG 2.5.8 (24px), mas não a regra deste projeto — pendência aberta.
 - Campo de senha traz botão "Mostrar/Ocultar senha". O rótulo muda com o
   estado e o sufixo fica em `sr-only`: o nome acessível diz a ação, sem
   alargar o botão em 360px.
 - Layout mobile first: testar em 360px, sem scroll horizontal.
+- Contraste medido, não estimado: 4,5:1 para texto e 3:1 para o que identifica
+  um controle. `--line-control` existe separado de `--line-strong` por isso —
+  o primeiro é a borda que distingue o botão da página e não pode clarear; o
+  segundo é só realce de hover em cartão, onde o mínimo não se aplica.
 
 ## Ao adicionar conteúdo
 

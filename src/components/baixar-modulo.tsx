@@ -76,7 +76,7 @@ export function BaixarModulo({ moduloId, titulo }: { moduloId: string; titulo: s
           <>
             <Link
               href={`/leitura-offline?modulo=${moduloId}`}
-              className="border-line-strong bg-surface-raised text-ink hover:bg-surface-sunken inline-flex min-h-9 items-center rounded border px-3 text-sm font-medium"
+              className="border-line-control bg-surface-raised text-ink hover:bg-surface-sunken inline-flex min-h-9 items-center rounded border px-3 text-sm font-medium"
             >
               Abrir leitura offline
             </Link>

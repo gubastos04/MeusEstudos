@@ -28,6 +28,10 @@
 
     --line: 226 226 222;
     --line-strong: 198 198 192;
+    /* Borda que identifica um controle. Diferente de --line-strong, que e o
+       realce de hover em cartao: aqui o minimo de 3:1 da WCAG 1.4.11 vale,
+       porque a borda e o que distingue o botao da pagina. Nao clarear. */
+    --line-control: 140 140 134;
 
     --ink: 28 28 27;
     --ink-muted: 91 91 87;
@@ -66,6 +70,7 @@
 
     --line: 55 57 60;
     --line-strong: 82 85 89;
+    --line-control: 112 116 121;
 
     --ink: 235 236 237;
     --ink-muted: 165 168 172;
@@ -101,6 +106,7 @@
 
       --line: 55 57 60;
       --line-strong: 82 85 89;
+      --line-control: 112 116 121;
 
       --ink: 235 236 237;
       --ink-muted: 165 168 172;

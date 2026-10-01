@@ -46,7 +46,7 @@ export default function ErroGlobal({
         </button>
         <a
           href="/inicio"
-          className="border-line-strong bg-surface-raised text-ink hover:bg-surface-sunken inline-flex min-h-11 items-center rounded border px-4 text-sm font-medium"
+          className="border-line-control bg-surface-raised text-ink hover:bg-surface-sunken inline-flex min-h-11 items-center rounded border px-4 text-sm font-medium"
         >
           Voltar ao início
         </a>
