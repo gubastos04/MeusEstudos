@@ -210,8 +210,11 @@ Não há variável separada para produção.
 
 ### 1. Banco
 
+O banco de produção já está criado e com o marco inicial registrado, então o
+primeiro deploy não precisa deste passo. Ele vale para um ambiente novo:
+
 ```bash
-npx prisma db push
+npm run db:migrate:deploy
 ```
 
 Com `DATABASE_URL` apontando para o PostgreSQL e o provider trocado
@@ -260,93 +263,33 @@ demonstração: o seed recusa rodar com `NODE_ENV=production`.
 
 ### Alterando o schema depois
 
-`prisma db push` resolve enquanto não houver dados de usuário que importem.
-Quando houver, `db push` passa a ser arriscado — ele pode remover coluna em
-silêncio. O marco em `prisma/migrations/0_inicial` existe para esse dia: basta
-`prisma migrate resolve --applied 0_inicial` e seguir com `migrate deploy`.
+**Produção usa migrations, não `db push`.** O marco inicial está registrado em
+`_prisma_migrations` desde 01/10/2026, conferido antes com `migrate diff` contra
+o banco (diferença vazia). A partir daí, `db push` em produção faria o banco
+divergir do histórico — e ele pode remover coluna em silêncio.
+
+O desenvolvimento local segue com `db push` sobre SQLite: aquele banco é
+descartável e recriá-lo custa segundos.
+
+Para mudar o schema:
+
+1. Altere `prisma/schema.prisma` e use `npm run db:push` localmente até a forma
+   ficar boa.
+2. Gere o SQL da migration contra um banco de sombra — um branch descartável do
+   Neon, nunca produção, porque o Prisma o limpa no processo:
+
+```bash
+npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "postgresql://..." --script > prisma/migrations/<data>_<nome>/migration.sql
+```
+
+3. Leia o SQL gerado. É o único momento em que dá para ver, antes de aplicar, se
+   a alteração perde dado.
+4. Commite e aplique com `npm run db:migrate:deploy`.
+
+`npm run db:migrate:status` diz o que falta aplicar num ambiente.
+
+Não existe `prisma migrate dev` aqui: ele exige que o provider do schema seja o
+mesmo do `migration_lock.toml` e, apontado para produção, pode resetar o banco.
 
 Antes de remover uma coluna, faça dois deploys: primeiro pare de usar, depois
 remova. Durante o deploy, código antigo e novo rodam ao mesmo tempo.
-
-## Adicionando conteúdo
-
-O conteúdo é JSON versionado em `/content`. Não há CMS.
-
-1. Crie o arquivo (por exemplo `content/semestre-1/meu-modulo.json`) seguindo o
-   schema de `src/lib/content/schema.ts`.
-2. `npm run content:validate` — além do schema, ele verifica regras do produto:
-   item com no máximo 20 minutos, módulo com prática, `answerIndex` válido,
-   exercício de código com testes, termo de glossário existente.
-3. `npm run content:sync`.
-
-**O passo 3 vale para produção também, em todo deploy que mexe em `/content`.**
-As tabelas de conteúdo são espelho, e `ExerciseAttempt` tem chave estrangeira
-para `Exercise`: com o espelho desatualizado, a aula nova aparece na tela —
-porque o texto vem dos arquivos — mas a primeira tentativa de exercício falha
-com violação de chave estrangeira. Publicar o código não sincroniza o banco.
-
-Conteúdo inválido não derruba a aplicação: o arquivo com problema é isolado e o
-resto continua carregando.
-
-Formato de um item:
-
-```
-Título · duração estimada
-Por que isso existe?      uma frase
-O que você vai fazer      resultado concreto
-Blocos curtos             texto, código, lista, tabela, aviso, checkpoint
-Tente agora               sempre há algo para fazer
-Se travar                 pistas, não respostas
-Erro comum                erro, causa, correção
-Exercício                 testes reais ou verificação estrutural
-```
-
-## Arquitetura
-
-```
-Navegador ──> Next.js (App Router)
-                ├── Server Components: leem /content e o banco
-                ├── Route handlers: sessão, origem, Zod, isolamento por usuário
-                └── Client Components: editor, runner, formulários
-                         │
-                         ├── Web Worker: executa os testes do exercício
-                         └── /api/ia ──> Anthropic (chave só no servidor)
-                                 │
-                            Prisma ──> SQLite (dev) / PostgreSQL (prod)
-```
-
-Decisões e convenções estão em [CLAUDE.md](CLAUDE.md).
-
-## Segurança
-
-- Senha com `scrypt` (N=2^16) e salt por usuário; o banco nunca vê a senha.
-- Sessão em cookie `HttpOnly; Secure; SameSite=Lax`, com apenas o hash do token
-  no banco.
-- Login com resposta idêntica para email inexistente e senha errada.
-- Toda rota mutável verifica a origem da requisição.
-- `userId` vem sempre da sessão; nenhuma rota aceita identificador do cliente.
-- Rate limiting persistido (login, cadastro e IA) — funciona com várias
-  instâncias.
-- Entrada validada com Zod em toda rota; consultas sempre parametrizadas pelo
-  Prisma.
-- Nenhum `dangerouslySetInnerHTML`, inclusive nas respostas da IA.
-- Exclusão de conta apaga todos os dados em cascata.
-
-## Limitações conhecidas
-
-- Python no navegador depende de baixar o Pyodide de uma CDN (configurável em
-  `NEXT_PUBLIC_PYODIDE_URL`). Sem rede, o exercício cai para verificação
-  estrutural, com aviso.
-- Os testes de exercício rodam no navegador. Para exercício isso é adequado; nas
-  avaliações, as questões de alternativa são corrigidas no servidor, e as
-  práticas têm as verificações estruturais refeitas lá.
-- Linguagens sem runtime embarcado (SQL, HTML, YAML, PHP) usam verificação
-  estrutural — que lê o código e não prova que ele funciona. A interface diz
-  isso em toda ocorrência.
-- A leitura offline cobre o texto da aula, o "tente agora", os erros comuns e o
-  glossário. O editor de código, os testes e a IA precisam de conexão — a tela
-  diz isso em vez de oferecer um botão que não funcionaria.
-- O service worker só é registrado em build de produção, e navegador embutido
-  de ferramenta costuma bloquear o registro. Verifique num navegador comum.
-- O envio do email de redefinição depende de um provedor HTTP configurado. Sem
-  ele, em produção, o pedido é registrado como não entregue.

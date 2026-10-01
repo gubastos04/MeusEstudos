@@ -159,15 +159,22 @@ aceita a URL do banco para o qual foi gerado e grava no lugar errado em
 silêncio. Foi assim que um `content:sync` destinado à produção escreveu no
 SQLite local relatando sucesso. `deploy:preparar` termina com essa conferência.
 
-**O fluxo de schema é `prisma db push`**, nos dois ambientes. É suficiente
-enquanto não há dados de usuário que importem, e evita cerimônia sem retorno.
+**Produção usa migrations; o desenvolvimento local usa `prisma db push`.**
 
-`prisma/migrations/0_inicial` existe como marco inicial, gerado do mesmo
-schema e conferido contra o banco de produção (`migrate diff` vazio). Está
-dormente de propósito: no dia em que existirem usuários de verdade, `db push`
-passa a ser perigoso — ele pode remover coluna em silêncio — e aí o caminho é
-registrar esse marco com `prisma migrate resolve --applied 0_inicial` e seguir
-com migrations. Até lá, ele não atrapalha o `db push`.
+O marco `prisma/migrations/0_inicial` foi registrado em `_prisma_migrations`
+no banco de produção em 01/10/2026, depois de conferir com `migrate diff` que
+schema e banco eram idênticos. A partir daí, `db push` em produção faria o
+banco divergir do histórico — e ele pode remover coluna em silêncio.
+
+O banco local continua em `db push` sobre SQLite: é descartável, e recriá-lo
+custa segundos. Quem muda o schema ajusta ali à vontade e só depois gera a
+migration — o SQL é gerado por `migrate diff --from-migrations` contra um
+branch descartável do Neon como banco de sombra, nunca produção. O README tem
+o comando.
+
+Não existe `prisma migrate dev` aqui: ele exige que o provider do schema seja
+o mesmo do `migration_lock.toml` e, apontado para produção, pode resetar o
+banco. Em produção é só `migrate deploy`, que aplica e não improvisa.
 
 ### Autenticação própria
 
