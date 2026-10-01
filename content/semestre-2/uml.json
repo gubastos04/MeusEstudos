@@ -261,6 +261,150 @@
       "glossary": ["transacao", "fila", "webhook", "api"]
     },
     {
+      "id": "uml-diagrama-classes-01",
+      "type": "lesson",
+      "title": "Diagrama de classes: onde cada comportamento mora",
+      "estimatedMinutes": 10,
+      "tags": [
+        "modelagem"
+      ],
+      "why": "O modelo de dados mostra o que o sistema guarda. O diagrama de classes mostra quem faz o quê — e é aí que se percebe, antes de escrever código, que uma responsabilidade está na classe errada.",
+      "goal": "Ler e desenhar um diagrama de classes com atributos, comportamento e as três relações que aparecem em quase todo sistema.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Você já desenhou o modelo de dados: tabelas, chaves e cardinalidade. Ele responde \"o que o sistema guarda\". Duas perguntas ele não responde: **o que cada coisa faz** e **quem depende de quem**."
+        },
+        {
+          "kind": "text",
+          "text": "A caixa de uma classe tem três partes: nome, atributos e comportamento. O `-` marca o que é interno e o `+` o que outros podem chamar — essa linha é o contrato da classe."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Pedido\n  - id: int\n  - status: str\n  - itens: lista de ItemPedido\n  + total(): decimal\n  + adicionar(produto, quantidade)\n  + cancelar(motivo)",
+          "caption": "Três métodos públicos: é tudo que o resto do sistema precisa saber."
+        },
+        {
+          "kind": "text",
+          "text": "As relações carregam a informação que mais importa, e são três:"
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Pedido  1 ◆--- N  ItemPedido     composição: o item não existe sem o pedido\nPedido  N ---> 1  Cliente        associação: o pedido conhece o cliente\nPedidoAssinatura ---|> Pedido      herança: é um tipo de pedido",
+          "caption": "O losango aponta para o dono. A seta diz quem conhece quem. O triângulo, quem herda."
+        },
+        {
+          "kind": "text",
+          "text": "A diferença entre composição e associação não é enfeite: ela decide o que acontece no `DELETE`. Item de pedido vai embora com o pedido; cliente não. É a mesma decisão do `ON DELETE CASCADE` que você escreveu no modelo de dados, vista do lado do código."
+        },
+        {
+          "kind": "text",
+          "text": "O valor prático de ler um diagrama aparece em duas coisas que ele deixa óbvias. Uma classe só com atributos e nenhum método: os dados estão ali e o comportamento foi morar em outro lugar, normalmente espalhado. Uma classe com quinze métodos públicos: ela virou o lugar onde tudo cabe, e qualquer mudança passa por ela."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Não desenhe o sistema inteiro",
+          "text": "Diagrama de 40 classes não é lido por ninguém, inclusive por quem desenhou. Desenhe a parte que está confusa, decida, e deixe o diagrama morrer. O que sobrevive é a decisão, não o desenho."
+        },
+        {
+          "kind": "quiz",
+          "question": "Num sistema de atendimento, um `Comentario` só faz sentido dentro de um `Ticket`, e o `Ticket` registra quem o abriu. Como ficam as duas relações?",
+          "choices": [
+            "Ticket ◆--- Comentario (composição) e Ticket ---> Autor (associação)",
+            "Ticket ---> Comentario (associação) e Ticket ◆--- Autor (composição)",
+            "Ambas como herança, porque as três são entidades do mesmo sistema",
+            "Ambas como composição, porque o ticket conhece as duas"
+          ],
+          "answerIndex": 0,
+          "explanation": "Apagar o ticket apaga os comentários, então o ticket é dono deles: composição. O autor existe sem o ticket e sobrevive a ele: associação. A pergunta que separa as duas é sempre \"isto sobrevive sozinho?\"."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue duas tabelas do modelo de dados que você desenhou na aula anterior e escreva a caixa de classe de cada uma — com pelo menos um método público em cada. Se não achar nenhum método para alguma, note onde esse comportamento está hoje.",
+        "expected": "Você consegue apontar uma classe que só guarda dado e dizer para onde o comportamento dela foi."
+      },
+      "ifStuck": [
+        "Para decidir composição ou associação, pergunte: se eu apagar o dono, isto deixa de fazer sentido? Se sim, é composição."
+      ],
+      "commonErrors": [
+        {
+          "error": "Copiar o modelo de dados e chamar de diagrama de classes.",
+          "why": "Tabela não tem comportamento. Um diagrama sem nenhum método não acrescenta nada ao que o modelo de dados já dizia.",
+          "fix": "Para cada classe, escreva ao menos uma operação que ela sabe fazer sobre os próprios dados."
+        },
+        {
+          "error": "Usar herança para dizer \"parecido com\".",
+          "why": "Herança é \"é um tipo de\", e obriga o filho a aceitar tudo que o pai promete. Duas classes parecidas que não se substituem geram sobrescrita vazia e condicional espalhada.",
+          "fix": "Se uma não pode entrar no lugar da outra, use composição ou uma interface comum."
+        }
+      ],
+      "exercise": {
+        "id": "ex-uml-classes-01",
+        "title": "Diagrama de um atendimento",
+        "kind": "structural",
+        "language": "text",
+        "estimatedMinutes": 8,
+        "prompt": "Desenhe o diagrama de classes de um atendimento, na notação da aula. Precisa ter: `Ticket`, que sabe se reabrir; `Comentario`, que não existe sem o ticket; `Autor`, que existe por conta própria; e `TicketUrgente`, que é um tipo de ticket. Marque a cardinalidade nas relações e dê pelo menos um método público ao `Ticket`.",
+        "starter": "Ticket\n  - \n  + \n\n",
+        "checks": [
+          {
+            "name": "as quatro classes aparecem",
+            "type": "regex",
+            "value": "Ticket[\\s\\S]*Comentario[\\s\\S]*Autor[\\s\\S]*TicketUrgente|TicketUrgente[\\s\\S]*Comentario",
+            "hint": "Ticket, Comentario, Autor e TicketUrgente."
+          },
+          {
+            "name": "o ticket tem comportamento",
+            "type": "regex",
+            "value": "\\+\\s*\\w*(reabrir|reabre|abrir|fechar)\\w*\\s*\\(",
+            "hint": "Um método público com `+` e parênteses, não só atributos."
+          },
+          {
+            "name": "comentario como composicao",
+            "type": "regex",
+            "value": "Ticket[^\\n]*(◆|<>|\\*--|comp)[^\\n]*Comentario",
+            "hint": "O losango aponta para o dono: o comentário não sobrevive sem o ticket."
+          },
+          {
+            "name": "autor como associacao",
+            "type": "regex",
+            "value": "(Ticket[^\\n]*-+>[^\\n]*Autor)|(Autor[^\\n]*<-+[^\\n]*Ticket)",
+            "hint": "Seta simples: o ticket conhece o autor, mas não é dono dele."
+          },
+          {
+            "name": "nao trata o autor como composicao",
+            "type": "regex",
+            "value": "^(?![\\s\\S]*(◆|<>)[^\\n]*Autor)[\\s\\S]*$",
+            "hint": "Apagar um ticket não pode apagar a pessoa que o abriu."
+          },
+          {
+            "name": "heranca de TicketUrgente",
+            "type": "regex",
+            "value": "TicketUrgente[^\\n]*(\\|>|--\\|>|herda|extends)[^\\n]*Ticket",
+            "hint": "Triângulo apontando para o pai."
+          },
+          {
+            "name": "cardinalidade marcada",
+            "type": "regex",
+            "value": "(\\b1\\b|\\bN\\b|\\*)[^\\n]*(◆|-+>|--)",
+            "hint": "Quantos de cada lado: 1, N ou *."
+          }
+        ],
+        "hints": [
+          "Primeiro escreva as caixas, depois as linhas entre elas. São três linhas de relação.",
+          "A pergunta que decide o símbolo de cada linha é sempre a mesma: isto sobrevive sem o outro?"
+        ],
+        "solution": "Ticket\n  - id: int\n  - status: str\n  - abertoEm: data\n  + reabrir(autor, motivo)\n  + fechar(resolucao)\n\nComentario\n  - texto: str\n  - criadoEm: data\n  + editar(texto)\n\nAutor\n  - id: int\n  - nome: str\n\nTicketUrgente\n  - prazoEmHoras: int\n  + prazoExpirado(): bool\n\nTicket  1 ◆--- N  Comentario     composição: comentário não existe sem o ticket\nTicket  N ---> 1  Autor          associação: o autor existe por conta própria\nTicketUrgente ---|> Ticket       herança: é um tipo de ticket",
+        "solutionNotes": "Repare que `TicketUrgente` só acrescenta o que é dele: prazo. Se ele precisasse sobrescrever `reabrir` para fazer algo completamente diferente, a herança estaria errada e o caso pediria composição."
+      },
+      "glossary": [
+        "refatoracao"
+      ]
+    },
+    {
       "id": "uml-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

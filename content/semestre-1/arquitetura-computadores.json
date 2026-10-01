@@ -287,6 +287,186 @@
       "glossary": ["Latência", "Cache", "Performance"]
     },
     {
+      "id": "arq-cpu-cache-01",
+      "type": "lesson",
+      "title": "Dentro do processador: registrador, cache e a linha de 64 bytes",
+      "estimatedMinutes": 10,
+      "tags": [
+        "fundamentos",
+        "performance"
+      ],
+      "why": "Trocar a ordem de dois laços pode deixar o código várias vezes mais rápido sem mudar nenhuma conta e sem mudar a complexidade. A explicação está em como o processador busca os dados.",
+      "goal": "Explicar onde um valor mora enquanto o código roda, e por que a ordem de acesso muda o tempo medido sem mudar a quantidade de operações.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A aula anterior tratou \"operação em memória\" como 1 nanossegundo. Isso é o caso rápido: o valor já estava perto do processador. Quando não está, a mesma operação custa cem vezes mais — e é essa diferença que explica código lento sem motivo aparente."
+        },
+        {
+          "kind": "text",
+          "text": "O processador não lê da memória principal direto. Há uma escada, e cada degrau é mais rápido e menor que o de baixo:"
+        },
+        {
+          "kind": "table",
+          "headers": [
+            "Onde o valor está",
+            "Tempo aproximado",
+            "Na escala de 1ns = 1 segundo"
+          ],
+          "rows": [
+            [
+              "Registrador (dentro do núcleo)",
+              "0,3 nanossegundo",
+              "instantâneo"
+            ],
+            [
+              "Cache L1",
+              "1 nanossegundo",
+              "1 segundo"
+            ],
+            [
+              "Cache L2",
+              "4 nanossegundos",
+              "4 segundos"
+            ],
+            [
+              "Cache L3",
+              "15 nanossegundos",
+              "15 segundos"
+            ],
+            [
+              "Memória principal (RAM)",
+              "100 nanossegundos",
+              "quase 2 minutos"
+            ]
+          ],
+          "caption": "Mesma escala humana da aula de custos: continua tudo muito mais rápido que ir ao disco ou à rede."
+        },
+        {
+          "kind": "text",
+          "text": "Registrador é onde a conta acontece de fato: somar dois números é somar dois registradores. Cache é a cópia do que foi usado recentemente. RAM é o armazém."
+        },
+        {
+          "kind": "text",
+          "text": "E aqui está o detalhe que decide tudo: **o processador nunca busca um byte**. Ele busca uma linha de cache, 64 bytes de uma vez. Pedir um `int` de 4 bytes traz os 60 bytes vizinhos de graça."
+        },
+        {
+          "kind": "text",
+          "text": "Então percorrer na ordem em que os dados estão na memória é quase gratuito depois do primeiro acesso: os próximos quinze já vieram. Percorrer saltando desperdiça a linha inteira a cada passo."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// matriz 1000 x 1000 guardada linha por linha\n\n// percorre na ordem da memória: cada linha de cache é usada inteira\nlet soma = 0\nfor (let linha = 0; linha < 1000; linha++) {\n  for (let coluna = 0; coluna < 1000; coluna++) {\n    soma += matriz[linha][coluna]\n  }\n}\n\n// percorre atravessado: cada acesso salta 4.000 bytes e pede uma linha nova\nlet soma2 = 0\nfor (let coluna = 0; coluna < 1000; coluna++) {\n  for (let linha = 0; linha < 1000; linha++) {\n    soma2 += matriz[linha][coluna]\n  }\n}",
+          "caption": "Mesmo resultado, mesmo número de somas, mesma complexidade. Tipicamente 5 a 10 vezes de diferença no tempo."
+        },
+        {
+          "kind": "text",
+          "text": "Repare no que **não** mudou: a complexidade. Os dois são O(n²) e fazem exatamente um milhão de somas. A diferença não aparece na contagem de operações, só na medição — e é por isso que medir vence palpitar."
+        },
+        {
+          "kind": "callout",
+          "tone": "info",
+          "title": "Isso quase nunca é o seu gargalo",
+          "text": "Numa aplicação web, a ida ao banco e à rede dominam por ordens de magnitude. Localidade de cache importa em laço apertado sobre muito dado — processar arquivo grande, agregar métrica, tratar imagem. Em código que espera resposta de rede, trocar a ordem do laço não muda nada mensurável."
+        },
+        {
+          "kind": "quiz",
+          "question": "Dois laços somam a mesma matriz de um milhão de inteiros, um por linha e outro por coluna, e o segundo demora oito vezes mais. O que explica a diferença?",
+          "choices": [
+            "O segundo faz mais operações de soma",
+            "O segundo tem complexidade pior",
+            "O segundo pede uma linha de cache nova a cada acesso e aproveita só 4 dos 64 bytes trazidos",
+            "O compilador não consegue otimizar laços aninhados invertidos"
+          ],
+          "answerIndex": 2,
+          "explanation": "O número de somas e a complexidade são idênticos. O que muda é o aproveitamento de cada busca: na ordem da memória, uma linha de 64 bytes serve dezesseis acessos; atravessado, serve um."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Escreva os dois laços da aula com uma matriz de 2000 por 2000 e meça cada um com `performance.now()`. Rode três vezes e compare.",
+        "expected": "Você vê a diferença de tempo com a mesma contagem de operações, e consegue explicar por quê."
+      },
+      "ifStuck": [
+        "Pense na linha de cache como uma caixa de 64 bytes: o processador sempre pega a caixa inteira. A pergunta é quantos dos 64 bytes você vai usar antes de pedir outra."
+      ],
+      "commonErrors": [
+        {
+          "error": "Concluir que ordem de laço é a primeira coisa a otimizar.",
+          "why": "Em aplicação que fala com banco ou rede, o tempo está na espera, não no acesso à memória.",
+          "fix": "Meça primeiro. Localidade vale quando o laço é apertado e o dado é grande."
+        },
+        {
+          "error": "Achar que complexidade explica tudo sobre tempo.",
+          "why": "Dois algoritmos O(n) podem diferir em uma ordem de magnitude por causa de acesso à memória, alocação ou chamada de sistema.",
+          "fix": "Use complexidade para descartar o que cresce mal, e medição para escolher entre os que sobraram."
+        }
+      ],
+      "exercise": {
+        "id": "ex-arq-linhas-cache-01",
+        "title": "Quantas linhas de cache um percurso toca",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `linhasDeCache(totalDeElementos, bytesPorElemento, passo)`: devolve quantas linhas de cache distintas um percurso toca. A linha tem 64 bytes. O percurso visita os índices 0, `passo`, `2 * passo`… enquanto forem menores que `totalDeElementos`, e o byte de um índice é `indice * bytesPorElemento`. Sem elementos, o resultado é 0. Entrada inválida (`passo` ou `bytesPorElemento` menor ou igual a zero, total negativo, valor não inteiro) devolve `null`.",
+        "starter": "const BYTES_POR_LINHA = 64\n\nfunction linhasDeCache(totalDeElementos, bytesPorElemento, passo) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "16 inteiros em sequência cabem numa linha",
+            "expression": "linhasDeCache(16, 4, 1)",
+            "expected": 1
+          },
+          {
+            "name": "32 inteiros em sequência ocupam duas",
+            "expression": "linhasDeCache(32, 4, 1)",
+            "expected": 2
+          },
+          {
+            "name": "passo de 16 toca uma linha por acesso",
+            "expression": "linhasDeCache(64, 4, 16)",
+            "expected": 4
+          },
+          {
+            "name": "o mesmo trecho em sequência toca as mesmas 4 linhas, lendo 64 elementos",
+            "expression": "linhasDeCache(64, 4, 1)",
+            "expected": 4
+          },
+          {
+            "name": "elemento de 8 bytes muda a conta",
+            "expression": "linhasDeCache(10, 8, 1)",
+            "expected": 2
+          },
+          {
+            "name": "sem elementos, nenhuma linha",
+            "expression": "linhasDeCache(0, 4, 1)",
+            "expected": 0
+          },
+          {
+            "name": "passo zero é inválido",
+            "expression": "linhasDeCache(16, 4, 0)",
+            "expected": null
+          },
+          {
+            "name": "tamanho de elemento inválido",
+            "expression": "linhasDeCache(16, 0, 1)",
+            "expected": null
+          }
+        ],
+        "checks": [],
+        "hints": [
+          "A linha de um índice é `Math.floor((indice * bytesPorElemento) / 64)`.",
+          "Linhas repetidas não contam duas vezes — guarde as que você já viu num `Set`."
+        ],
+        "solution": "const BYTES_POR_LINHA = 64\n\nfunction linhasDeCache(totalDeElementos, bytesPorElemento, passo) {\n  if (!Number.isInteger(totalDeElementos) || totalDeElementos < 0) return null\n  if (!Number.isInteger(bytesPorElemento) || bytesPorElemento <= 0) return null\n  if (!Number.isInteger(passo) || passo <= 0) return null\n\n  const linhas = new Set()\n\n  for (let indice = 0; indice < totalDeElementos; indice += passo) {\n    linhas.add(Math.floor((indice * bytesPorElemento) / BYTES_POR_LINHA))\n  }\n\n  return linhas.size\n}\n",
+        "solutionNotes": "Compare os dois casos de 64 elementos: em sequência o percurso lê 64 valores tocando 4 linhas; com passo 16 ele lê 4 valores e toca as mesmas 4 linhas. O custo de busca é o mesmo e o aproveitamento é dezesseis vezes menor — é essa conta que o laço atravessado paga em cada passo."
+      },
+      "glossary": [
+        "Cache",
+        "Performance",
+        "Latência"
+      ]
+    },
+    {
       "id": "arq-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",
