@@ -92,8 +92,15 @@ export async function enviarEmail(email: Email): Promise<ResultadoEnvio> {
     })
 
     if (!resposta.ok) {
-      // O corpo do provedor pode conter dado do destinatário: só o status vai para o log.
-      console.error(`[email] provedor recusou o envio (HTTP ${resposta.status})`)
+      // O corpo do provedor traz o endereço do destinatário na mensagem de erro,
+      // e log de erro é copiado para mais lugares que o resto — então ele não vai
+      // inteiro. Mas o código curto do erro não tem dado pessoal e é o que diz
+      // QUAL recusa foi: um 403 pode ser remetente não verificado ou destinatário
+      // fora do modo de teste, e sem isso a investigação vai parar no painel do
+      // provedor.
+      console.error(
+        `[email] provedor recusou o envio (HTTP ${resposta.status}${await codigoDoErro(resposta)})`,
+      )
       return { ok: false, motivo: `provedor respondeu ${resposta.status}` }
     }
 
@@ -104,6 +111,26 @@ export async function enviarEmail(email: Email): Promise<ResultadoEnvio> {
     return { ok: false, motivo: abortado ? 'timeout' : 'erro de rede' }
   } finally {
     clearTimeout(relogio)
+  }
+}
+
+/**
+ * Codigo curto do erro do provedor, quando houver, no formato ` / nome`.
+ *
+ * Le apenas campos que identificam o TIPO da recusa (`name`, `error`, `code`) e
+ * nunca a `message`, que e onde o provedor escreve o endereco do destinatario.
+ * Qualquer coisa fora disso vira string vazia: um log melhor nao justifica
+ * vazar email, e falhar aqui nao pode atrapalhar o envio.
+ */
+async function codigoDoErro(resposta: Response): Promise<string> {
+  try {
+    const corpo = (await resposta.json()) as Record<string, unknown>
+    const nome = [corpo.name, corpo.error, corpo.code].find(
+      (valor) => typeof valor === 'string' && valor.length > 0 && valor.length <= 60,
+    )
+    return nome ? ` / ${nome}` : ''
+  } catch {
+    return ''
   }
 }
 
