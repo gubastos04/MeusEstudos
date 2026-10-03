@@ -41,6 +41,7 @@ export function BlocoCodigo({
   const [copiado, setCopiado] = useState(false)
   const linhas = codigo.replace(/\n$/, '').split('\n')
   const destacadas = new Set(destaque)
+  const ehTexto = linguagem === 'text'
   const rotulo = rotulos[linguagem] ?? linguagem
 
   async function copiar() {
@@ -67,7 +68,19 @@ export function BlocoCodigo({
         </button>
       </div>
 
-      <pre className="text-ink overflow-x-auto py-3 text-[13px] leading-relaxed">
+      {/*
+        Código de verdade rola na horizontal: quebrar linha no meio de uma
+        expressão atrapalha mais do que ajuda a ler. Bloco `text` é outra
+        coisa — é frase, pseudocódigo ou árvore de pastas — e ali rolar para
+        o lado no celular esconde o conteúdo. `pre-wrap` preserva a
+        indentação de cada linha e só quebra as que não cabem.
+      */}
+      <pre
+        className={juntar(
+          'text-ink py-3 text-[13px] leading-relaxed',
+          ehTexto ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto',
+        )}
+      >
         <code>
           {linhas.map((linha, indice) => (
             <span

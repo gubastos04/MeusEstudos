@@ -310,6 +310,34 @@ Ao adicionar um recurso novo: se ele expõe dado de usuário numa rota
 `/api/...`, não faça nada — o service worker já ignora tudo que não seja
 `/api/conteudo/`. Só tome cuidado ao criar rota de conteúdo público.
 
+### "Tente agora" tem onde escrever
+
+O bloco dizia o que fazer e não tinha campo nenhum, então a pessoa precisava
+abrir outro programa ou pegar papel — o "trocar de janela" que a regra 7
+proíbe. E ler a instrução e fechar a aula sem escrever é o caminho mais fácil,
+que é justamente o que não ensina.
+
+A resposta é guardada como anotação vinculada à aula (`nodeType:
+`"tente-agora"`, `nodeId` = id do item), reusando `Note`, que já tinha os
+campos de vínculo. Nada de tabela nova, e o que a pessoa escreve aparece em
+Anotações junto do resto, pesquisável.
+
+Esse `nodeType` é um acoplamento entre quem grava (o componente) e quem lê (a
+página da aula): trocar a string num lugar e esquecer o outro faria a resposta
+sumir ao recarregar, sem erro. Coberto em `tests/integracao.test.ts`.
+
+O leitor offline mostra o "Tente agora" sem campo, de propósito: ele é de
+leitura, e a fila offline sincroniza progresso, não anotação.
+
+### Bloco de código no celular
+
+Código de verdade rola na horizontal — quebrar linha no meio de uma expressão
+atrapalha mais do que ajuda. Bloco `language: "text"` é outra coisa: é frase,
+pseudocódigo ou árvore de pastas, e ali rolar para o lado esconde o conteúdo.
+Esses usam `pre-wrap`, que preserva a indentação de cada linha e só quebra as
+que não cabem. São 42 dos 211 blocos do acervo, e 31 deles têm alguma linha
+acima de 48 caracteres, que é o que estoura em 360px.
+
 ### Recomendação de próximo passo
 
 `src/lib/next-step.ts`, na ordem da spec: conteúdo interrompido > demanda em

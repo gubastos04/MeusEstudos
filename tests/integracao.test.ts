@@ -562,3 +562,59 @@ describe('avaliação sob tentativa de burla', () => {
     expect(registro?.report).toContain('execucao-informada')
   })
 })
+
+describe('resposta do "Tente agora"', () => {
+  /**
+   * O campo embaixo do "Tente agora" grava como anotação vinculada à aula, e a
+   * página da aula a recupera procurando por nodeType e nodeId. São dois lugares
+   * que precisam concordar sobre a mesma string: trocar num e esquecer o outro
+   * faria a resposta sumir ao recarregar, sem erro nenhum.
+   */
+  it('grava vinculada à aula e é encontrada pela consulta que a página faz', async () => {
+    const usuario = await criarUsuario('tente-agora@teste.local')
+
+    const criada = await rotaAnotacoes(
+      pedido({
+        titulo: 'Tente agora — Decomposição',
+        corpo: 'Primeiro descobrir o que "demorando" significa.',
+        moduloId: 'pensamento-computacional',
+        nodeType: 'tente-agora',
+        nodeId: 'pc-decomposicao-01',
+      }),
+      semParams,
+    )
+
+    expect(criada.status).toEqual(201)
+
+    // A mesma consulta da página da aula.
+    const encontrada = await db.note.findFirst({
+      where: { userId: usuario.id, nodeType: 'tente-agora', nodeId: 'pc-decomposicao-01' },
+      orderBy: { updatedAt: 'desc' },
+      select: { body: true, moduleId: true },
+    })
+
+    expect(encontrada?.body).toContain('demorando')
+    expect(encontrada?.moduleId).toEqual('pensamento-computacional')
+  })
+
+  it('a resposta de uma pessoa não aparece para outra', async () => {
+    await criarUsuario('dono-resposta@teste.local')
+    await rotaAnotacoes(
+      pedido({
+        titulo: 'Tente agora — Decomposição',
+        corpo: 'resposta de quem escreveu',
+        nodeType: 'tente-agora',
+        nodeId: 'pc-decomposicao-01',
+      }),
+      semParams,
+    )
+
+    const intrusa = await criarUsuario('outra-resposta@teste.local')
+
+    const encontrada = await db.note.findFirst({
+      where: { userId: intrusa.id, nodeType: 'tente-agora', nodeId: 'pc-decomposicao-01' },
+    })
+
+    expect(encontrada).toBeNull()
+  })
+})

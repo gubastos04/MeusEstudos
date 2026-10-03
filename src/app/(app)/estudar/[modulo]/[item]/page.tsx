@@ -12,6 +12,7 @@ import { Exercicio } from '@/components/exercicio'
 import { FerramentasIa } from '@/components/ferramentas-ia'
 import { GlossarioInline, type TermoResumido } from '@/components/glossario-inline'
 import { RegistroEstudo } from '@/components/registro-estudo'
+import { RespostaTenteAgora } from '@/components/resposta-tente-agora'
 import { renderizarInline } from '@/components/texto-inline'
 import { AtalhosDeRegistro } from '@/components/atalhos-registro'
 import { Cartao, Nota, Selo } from '@/components/ui'
@@ -36,7 +37,7 @@ export default async function PaginaItem({ params }: Props) {
 
   const { item, previous, next } = localizacao
 
-  const [progresso, statusIa, tentativa, perfil] = await Promise.all([
+  const [progresso, statusIa, tentativa, perfil, respostaTenteAgora] = await Promise.all([
     getProgressMap(usuario.id),
     statusIaParaCliente(usuario.id),
     item.type === 'lesson' && item.exercise
@@ -47,6 +48,15 @@ export default async function PaginaItem({ params }: Props) {
         })
       : Promise.resolve(null),
     db.userProfile.findUnique({ where: { userId: usuario.id }, select: { codeFontSize: true } }),
+    // O que a pessoa escreveu no "Tente agora" desta aula, para ela voltar e
+    // continuar em vez de recomeçar.
+    item.type === 'lesson' && item.tryNow
+      ? db.note.findFirst({
+          where: { userId: usuario.id, nodeType: 'tente-agora', nodeId: item.id },
+          orderBy: { updatedAt: 'desc' },
+          select: { id: true, body: true },
+        })
+      : Promise.resolve(null),
   ])
 
   const estado = progressOf(progresso, item.type, item.id)
@@ -127,6 +137,17 @@ export default async function PaginaItem({ params }: Props) {
                   {renderizarInline(item.tryNow.expected)}
                 </p>
               ) : null}
+
+              <RespostaTenteAgora
+                moduloId={modulo.id}
+                itemId={item.id}
+                tituloDoItem={item.title}
+                inicial={
+                  respostaTenteAgora
+                    ? { id: respostaTenteAgora.id, corpo: respostaTenteAgora.body }
+                    : null
+                }
+              />
             </section>
           ) : null}
 
