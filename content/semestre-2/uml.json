@@ -97,7 +97,7 @@
         "solution": "1. Um pedido é considerado atrasado quando passa da data prevista de entrega em 1 dia ou mais.\n2. O aviso é enviado por email para o endereço cadastrado no pedido.\n3. Cada pedido gera no máximo um aviso de atraso, registrado com data e hora.\n4. Se o envio falhar, o sistema tenta novamente por até 3 vezes com intervalo crescente e registra a falha final no log.\n5. Pedido cancelado não gera aviso, mesmo que esteja além da data prevista.",
         "solutionNotes": "O critério 5 é o tipo de caso que só aparece se alguém perguntar. É por isso que se escreve antes."
       },
-      "glossary": ["Log", "fila"]
+      "glossary": ["Log"]
     },
     {
       "id": "uml-modelo-dados-01",

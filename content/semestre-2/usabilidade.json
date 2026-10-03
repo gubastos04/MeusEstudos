@@ -251,8 +251,7 @@
           "why": "O Tab continua percorrendo a página atrás do modal, e quem usa teclado se perde.",
           "fix": "Mova o foco para dentro ao abrir, mantenha-o preso e devolva ao fechar."
         }
-      ],
-      "glossary": ["XSS"]
+      ]
     },
     {
       "id": "ux-checkpoint-01",

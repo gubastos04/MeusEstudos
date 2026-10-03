@@ -222,7 +222,7 @@
       "blocks": [
         {
           "kind": "text",
-          "text": "Ordens de grandeza aproximadas, que valem como referência mental:"
+          "text": "Latência é quanto tempo uma operação leva. Ordens de grandeza aproximadas, que valem como referência mental:"
         },
         {
           "kind": "table",
@@ -300,7 +300,7 @@
       "blocks": [
         {
           "kind": "text",
-          "text": "A aula anterior tratou \"operação em memória\" como 1 nanossegundo. Isso é o caso rápido: o valor já estava perto do processador. Quando não está, a mesma operação custa cem vezes mais — e é essa diferença que explica código lento sem motivo aparente."
+          "text": "A aula anterior tratou \"operação em memória\" como 1 nanossegundo. Isso é o caso rápido: o valor já estava perto do processador. Quando não está, a mesma operação custa cem vezes mais. A latência depende de ONDE o valor está, e é essa diferença que explica código lento sem motivo aparente."
         },
         {
           "kind": "text",

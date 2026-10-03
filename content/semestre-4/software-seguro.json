@@ -172,8 +172,7 @@
       "glossary": [
         "autorizacao",
         "XSS",
-        "Log",
-        "Exceção"
+        "Log"
       ]
     },
     {
@@ -593,7 +592,6 @@
         "Log",
         "sessao",
         "autorizacao",
-        "Hash",
         "Debug"
       ]
     },

@@ -603,9 +603,7 @@
         "solutionNotes": "A conta pressupõe falhas independentes. Quando o serviço cai por inteiro, a taxa deixa de ser constante e nenhuma quantidade de tentativas ajuda — é aí que entra parar de tentar por um tempo."
       },
       "glossary": [
-        "Latência",
-        "fila",
-        "api"
+        "Latência"
       ]
     },
     {

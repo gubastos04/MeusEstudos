@@ -97,8 +97,7 @@
         ],
         "solution": "<form method=\"get\" action=\"/pedidos\">\n  <label for=\"numero\">Número do pedido</label>\n  <input id=\"numero\" name=\"numero\" type=\"text\" inputmode=\"numeric\" />\n\n  <label for=\"status\">Status</label>\n  <select id=\"status\" name=\"status\">\n    <option value=\"\">Todos</option>\n    <option value=\"pending\">Pendentes</option>\n    <option value=\"done\">Concluídos</option>\n  </select>\n\n  <button type=\"submit\">Buscar</button>\n</form>\n",
         "solutionNotes": "Esta verificação lê o código e confere padrões. Ela não prova que a tela funciona: teste navegando com Tab."
-      },
-      "glossary": ["requisicao", "rota"]
+      }
     },
     {
       "id": "web-css-layout-01",
@@ -198,8 +197,7 @@
           "grid-template-columns: repeat(2, 1fr) dentro da media query."
         ],
         "solution": ".painel {\n  display: grid;\n  gap: 12px;\n  padding: 16px;\n}\n\n@media (min-width: 640px) {\n  .painel {\n    grid-template-columns: repeat(2, 1fr);\n  }\n}\n"
-      },
-      "glossary": ["Performance"]
+      }
     },
     {
       "id": "web-javascript-dom-01",
