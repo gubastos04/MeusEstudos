@@ -30,10 +30,18 @@ export function GlossarioInline({ termos }: { termos: TermoResumido[] }) {
 
   const selecionado = termos.find((termo) => termo.id === aberto) ?? null
 
+  /**
+   * O rótulo dizia "Termos que aparecem aqui", e era falso em 55% dos casos:
+   * o campo `glossary` da aula é curado à mão, não derivado do texto. E deve
+   * continuar sendo — o link mais útil costuma ser justo o do conceito que a
+   * aula discute com outras palavras ("consulta dentro de um laço" para quem
+   * ainda não sabe o que é query). Derivar por ocorrência literal perderia
+   * exatamente esse caso; o que estava errado era a promessa, não o dado.
+   */
   return (
     <section aria-labelledby="termos-da-aula" className="space-y-2">
       <h2 id="termos-da-aula" className="text-ink-faint text-xs font-medium uppercase tracking-wide">
-        Termos que aparecem aqui
+        Vocabulário relacionado
       </h2>
 
       <ul className="flex flex-wrap gap-1.5">
