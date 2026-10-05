@@ -86,28 +86,49 @@
         }
       ],
       "exercise": {
-        "id": "ex-bd-consulta-filtro-01",
-        "title": "Consulta de pedidos por período",
-        "kind": "structural",
-        "language": "sql",
-        "estimatedMinutes": 8,
-        "prompt": "Escreva a consulta que lista id, status e criado_em dos pedidos com status 'pending' criados em março de 2026, do mais recente para o mais antigo, no máximo 50 registros. O filtro de data deve permitir uso de índice.",
-        "starter": "",
-        "checks": [
-          { "name": "lista as colunas em vez de *", "type": "notContains", "value": "select *", "hint": "Liste as colunas necessárias." },
-          { "name": "filtra por status", "type": "regex", "value": "status\\s*=", "hint": "O enunciado pede status pending." },
-          { "name": "filtra periodo por faixa", "type": "regex", "value": "criado_em\\s*>=", "hint": "Comparação direta na coluna permite índice." },
-          { "name": "nao usa funcao sobre a coluna de data", "type": "regex", "value": "^(?![\\s\\S]*(DATE|EXTRACT|YEAR|MONTH)\\s*\\(\\s*criado_em)[\\s\\S]*$", "hint": "Função sobre a coluna impede o uso do índice." },
-          { "name": "ordena do mais recente", "type": "regex", "value": "ORDER BY\\s+criado_em\\s+DESC", "hint": "Do mais recente para o mais antigo." },
-          { "name": "limita o resultado", "type": "regex", "value": "LIMIT\\s+50", "hint": "No máximo 50." }
-        ],
-        "hints": [
-          "Março de 2026 é uma faixa: de 2026-03-01 até antes de 2026-04-01.",
-          "Use >= no início e < no fim, para não depender da hora."
-        ],
-        "solution": "SELECT id, status, criado_em\nFROM pedido\nWHERE status = 'pending'\n  AND criado_em >= '2026-03-01'\n  AND criado_em <  '2026-04-01'\nORDER BY criado_em DESC\nLIMIT 50;\n",
-        "solutionNotes": "Usar < no limite superior evita o problema de '2026-03-31' excluir os registros do próprio dia 31 com hora diferente de zero."
-      },
+                    "id": "ex-bd-consulta-filtro-01",
+                    "title": "Consulta de pedidos por período",
+                    "kind": "code",
+                    "language": "sql",
+                    "estimatedMinutes": 10,
+                    "prompt": "Escreva a consulta que lista `id`, `status` e `criado_em` dos pedidos com status 'pending' criados em março de 2026, do mais recente para o mais antigo, no máximo 50 registros. O filtro de data precisa permitir uso de índice — ou seja, comparação direta na coluna, sem função em volta dela.\n\nOs dados do cenário já estão no editor e incluem as bordas: 28/02 às 23:59, 01/03 à meia-noite, 31/03 às 22:10 e 01/04 à meia-noite.",
+                    "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE pedido (\n  id INTEGER PRIMARY KEY,\n  status TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO pedido (id, status, criado_em) VALUES\n  (1, 'pending', '2026-02-28 23:59'),\n  (2, 'pending', '2026-03-01 00:00'),\n  (3, 'done',    '2026-03-05 10:00'),\n  (4, 'pending', '2026-03-15 08:30'),\n  (5, 'pending', '2026-03-31 22:10'),\n  (6, 'pending', '2026-04-01 00:00');\n\n-- escreva a consulta abaixo\n",
+                    "checks": [
+                      {
+                        "name": "não usa função sobre a coluna de data",
+                        "type": "regex",
+                        "value": "^(?![\\s\\S]*(DATE|EXTRACT|YEAR|MONTH|STRFTIME|SUBSTR)\\s*\\(\\s*criado_em)[\\s\\S]*$",
+                        "hint": "Função sobre a coluna impede o uso do índice — e os testes passariam de todo jeito, por isso esta verificação existe."
+                      },
+                      { "name": "lista as colunas em vez de *", "type": "notContains", "value": "select *", "hint": "Liste as colunas necessárias." }
+                    ],
+                    "hints": [
+                      "Março de 2026 é uma faixa: de 2026-03-01 até antes de 2026-04-01.",
+                      "Use >= no início e < no fim, para não depender da hora.",
+                      "A consulta a escrever é a última do script. Os testes rodam sobre o resultado dela."
+                    ],
+                    "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE pedido (\n  id INTEGER PRIMARY KEY,\n  status TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO pedido (id, status, criado_em) VALUES\n  (1, 'pending', '2026-02-28 23:59'),\n  (2, 'pending', '2026-03-01 00:00'),\n  (3, 'done',    '2026-03-05 10:00'),\n  (4, 'pending', '2026-03-15 08:30'),\n  (5, 'pending', '2026-03-31 22:10'),\n  (6, 'pending', '2026-04-01 00:00');\n\nSELECT id, status, criado_em\nFROM pedido\nWHERE status = 'pending'\n  AND criado_em >= '2026-03-01'\n  AND criado_em <  '2026-04-01'\nORDER BY criado_em DESC\nLIMIT 50;\n",
+                    "solutionNotes": "Os testes rodam de verdade: o SQLite executa o script e os casos consultam o resultado. Usar `<` no limite superior é o que inclui 31/03 às 22:10 — com `<= '2026-03-31'` esse pedido ficaria de fora, e é o caso que a maioria erra. As duas verificações restantes leem o texto, porque usar função sobre a coluna faria os testes passarem e o índice deixar de ser usado.",
+                    "tests": [
+                      { "name": "traz os três pedidos de março", "expression": "SELECT count(*) FROM resposta", "expected": 3 },
+                      {
+                        "name": "do mais recente para o mais antigo",
+                        "expression": "SELECT id FROM resposta ORDER BY __ordem",
+                        "expected": [5, 4, 2]
+                      },
+                      { "name": "não traz pedido de outro status", "expression": "SELECT count(*) FROM resposta WHERE status <> 'pending'", "expected": 0 },
+                      { "name": "exclui 28/02, que é do mês anterior", "expression": "SELECT count(*) FROM resposta WHERE id = 1", "expected": 0 },
+                      { "name": "inclui 31/03 às 22:10", "expression": "SELECT count(*) FROM resposta WHERE id = 5", "expected": 1 },
+                      { "name": "exclui 01/04 à meia-noite", "expression": "SELECT count(*) FROM resposta WHERE id = 6", "expected": 0 },
+                      {
+                        "name": "traz exatamente as três colunas pedidas",
+                        "expression": "SELECT count(*) FROM pragma_table_info('resposta') WHERE name <> '__ordem'",
+                        "expected": 3,
+                        "hidden": true
+                      },
+                      { "name": "inclui 01/03 à meia-noite", "expression": "SELECT count(*) FROM resposta WHERE id = 2", "expected": 1, "hidden": true }
+                    ]
+                  },
       "glossary": ["sql", "Query", "indice", "Performance"]
     },
     {
@@ -179,28 +200,36 @@
         }
       ],
       "exercise": {
-        "id": "ex-bd-relatorio-01",
-        "title": "Relatório de tickets por prioridade",
-        "kind": "structural",
-        "language": "sql",
-        "estimatedMinutes": 9,
-        "prompt": "Escreva a consulta que mostre, para cada prioridade, quantos tickets existem e quantos estão abertos, incluindo prioridades sem nenhum ticket. Tabelas: prioridade(id, nome) e ticket(id, prioridade_id, status).",
-        "starter": "",
-        "checks": [
-          { "name": "usa left join", "type": "regex", "value": "LEFT\\s+JOIN", "hint": "Prioridade sem ticket precisa aparecer." },
-          { "name": "conta coluna do ticket e nao asterisco", "type": "regex", "value": "COUNT\\s*\\(\\s*t\\.|COUNT\\s*\\(\\s*ticket\\.", "hint": "COUNT(*) contaria 1 para prioridade sem ticket." },
-          { "name": "agrupa", "type": "regex", "value": "GROUP BY", "hint": "Agregação por prioridade precisa de GROUP BY." },
-          { "name": "conta abertos separadamente", "type": "regex", "value": "CASE|FILTER", "hint": "Contagem condicional usa CASE WHEN ou FILTER." },
-          { "name": "parte da tabela de prioridade", "type": "regex", "value": "FROM\\s+prioridade", "hint": "O lado que precisa aparecer inteiro vai no FROM." }
-        ],
-        "hints": [
-          "A tabela que precisa aparecer inteira fica à esquerda do LEFT JOIN.",
-          "Contagem condicional: COUNT(CASE WHEN t.status = 'aberto' THEN 1 END).",
-          "No PostgreSQL também funciona: COUNT(*) FILTER (WHERE t.status = 'aberto')."
-        ],
-        "solution": "SELECT\n  p.nome,\n  COUNT(t.id) AS total,\n  COUNT(CASE WHEN t.status = 'aberto' THEN 1 END) AS abertos\nFROM prioridade p\nLEFT JOIN ticket t ON t.prioridade_id = p.id\nGROUP BY p.id, p.nome\nORDER BY total DESC;\n",
-        "solutionNotes": "COUNT(CASE ...) funciona em qualquer banco. A sintaxe FILTER é mais legível e específica do PostgreSQL."
-      },
+                    "id": "ex-bd-relatorio-01",
+                    "title": "Relatório de tickets por prioridade",
+                    "kind": "code",
+                    "language": "sql",
+                    "estimatedMinutes": 10,
+                    "prompt": "Escreva a consulta que mostra, para cada prioridade, quantos tickets existem e quantos estão abertos — **incluindo prioridades sem nenhum ticket**.\n\nAs colunas do resultado precisam se chamar `nome`, `total` e `abertos`, nessa ordem, e o resultado sai do maior `total` para o menor.\n\nRepare no cenário: `baixa` não tem ticket algum, e o ticket 5 não tem prioridade.",
+                    "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE prioridade (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);\nCREATE TABLE ticket (id INTEGER PRIMARY KEY, prioridade_id INTEGER, status TEXT NOT NULL);\n\nINSERT INTO prioridade (id, nome) VALUES (1, 'alta'), (2, 'media'), (3, 'baixa');\n\nINSERT INTO ticket (id, prioridade_id, status) VALUES\n  (1, 1, 'aberto'),\n  (2, 1, 'fechado'),\n  (3, 1, 'aberto'),\n  (4, 2, 'fechado'),\n  (5, NULL, 'aberto');\n-- 'baixa' não tem nenhum ticket, e o ticket 5 não tem prioridade.\n\n-- escreva a consulta abaixo\n",
+                    "checks": [],
+                    "hints": [
+                      "Para prioridade sem ticket aparecer, a tabela da esquerda precisa ser a de prioridade.",
+                      "count(coluna_da_direita) conta zero quando não há par; count(*) contaria 1.",
+                      "Para contar só os abertos, conte uma expressão que vale NULL quando o status não é aberto."
+                    ],
+                    "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE prioridade (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);\nCREATE TABLE ticket (id INTEGER PRIMARY KEY, prioridade_id INTEGER, status TEXT NOT NULL);\n\nINSERT INTO prioridade (id, nome) VALUES (1, 'alta'), (2, 'media'), (3, 'baixa');\n\nINSERT INTO ticket (id, prioridade_id, status) VALUES\n  (1, 1, 'aberto'),\n  (2, 1, 'fechado'),\n  (3, 1, 'aberto'),\n  (4, 2, 'fechado'),\n  (5, NULL, 'aberto');\n-- 'baixa' não tem nenhum ticket, e o ticket 5 não tem prioridade.\n\nSELECT\n  p.nome,\n  count(t.id) AS total,\n  count(CASE WHEN t.status = 'aberto' THEN 1 END) AS abertos\nFROM prioridade p\nLEFT JOIN ticket t ON t.prioridade_id = p.id\nGROUP BY p.id, p.nome\nORDER BY total DESC;\n",
+                    "solutionNotes": "Os testes rodam de verdade no SQLite. Dois detalhes decidem: `LEFT JOIN` com a prioridade à esquerda é o que mantém `baixa` no resultado, e `count(t.id)` é o que faz ela aparecer com 0 em vez de 1 — `count(*)` contaria a própria linha vinda do LEFT JOIN. `count(CASE ...)` funciona em qualquer banco; a sintaxe `FILTER` é mais legível e específica do PostgreSQL.",
+                    "tests": [
+                      { "name": "as três prioridades aparecem", "expression": "SELECT count(*) FROM resposta", "expected": 3 },
+                      {
+                        "name": "ordenado do maior total para o menor",
+                        "expression": "SELECT nome FROM resposta ORDER BY __ordem",
+                        "expected": ["alta", "media", "baixa"]
+                      },
+                      { "name": "alta tem 3 tickets", "expression": "SELECT total FROM resposta WHERE nome = 'alta'", "expected": 3 },
+                      { "name": "alta tem 2 abertos", "expression": "SELECT abertos FROM resposta WHERE nome = 'alta'", "expected": 2 },
+                      { "name": "baixa aparece com zero, e não some", "expression": "SELECT total FROM resposta WHERE nome = 'baixa'", "expected": 0 },
+                      { "name": "media tem 1 ticket e nenhum aberto", "expression": "SELECT abertos FROM resposta WHERE nome = 'media'", "expected": 0 },
+                      { "name": "nenhum total vem nulo", "expression": "SELECT count(*) FROM resposta WHERE total IS NULL", "expected": 0, "hidden": true },
+                      { "name": "o ticket sem prioridade não vira uma linha", "expression": "SELECT sum(total) FROM resposta", "expected": 4, "hidden": true }
+                    ]
+                  },
       "glossary": ["sql", "Query", "chave-estrangeira"]
     },
     {
@@ -393,58 +422,40 @@
         }
       ],
       "exercise": {
-        "id": "ex-bd-null-01",
-        "title": "Relatório que não perde linha",
-        "kind": "structural",
-        "language": "sql",
-        "estimatedMinutes": 8,
-        "prompt": "A tabela `pedido` tem `status` que aceita nulo. Escreva a consulta que lista, por status, quantos pedidos existem — tratando os nulos como o texto `sem status` e ordenando do maior total para o menor. Pedidos com status `cancelado` ficam de fora, e os de status desconhecido **não** podem sumir junto com eles.",
-        "starter": "-- escreva aqui\n",
-        "checks": [
-          {
-            "name": "agrupa por status",
-            "type": "regex",
-            "value": "GROUP\\s+BY",
-            "hint": "O relatório é por status."
-          },
-          {
-            "name": "conta os pedidos",
-            "type": "regex",
-            "value": "count\\s*\\(",
-            "hint": "Um total por grupo."
-          },
-          {
-            "name": "troca o nulo por um rotulo",
-            "type": "regex",
-            "value": "coalesce\\s*\\(|CASE\\s+WHEN[\\s\\S]*IS\\s+NULL",
-            "hint": "`coalesce(status, ...)` devolve o segundo valor quando o primeiro é nulo."
-          },
-          {
-            "name": "o rotulo pedido",
-            "type": "contains",
-            "value": "sem status",
-            "hint": "O texto exato que o enunciado pede."
-          },
-          {
-            "name": "o filtro nao engole os nulos",
-            "type": "regex",
-            "value": "IS\\s+DISTINCT\\s+FROM|IS\\s+NULL|coalesce\\s*\\([\\s\\S]*<>",
-            "hint": "Um `<>` sozinho descarta as linhas nulas junto com as canceladas."
-          },
-          {
-            "name": "ordena do maior para o menor",
-            "type": "regex",
-            "value": "ORDER\\s+BY[\\s\\S]*DESC",
-            "hint": "Do maior total para o menor."
-          }
-        ],
-        "hints": [
-          "Duas coisas diferentes: rotular o nulo na saída e não perdê-lo no filtro. Resolver uma não resolve a outra.",
-          "Se você filtrar depois de trocar o nulo por texto, o problema do filtro desaparece sozinho."
-        ],
-        "solution": "SELECT\n  coalesce(status, 'sem status') AS status,\n  count(*) AS total\nFROM pedido\nWHERE status IS DISTINCT FROM 'cancelado'\nGROUP BY coalesce(status, 'sem status')\nORDER BY total DESC;",
-        "solutionNotes": "`IS DISTINCT FROM` trata NULL como um valor comparável: desconhecido é distinto de cancelado, então a linha fica. Escrever `status <> 'cancelado'` eliminaria os 200 pedidos sem status sem nenhum aviso."
-      },
+                    "id": "ex-bd-null-01",
+                    "title": "Relatório que não perde linha",
+                    "kind": "code",
+                    "language": "sql",
+                    "estimatedMinutes": 10,
+                    "prompt": "A coluna `status` aceita nulo. Escreva a consulta que lista, por status, quantos pedidos existem:\n\n- os nulos aparecem agrupados sob o texto `sem status`;\n- pedidos com status `cancelado` ficam de fora;\n- os de status desconhecido **não** podem sumir junto com os cancelados;\n- ordene do maior total para o menor.\n\nAs colunas precisam se chamar `status` e `total`.",
+                    "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE pedido (id INTEGER PRIMARY KEY, status TEXT);\n\nINSERT INTO pedido (id, status) VALUES\n  (1, 'pending'),\n  (2, 'pending'),\n  (3, 'done'),\n  (4, 'cancelado'),\n  (5, 'cancelado'),\n  (6, NULL),\n  (7, NULL),\n  (8, NULL);\n\n-- escreva a consulta abaixo\n",
+                    "checks": [],
+                    "hints": [
+                      "Comparar NULL com texto não dá nem verdadeiro nem falso: dá desconhecido, e a linha é descartada.",
+                      "Rotule o nulo antes de agrupar, e agrupe pela mesma expressão que você listou.",
+                      "Existe um operador de comparação que trata NULL como um valor comparável."
+                    ],
+                    "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE pedido (id INTEGER PRIMARY KEY, status TEXT);\n\nINSERT INTO pedido (id, status) VALUES\n  (1, 'pending'),\n  (2, 'pending'),\n  (3, 'done'),\n  (4, 'cancelado'),\n  (5, 'cancelado'),\n  (6, NULL),\n  (7, NULL),\n  (8, NULL);\n\nSELECT\n  coalesce(status, 'sem status') AS status,\n  count(*) AS total\nFROM pedido\nWHERE status IS DISTINCT FROM 'cancelado'\nGROUP BY coalesce(status, 'sem status')\nORDER BY total DESC;\n",
+                    "solutionNotes": "Os testes rodam de verdade. `IS DISTINCT FROM` trata NULL como valor comparável: desconhecido é distinto de cancelado, então as três linhas sem status ficam. Escrever `status <> 'cancelado'` eliminaria essas três sem nenhum aviso — e é exatamente o que o teste \"os três nulos não sumiram\" pega.",
+                    "tests": [
+                      { "name": "três grupos no resultado", "expression": "SELECT count(*) FROM resposta", "expected": 3 },
+                      { "name": "os três nulos não sumiram", "expression": "SELECT total FROM resposta WHERE status = 'sem status'", "expected": 3 },
+                      { "name": "cancelado ficou de fora", "expression": "SELECT count(*) FROM resposta WHERE status = 'cancelado'", "expected": 0 },
+                      {
+                        "name": "ordenado do maior para o menor",
+                        "expression": "SELECT status FROM resposta ORDER BY __ordem",
+                        "expected": ["sem status", "pending", "done"]
+                      },
+                      { "name": "nenhum status ficou nulo no resultado", "expression": "SELECT count(*) FROM resposta WHERE status IS NULL", "expected": 0 },
+                      { "name": "pending continua com 2", "expression": "SELECT total FROM resposta WHERE status = 'pending'", "expected": 2, "hidden": true },
+                      {
+                        "name": "nenhum pedido foi perdido além dos cancelados",
+                        "expression": "SELECT sum(total) FROM resposta",
+                        "expected": 6,
+                        "hidden": true
+                      }
+                    ]
+                  },
       "glossary": [
         "sql",
         "query"
@@ -533,58 +544,48 @@
         }
       ],
       "exercise": {
-        "id": "ex-bd-migration-01",
-        "title": "Coluna obrigatória em tabela com dado",
-        "kind": "structural",
-        "language": "sql",
-        "estimatedMinutes": 8,
-        "prompt": "A tabela `ticket` já tem 800 mil linhas em produção. Escreva a migration que acrescenta a coluna `canal`, obrigatória, com valor padrão `web` — de forma que rode sem falhar sobre as linhas existentes e sem exigir janela de manutenção. Não remova nem renomeie nada.",
-        "starter": "-- escreva aqui\n",
-        "checks": [
-          {
-            "name": "acrescenta a coluna",
-            "type": "regex",
-            "value": "ADD\\s+COLUMN\\s+canal",
-            "hint": "O nome da coluna é `canal`."
-          },
-          {
-            "name": "preenche as linhas existentes",
-            "type": "regex",
-            "value": "UPDATE\\s+ticket[\\s\\S]*canal",
-            "hint": "As 800 mil linhas antigas precisam de um valor antes de a coluna virar obrigatória."
-          },
-          {
-            "name": "so entao exige NOT NULL",
-            "type": "regex",
-            "value": "SET\\s+NOT\\s+NULL",
-            "hint": "Um passo separado, depois do preenchimento."
-          },
-          {
-            "name": "define o padrao",
-            "type": "regex",
-            "value": "DEFAULT\\s+'web'",
-            "hint": "As linhas novas precisam de um valor sem que ninguém informe."
-          },
-          {
-            "name": "nao cria a coluna ja obrigatoria",
-            "type": "regex",
-            "value": "^(?![\\s\\S]*ADD\\s+COLUMN\\s+canal\\s+TEXT\\s+NOT\\s+NULL\\s*;)[\\s\\S]*$",
-            "hint": "Criar já como NOT NULL sem default falha: não há valor para as linhas que já existem."
-          },
-          {
-            "name": "nao remove nada",
-            "type": "notContains",
-            "value": "DROP",
-            "hint": "A migration só acrescenta."
-          }
-        ],
-        "hints": [
-          "São quatro comandos, e a ordem é o exercício inteiro.",
-          "Pergunte a cada linha: isto rodaria agora, sobre as 800 mil linhas que já estão lá?"
-        ],
-        "solution": "ALTER TABLE ticket ADD COLUMN canal TEXT;\nUPDATE ticket SET canal = 'web' WHERE canal IS NULL;\nALTER TABLE ticket ALTER COLUMN canal SET NOT NULL;\nALTER TABLE ticket ALTER COLUMN canal SET DEFAULT 'web';",
-        "solutionNotes": "O default entra por último de propósito: ele vale para linhas novas, e as antigas já foram resolvidas pelo UPDATE. Em tabela muito maior, o UPDATE em lotes evita segurar a transação por muito tempo."
-      },
+                    "id": "ex-bd-migration-01",
+                    "title": "Coluna obrigatória em tabela com dado",
+                    "kind": "structural",
+                    "language": "sql",
+                    "estimatedMinutes": 8,
+                    "prompt": "A tabela `ticket` já tem 800 mil linhas em produção. Escreva a migration que acrescenta a coluna `canal`, obrigatória, com valor padrão `web` — de forma que rode sem falhar sobre as linhas existentes e sem exigir janela de manutenção. Não remova nem renomeie nada.",
+                    "starter": "-- escreva aqui\n",
+                    "checks": [
+                      { "name": "acrescenta a coluna", "type": "regex", "value": "ADD\\s+COLUMN\\s+canal", "hint": "O nome da coluna é `canal`." },
+                      {
+                        "name": "preenche as linhas existentes",
+                        "type": "regex",
+                        "value": "UPDATE\\s+ticket[\\s\\S]*canal",
+                        "hint": "As 800 mil linhas antigas precisam de um valor antes de a coluna virar obrigatória."
+                      },
+                      {
+                        "name": "so entao exige NOT NULL",
+                        "type": "regex",
+                        "value": "SET\\s+NOT\\s+NULL",
+                        "hint": "Um passo separado, depois do preenchimento."
+                      },
+                      {
+                        "name": "define o padrao",
+                        "type": "regex",
+                        "value": "DEFAULT\\s+'web'",
+                        "hint": "As linhas novas precisam de um valor sem que ninguém informe."
+                      },
+                      {
+                        "name": "nao cria a coluna ja obrigatoria",
+                        "type": "regex",
+                        "value": "^(?![\\s\\S]*ADD\\s+COLUMN\\s+canal\\s+TEXT\\s+NOT\\s+NULL\\s*;)[\\s\\S]*$",
+                        "hint": "Criar já como NOT NULL sem default falha: não há valor para as linhas que já existem."
+                      },
+                      { "name": "nao remove nada", "type": "notContains", "value": "DROP", "hint": "A migration só acrescenta." }
+                    ],
+                    "hints": [
+                      "São quatro comandos, e a ordem é o exercício inteiro.",
+                      "Pergunte a cada linha: isto rodaria agora, sobre as 800 mil linhas que já estão lá?"
+                    ],
+                    "solution": "ALTER TABLE ticket ADD COLUMN canal TEXT;\nUPDATE ticket SET canal = 'web' WHERE canal IS NULL;\nALTER TABLE ticket ALTER COLUMN canal SET NOT NULL;\nALTER TABLE ticket ALTER COLUMN canal SET DEFAULT 'web';",
+                    "solutionNotes": "Esta verificação lê o SQL e confere padrões, e aqui isso não é escolha: `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL` não existe no SQLite, que é o banco que roda no navegador — o ALTER TABLE dele só faz RENAME, ADD COLUMN e DROP COLUMN. É um bom lembrete de que SQL não é uma linguagem só. Para ver esta migration rodando, use um PostgreSQL de verdade."
+                  },
       "glossary": [
         "migration",
         "sql",
@@ -726,43 +727,52 @@
         {
           "id": "q-bd-pratica-relatorio-01",
           "kind": "pratica",
-          "prompt": "O suporte precisa de um relatório: quantos tickets cada atendente fechou no período, incluindo os atendentes que não fecharam nenhum.\n\nAs tabelas são `ticket (id, atendente_id, status, fechado_em)` e `usuario (id, nome)`. `atendente_id` é nulo quando ninguém assumiu o ticket.\n\nEscreva a consulta e, depois dela, o `CREATE INDEX` que a atende. A consulta precisa: juntar as duas tabelas de forma que atendente sem ticket apareça com zero, filtrar `fechado_em` por um período, agrupar por atendente, e ordenar do maior para o menor.",
+          "prompt": "O suporte precisa saber quantos tickets cada atendente fechou em março de 2026, **incluindo os atendentes que não fecharam nenhum**.\n\nEscreva a consulta com as colunas `nome` e `fechados`, do maior para o menor. Depois dela, escreva o `CREATE INDEX` que a atende — igualdade primeiro, faixa depois.\n\nCuidado com a armadilha: o filtro de período no lugar errado descarta justamente o atendente que não fechou nada.",
           "language": "sql",
-          "starter": "-- relatorio\n\n\n-- indice que atende a consulta\n\n",
-          "checks": [
-            { "name": "junta as duas tabelas", "type": "regex", "value": "join", "hint": "O nome do atendente está na outra tabela." },
-            {
-              "name": "inclui quem não fechou nenhum",
-              "type": "regex",
-              "value": "left\\s+join|right\\s+join",
-              "hint": "JOIN comum descarta a linha sem par. Qual variação mantém todos os atendentes?"
-            },
-            { "name": "agrega", "type": "regex", "value": "count\\s*\\(", "hint": "A pergunta é \"quantos\"." },
-            { "name": "agrupa", "type": "regex", "value": "group\\s+by", "hint": "Contagem por atendente precisa de agrupamento." },
-            { "name": "filtra o período", "type": "regex", "value": "fechado_em\\s*(>=|between|>)", "hint": "O relatório é \"no período\"." },
-            { "name": "ordena do maior para o menor", "type": "regex", "value": "order\\s+by[\\s\\S]*desc", "hint": "O enunciado pede a ordem." },
-            { "name": "cria o índice", "type": "regex", "value": "create\\s+index", "hint": "A consulta roda a cada abertura da tela." },
-            {
-              "name": "o índice cobre as colunas da consulta",
-              "type": "regex",
-              "value": "create\\s+index[\\s\\S]*ticket[\\s\\S]*\\((atendente_id|fechado_em)",
-              "hint": "Igualdade e agrupamento primeiro, faixa depois."
-            }
-          ],
+          "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE usuario (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  atendente_id INTEGER,\n  status TEXT NOT NULL,\n  fechado_em TEXT\n);\n\nINSERT INTO usuario (id, nome) VALUES (1, 'Ana'), (2, 'Bruno'), (3, 'Carla');\n\nINSERT INTO ticket (id, atendente_id, status, fechado_em) VALUES\n  (1, 1, 'fechado', '2026-03-02'),\n  (2, 1, 'fechado', '2026-03-20'),\n  (3, 1, 'aberto',  NULL),\n  (4, 2, 'fechado', '2026-02-15'),\n  (5, 2, 'fechado', '2026-03-10'),\n  (6, NULL, 'fechado', '2026-03-11');\n-- Carla não fechou nenhum; o ticket 4 é de fevereiro; o 6 não tem atendente.\n\n-- 1. a consulta\n\n\n-- 2. o índice que a atende\n",
+          "checks": [],
           "hints": [
-            "\"Incluindo os atendentes que não fecharam nenhum\" é a dica do tipo de JOIN.",
-            "Cuidado: filtro de período no WHERE descarta o atendente sem ticket. Pense em onde a condição precisa ficar.",
-            "COUNT de uma coluna da tabela da direita conta zero para quem não tem par; COUNT(*) contaria 1."
+            "\"Incluindo quem não fechou nenhum\" diz qual é o tipo de junção e qual tabela fica à esquerda.",
+            "Filtro de período no WHERE descarta a linha de quem não tem par. Existe outro lugar para essa condição.",
+            "No índice, as colunas comparadas por igualdade vêm antes das de faixa."
           ],
           "criteria": [
-            "Atendente sem ticket aparece com zero",
+            "Atendente sem ticket fechado aparece com zero",
             "O período é filtrado sem anular o efeito do LEFT JOIN",
-            "A contagem é por atendente",
-            "Existe índice que atende a consulta"
+            "A contagem é por atendente e ordenada",
+            "O índice começa pela coluna de igualdade"
           ],
           "topics": ["join", "agregação", "índice"],
-          "solution": "-- A condicao de periodo fica no ON: no WHERE ela descartaria o atendente sem ticket.\nSELECT u.id, u.nome, COUNT(t.id) AS fechados\nFROM usuario u\nLEFT JOIN ticket t\n  ON t.atendente_id = u.id\n  AND t.status = 'fechado'\n  AND t.fechado_em >= '2026-03-01'\n  AND t.fechado_em < '2026-04-01'\nGROUP BY u.id, u.nome\nORDER BY fechados DESC;\n\n-- Igualdade primeiro, faixa depois: atende o ON inteiro.\nCREATE INDEX idx_ticket_atendente_fechado ON ticket (atendente_id, status, fechado_em);\n",
-          "solutionNotes": "Esta verificação lê o SQL e confere padrões. Ela não executa a consulta: não prova que o LEFT JOIN está do lado certo nem que o índice é usado. Para isso, rode num banco com dados e compare EXPLAIN antes e depois."
+          "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE usuario (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  atendente_id INTEGER,\n  status TEXT NOT NULL,\n  fechado_em TEXT\n);\n\nINSERT INTO usuario (id, nome) VALUES (1, 'Ana'), (2, 'Bruno'), (3, 'Carla');\n\nINSERT INTO ticket (id, atendente_id, status, fechado_em) VALUES\n  (1, 1, 'fechado', '2026-03-02'),\n  (2, 1, 'fechado', '2026-03-20'),\n  (3, 1, 'aberto',  NULL),\n  (4, 2, 'fechado', '2026-02-15'),\n  (5, 2, 'fechado', '2026-03-10'),\n  (6, NULL, 'fechado', '2026-03-11');\n-- Carla não fechou nenhum; o ticket 4 é de fevereiro; o 6 não tem atendente.\n\nSELECT u.nome, count(t.id) AS fechados\nFROM usuario u\nLEFT JOIN ticket t\n  ON t.atendente_id = u.id\n  AND t.status = 'fechado'\n  AND t.fechado_em >= '2026-03-01'\n  AND t.fechado_em <  '2026-04-01'\nGROUP BY u.id, u.nome\nORDER BY fechados DESC;\n\nCREATE INDEX idx_ticket_atendente_status_fechado ON ticket (atendente_id, status, fechado_em);\n",
+          "solutionNotes": "Os testes rodam de verdade, inclusive os dois sobre o índice: eles leem o catálogo do banco e conferem que ele existe e que começa pela coluna de igualdade. A condição de período fica no `ON`, não no `WHERE` — no `WHERE` ela descartaria a linha da Carla, e o teste \"Carla aparece com zero\" é justamente esse caso.",
+          "tests": [
+            { "name": "os três atendentes aparecem", "expression": "SELECT count(*) FROM resposta", "expected": 3 },
+            { "name": "Ana fechou 2 em março", "expression": "SELECT fechados FROM resposta WHERE nome = 'Ana'", "expected": 2 },
+            { "name": "Bruno fechou 1 em março", "expression": "SELECT fechados FROM resposta WHERE nome = 'Bruno'", "expected": 1 },
+            { "name": "Carla aparece com zero, e não some", "expression": "SELECT fechados FROM resposta WHERE nome = 'Carla'", "expected": 0 },
+            {
+              "name": "ordenado do maior para o menor",
+              "expression": "SELECT nome FROM resposta ORDER BY __ordem",
+              "expected": ["Ana", "Bruno", "Carla"]
+            },
+            {
+              "name": "existe um índice criado por você em ticket",
+              "expression": "SELECT count(*) FROM pragma_index_list('ticket') WHERE origin = 'c'",
+              "expected": 1
+            },
+            {
+              "name": "a primeira coluna do índice é a de igualdade",
+              "expression": "SELECT c.name FROM pragma_index_list('ticket') i JOIN pragma_index_info(i.name) c WHERE i.origin = 'c' AND c.seqno = 0",
+              "expected": "atendente_id"
+            },
+            { "name": "o ticket de fevereiro não entrou na conta", "expression": "SELECT sum(fechados) FROM resposta", "expected": 3, "hidden": true },
+            {
+              "name": "o ticket sem atendente não virou uma linha",
+              "expression": "SELECT count(*) FROM resposta WHERE nome IS NULL",
+              "expected": 0,
+              "hidden": true
+            }
+          ]
         }
       ]
     }

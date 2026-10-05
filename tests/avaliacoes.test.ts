@@ -174,13 +174,19 @@ describe('escolha do modo de verificação', () => {
     expect(capabilityFor('typescript', testes)).toEqual('execucao')
   })
 
+  it('SQL executa de verdade, sem perguntar', () => {
+    // O wasm do SQLite sao ~330 kB: pedir autorizacao seria cerimonia.
+    expect(capabilityFor('sql', testes)).toEqual('execucao')
+  })
+
   it('Python executa sob confirmação', () => {
+    // Aqui sao mesmo alguns megabytes, e a pessoa pode estar em rede movel.
     expect(capabilityFor('python', testes)).toEqual('execucao-sob-demanda')
   })
 
   it('linguagem sem runtime cai em verificação estrutural', () => {
-    expect(capabilityFor('sql', testes)).toEqual('estrutura')
     expect(capabilityFor('html', testes)).toEqual('estrutura')
+    expect(capabilityFor('java', testes)).toEqual('estrutura')
   })
 
   it('sem testes, sempre estrutural', () => {

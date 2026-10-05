@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { enviar } from '@/lib/cliente-api'
 import type { Exercise } from '@/lib/content/schema'
-import { capabilityFor, runExercise, type RunOutcome } from '@/lib/runner'
+import { capabilityFor, runExercise, runtimeSobDemanda, type RunOutcome } from '@/lib/runner'
 import { EditorCodigo } from './editor-codigo'
 import { renderizarInline } from './texto-inline'
 import { Aviso, Botao, Nota, Selo, juntar } from './ui'
@@ -37,14 +37,15 @@ export function Exercicio({ exercicio, moduloId, aulaId, codigoSalvo, tamanhoFon
   const [rodando, setRodando] = useState(false)
   const [dicasAbertas, setDicasAbertas] = useState(0)
   const [solucaoVisivel, setSolucaoVisivel] = useState(false)
-  const [permitiuPython, setPermitiuPython] = useState(false)
+  const [permitiuRuntime, setPermitiuRuntime] = useState(false)
   const [escolhaQuiz, setEscolhaQuiz] = useState<number | null>(null)
   const [reflexao, setReflexao] = useState('')
   const [concluido, setConcluido] = useState(false)
   const jaRegistrou = useRef(false)
 
   const capacidade = capabilityFor(exercicio.language, exercicio.tests)
-  const precisaAutorizar = capacidade === 'execucao-sob-demanda' && !permitiuPython
+  const runtime = runtimeSobDemanda(exercicio.language)
+  const precisaAutorizar = capacidade === 'execucao-sob-demanda' && !permitiuRuntime
 
   // Rascunho local: se a pessoa fecha a aba no meio, o codigo continua ali.
   // E apenas cache; o registro oficial da tentativa fica no servidor.
@@ -79,7 +80,7 @@ export function Exercicio({ exercicio, moduloId, aulaId, codigoSalvo, tamanhoFon
       language: exercicio.language,
       tests: exercicio.tests,
       checks: exercicio.checks,
-      allowHeavyRuntime: permitiuPython,
+      allowHeavyRuntime: permitiuRuntime,
     })
 
     setResultado(saida)
@@ -246,16 +247,16 @@ export function Exercicio({ exercicio, moduloId, aulaId, codigoSalvo, tamanhoFon
       />
 
       {precisaAutorizar ? (
-        <Aviso titulo="Rodar Python aqui precisa de um download">
+        <Aviso titulo={`Rodar ${runtime?.nome ?? 'isto'} aqui precisa de um download`}>
           <p>
-            O interpretador de Python roda dentro do navegador e tem alguns megabytes. Em rede móvel,
-            vale esperar o wi-fi. Sem isso, a verificação estrutural continua disponível.
+            O {runtime?.nome ?? 'runtime'} roda dentro do navegador e tem {runtime?.tamanho ?? 'alguns megabytes'}.
+            Em rede móvel, vale esperar o wi-fi. Sem isso, a verificação estrutural continua disponível.
           </p>
           <Botao
             type="button"
             variante="secundario"
             className="mt-3"
-            onClick={() => setPermitiuPython(true)}
+            onClick={() => setPermitiuRuntime(true)}
           >
             Baixar e executar
           </Botao>

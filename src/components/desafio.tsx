@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 import { enviar } from '@/lib/cliente-api'
 import type { StructuralCheck, TestCase } from '@/lib/content/schema'
-import { capabilityFor, runExercise, type RunOutcome } from '@/lib/runner'
+import { capabilityFor, runExercise, runtimeSobDemanda, type RunOutcome } from '@/lib/runner'
 import { EditorCodigo } from './editor-codigo'
 import { renderizarInline } from './texto-inline'
 import { Aviso, Botao, Cartao, Nota, juntar } from './ui'
@@ -47,11 +47,12 @@ export function Desafio({
   const [rodando, setRodando] = useState(false)
   const [dicasAbertas, setDicasAbertas] = useState(0)
   const [solucaoVisivel, setSolucaoVisivel] = useState(false)
-  const [permitiuPython, setPermitiuPython] = useState(false)
+  const [permitiuRuntime, setPermitiuRuntime] = useState(false)
   const [marcado, setMarcado] = useState(concluido)
 
   const capacidade = capabilityFor(linguagem, testes)
-  const precisaAutorizar = capacidade === 'execucao-sob-demanda' && !permitiuPython
+  const runtime = runtimeSobDemanda(linguagem)
+  const precisaAutorizar = capacidade === 'execucao-sob-demanda' && !permitiuRuntime
 
   async function executar() {
     if (rodando) return
@@ -62,7 +63,7 @@ export function Desafio({
       language: linguagem,
       tests: testes,
       checks: verificacoes,
-      allowHeavyRuntime: permitiuPython,
+      allowHeavyRuntime: permitiuRuntime,
     })
 
     setResultado(saida)
@@ -101,13 +102,16 @@ export function Desafio({
       />
 
       {precisaAutorizar ? (
-        <Aviso titulo="Rodar Python aqui precisa de um download">
-          <p>O interpretador roda no navegador e tem alguns megabytes. Em rede móvel, vale esperar o wi-fi.</p>
+        <Aviso titulo={`Rodar ${runtime?.nome ?? 'isto'} aqui precisa de um download`}>
+          <p>
+            O {runtime?.nome ?? 'runtime'} roda no navegador e tem {runtime?.tamanho ?? 'alguns megabytes'}.
+            Em rede móvel, vale esperar o wi-fi.
+          </p>
           <Botao
             type="button"
             variante="secundario"
             className="mt-3"
-            onClick={() => setPermitiuPython(true)}
+            onClick={() => setPermitiuRuntime(true)}
           >
             Baixar e executar
           </Botao>

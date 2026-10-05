@@ -217,25 +217,52 @@
         "A coluna de ordenação aparece por último, na direção da consulta",
         "Há um comentário explicando a ordem"
       ],
-      "starter": "-- escreva o índice e explique a ordem\n",
+      "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  empresa_id INTEGER NOT NULL,\n  status TEXT NOT NULL,\n  titulo TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO ticket (id, empresa_id, status, titulo, criado_em) VALUES\n  (1, 7, 'aberto',  'impressora',  '2026-03-01'),\n  (2, 7, 'fechado', 'vpn',         '2026-03-02'),\n  (3, 9, 'aberto',  'acesso',      '2026-03-03'),\n  (4, 7, 'aberto',  'notebook',    '2026-03-04');\n\n-- escreva o índice e explique a ordem num comentário\n",
       "language": "sql",
       "checks": [
-        { "name": "cria indice", "type": "regex", "value": "CREATE\\s+INDEX", "hint": "O entregável é um CREATE INDEX." },
-        { "name": "na tabela ticket", "type": "regex", "value": "ON\\s+ticket", "hint": "A consulta é sobre ticket." },
-        { "name": "inclui empresa_id", "type": "contains", "value": "empresa_id", "hint": "É um dos filtros de igualdade." },
-        { "name": "inclui status", "type": "contains", "value": "status", "hint": "É o outro filtro de igualdade." },
-        { "name": "inclui a coluna de ordenacao", "type": "contains", "value": "criado_em", "hint": "O ORDER BY também pode ser atendido pelo índice." },
-        { "name": "ordenacao descendente", "type": "regex", "value": "criado_em\\s+DESC", "hint": "A consulta ordena do mais recente para o mais antigo." },
-        { "name": "colunas de igualdade antes da ordenacao", "type": "regex", "value": "\\(\\s*(empresa_id\\s*,\\s*status|status\\s*,\\s*empresa_id)\\s*,\\s*criado_em", "hint": "Igualdade primeiro; ordenação por último." },
-        { "name": "tem comentario", "type": "contains", "value": "--", "hint": "O enunciado pede a justificativa em comentário." }
+        {
+          "name": "explica a ordem escolhida num comentário",
+          "type": "regex",
+          "value": "--[^\\n]{20,}",
+          "hint": "O enunciado pede a explicação junto: índice sem motivo registrado vira índice que ninguém ousa remover."
+        }
       ],
       "hints": [
         "Colunas usadas com igualdade vêm primeiro no índice composto.",
         "A coluna do ORDER BY vem depois, e a direção importa.",
         "Com a ordem certa, o banco encontra o grupo e já lê na ordem pedida, sem ordenar depois."
       ],
-      "solution": "-- Ordem: primeiro as colunas comparadas por igualdade (empresa_id, status),\n-- que reduzem o conjunto; por último criado_em DESC, que atende o ORDER BY.\n-- Assim o banco localiza o grupo e já lê na ordem final, sem passo de ordenação,\n-- e o LIMIT 50 interrompe a leitura logo no início.\nCREATE INDEX idx_ticket_empresa_status_criado\n  ON ticket (empresa_id, status, criado_em DESC);\n",
-      "solutionNotes": "Com criado_em na frente, o banco percorreria a tabela em ordem de data filtrando empresa e status linha a linha — que é exatamente o comportamento lento original."
+      "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  empresa_id INTEGER NOT NULL,\n  status TEXT NOT NULL,\n  titulo TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO ticket (id, empresa_id, status, titulo, criado_em) VALUES\n  (1, 7, 'aberto',  'impressora',  '2026-03-01'),\n  (2, 7, 'fechado', 'vpn',         '2026-03-02'),\n  (3, 9, 'aberto',  'acesso',      '2026-03-03'),\n  (4, 7, 'aberto',  'notebook',    '2026-03-04');\n\n-- Ordem: primeiro as colunas comparadas por igualdade (empresa_id, status),\n-- que reduzem o conjunto; por último criado_em, que atende o ORDER BY.\n-- Assim o banco localiza o grupo e já lê na ordem final, sem passo de ordenação,\n-- e o LIMIT 50 interrompe a leitura logo no início.\nCREATE INDEX idx_ticket_empresa_status_criado\n  ON ticket (empresa_id, status, criado_em DESC);\n",
+      "solutionNotes": "Os testes rodam de verdade: eles leem o catálogo do SQLite e conferem as três colunas do índice **na ordem**. Inverter para (criado_em, empresa_id, status) cria um índice válido que o banco quase não usa nessa consulta — e os testes de posição pegam isso, o que nenhuma verificação por texto conseguiria.",
+      "tests": [
+        { "name": "o índice foi criado em ticket", "expression": "SELECT count(*) FROM pragma_index_list('ticket') WHERE origin = 'c'", "expected": 1 },
+        {
+          "name": "tem as três colunas da consulta",
+          "expression": "SELECT count(*) FROM pragma_index_list('ticket') i JOIN pragma_index_info(i.name) c WHERE i.origin = 'c'",
+          "expected": 3
+        },
+        {
+          "name": "primeiro vem a igualdade de empresa",
+          "expression": "SELECT c.name FROM pragma_index_list('ticket') i JOIN pragma_index_info(i.name) c WHERE i.origin = 'c' AND c.seqno = 0",
+          "expected": "empresa_id"
+        },
+        {
+          "name": "depois a igualdade de status",
+          "expression": "SELECT c.name FROM pragma_index_list('ticket') i JOIN pragma_index_info(i.name) c WHERE i.origin = 'c' AND c.seqno = 1",
+          "expected": "status"
+        },
+        {
+          "name": "por último a coluna da ordenação",
+          "expression": "SELECT c.name FROM pragma_index_list('ticket') i JOIN pragma_index_info(i.name) c WHERE i.origin = 'c' AND c.seqno = 2",
+          "expected": "criado_em"
+        },
+        {
+          "name": "o índice não é de unicidade",
+          "expression": "SELECT \"unique\" FROM pragma_index_list('ticket') WHERE origin = 'c'",
+          "expected": 0,
+          "hidden": true
+        }
+      ]
     },
     {
       "id": "des-git-desfazer",

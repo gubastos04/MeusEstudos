@@ -506,51 +506,60 @@
         {
           "id": "q-uml-pratica-modelo-sla-01",
           "kind": "pratica",
-          "prompt": "O requisito chegou assim: \"cada categoria de ticket tem um prazo de resposta em horas, e o prazo de um ticket é registrado quando ele é aberto, para que mudar a categoria depois não reescreva o histórico\".\n\nEscreva o `CREATE TABLE` das duas tabelas que isso pede: a de prazo por categoria e a que guarda o prazo aplicado a cada ticket. Declare chave primária, chave estrangeira para `ticket`, as colunas que não podem ser nulas, e a restrição que impede dois prazos registrados para o mesmo ticket.",
+          "prompt": "O requisito chegou assim: \"cada categoria de ticket tem um prazo de resposta em horas, e o prazo de um ticket é registrado quando ele é aberto, para que mudar a categoria depois não reescreva o histórico\".\n\nEscreva o `CREATE TABLE` das duas tabelas que isso pede:\n\n- `prazo_categoria`: `categoria` (texto, único) e `horas` (inteiro), as duas obrigatórias;\n- `prazo_ticket`: aponta para `ticket` por chave estrangeira, guarda `horas` obrigatório, e **impede dois prazos para o mesmo ticket**.\n\nOs testes vão tentar inserir dados inválidos: o banco precisa recusar.",
           "language": "sql",
-          "starter": "-- prazo por categoria\n\n\n-- prazo registrado no ticket\n\n",
-          "checks": [
-            {
-              "name": "cria as duas tabelas",
-              "type": "regex",
-              "value": "(create\\s+table[\\s\\S]*){2}",
-              "hint": "O requisito fala de duas coisas diferentes: a regra da categoria e o registro no ticket."
-            },
-            { "name": "declara chave primária", "type": "regex", "value": "primary\\s+key", "hint": "Toda tabela precisa de identificador." },
-            {
-              "name": "liga ao ticket por chave estrangeira",
-              "type": "regex",
-              "value": "references\\s+ticket",
-              "hint": "O prazo registrado pertence a um ticket que já existe."
-            },
-            { "name": "guarda o prazo em horas", "type": "regex", "value": "horas", "hint": "O requisito diz \"prazo de resposta em horas\"." },
-            {
-              "name": "marca colunas obrigatórias",
-              "type": "regex",
-              "value": "not\\s+null",
-              "hint": "Prazo nulo faria a regra de SLA não valer para aquele ticket."
-            },
-            {
-              "name": "impede dois prazos para o mesmo ticket",
-              "type": "regex",
-              "value": "unique",
-              "hint": "A restrição vive no banco, não só no código que insere."
-            }
-          ],
+          "starter": "-- cenário: não precisa mudar nada daqui até a linha em branco\nPRAGMA foreign_keys = ON;\n\nCREATE TABLE ticket (id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, categoria TEXT NOT NULL);\nINSERT INTO ticket (id, titulo, categoria) VALUES (1, 'impressora', 'hardware'), (2, 'vpn', 'rede');\n\n-- escreva as duas tabelas abaixo\n",
+          "checks": [],
           "hints": [
-            "Duas tabelas: uma guarda a regra por categoria, a outra guarda o valor aplicado àquele ticket.",
             "Registrar o prazo no ticket é o que faz mudar a categoria depois não reescrever o histórico.",
-            "A restrição de \"um prazo por ticket\" é UNIQUE na coluna do ticket."
+            "\"Impede dois prazos para o mesmo ticket\" é uma restrição de unicidade na coluna do ticket.",
+            "A restrição vive no banco, não no código que insere — é por isso que os testes conseguem checá-la."
           ],
           "criteria": [
             "As duas tabelas do requisito existem",
             "O prazo aplicado aponta para o ticket por chave estrangeira",
-            "As colunas que a regra precisa são NOT NULL",
-            "Existe restrição de unicidade por ticket"
+            "As colunas que a regra precisa são obrigatórias",
+            "O banco recusa o segundo prazo para o mesmo ticket"
           ],
           "topics": ["modelo de dados", "requisito"],
-          "solution": "CREATE TABLE prazo_categoria (\n  id SERIAL PRIMARY KEY,\n  categoria TEXT NOT NULL UNIQUE,\n  horas INTEGER NOT NULL\n);\n\n-- O prazo aplicado fica no ticket: mudar a categoria depois nao reescreve o historico.\nCREATE TABLE prazo_ticket (\n  id SERIAL PRIMARY KEY,\n  ticket_id INTEGER NOT NULL UNIQUE REFERENCES ticket (id),\n  horas INTEGER NOT NULL,\n  registrado_em TIMESTAMP NOT NULL DEFAULT now()\n);\n",
-          "solutionNotes": "Esta verificação lê o SQL e confere padrões. Ela não cria as tabelas nem prova que o modelo funciona: para isso, rode o CREATE TABLE num banco de verdade e tente inserir dois prazos para o mesmo ticket."
+          "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nPRAGMA foreign_keys = ON;\n\nCREATE TABLE ticket (id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, categoria TEXT NOT NULL);\nINSERT INTO ticket (id, titulo, categoria) VALUES (1, 'impressora', 'hardware'), (2, 'vpn', 'rede');\n\nCREATE TABLE prazo_categoria (\n  id INTEGER PRIMARY KEY,\n  categoria TEXT NOT NULL UNIQUE,\n  horas INTEGER NOT NULL\n);\n\n-- O prazo aplicado fica no ticket: mudar a categoria depois nao reescreve o historico.\nCREATE TABLE prazo_ticket (\n  id INTEGER PRIMARY KEY,\n  ticket_id INTEGER NOT NULL UNIQUE REFERENCES ticket (id),\n  horas INTEGER NOT NULL,\n  registrado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n",
+          "solutionNotes": "Os testes rodam de verdade, e é por isso que eles podem TENTAR inserir dado inválido: o segundo prazo para o mesmo ticket, o prazo para ticket inexistente e o prazo sem horas precisam falhar. Uma verificação por texto só saberia dizer que a palavra UNIQUE aparece; estes testes provam que a restrição funciona.",
+          "tests": [
+            {
+              "name": "as duas tabelas existem",
+              "expression": "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name IN ('prazo_categoria', 'prazo_ticket')",
+              "expected": 2
+            },
+            { "name": "aceita um prazo válido", "expression": "INSERT INTO prazo_ticket (ticket_id, horas) VALUES (1, 24)", "expected": null },
+            {
+              "name": "recusa o segundo prazo para o mesmo ticket",
+              "expression": "INSERT INTO prazo_ticket (ticket_id, horas) VALUES (1, 48)",
+              "expected": null,
+              "expectThrows": true
+            },
+            {
+              "name": "recusa prazo para ticket que não existe",
+              "expression": "INSERT INTO prazo_ticket (ticket_id, horas) VALUES (999, 24)",
+              "expected": null,
+              "expectThrows": true
+            },
+            { "name": "recusa prazo sem horas", "expression": "INSERT INTO prazo_ticket (ticket_id) VALUES (2)", "expected": null, "expectThrows": true },
+            { "name": "aceita uma categoria", "expression": "INSERT INTO prazo_categoria (categoria, horas) VALUES ('hardware', 8)", "expected": null },
+            {
+              "name": "recusa a mesma categoria duas vezes",
+              "expression": "INSERT INTO prazo_categoria (categoria, horas) VALUES ('hardware', 12)",
+              "expected": null,
+              "expectThrows": true,
+              "hidden": true
+            },
+            {
+              "name": "recusa categoria sem horas",
+              "expression": "INSERT INTO prazo_categoria (categoria) VALUES ('rede')",
+              "expected": null,
+              "expectThrows": true,
+              "hidden": true
+            }
+          ]
         }
       ]
     }

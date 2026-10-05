@@ -65,7 +65,7 @@ npm run setup            # instala, gera o client, cria o banco, sincroniza cont
 npm run dev              # servidor de desenvolvimento
 npm run build            # build de produção (roda prisma generate antes)
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest (189 testes; cria prisma/test-vitest.db do zero)
+npm test                 # vitest (190 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
@@ -147,7 +147,7 @@ provedor de deploy. Não existe variável separada para produção.
 
 O `provider` do datasource não aceita `env()`, então ele é trocado por
 comando. O repositório versiona `sqlite`, porque é o que faz `npm run dev` e os
-189 testes funcionarem logo depois de um `git clone`. O build de produção roda
+190 testes funcionarem logo depois de um `git clone`. O build de produção roda
 `npm run db:provider postgresql` antes do `next build`.
 
 Ao trocar o provider à mão, rode `npx prisma generate` depois: o client gerado
@@ -218,6 +218,26 @@ Código de usuário **nunca** roda no servidor.
 - Python: Pyodide em Worker, baixado sob demanda com confirmação explícita
   (são megabytes; a pessoa pode estar em rede móvel). Falha de download degrada
   para verificação estrutural com mensagem clara.
+- SQL: SQLite via sql.js em Worker, **sem perguntar** — são ~330 kB pela rede,
+  e pedir autorização para isso seria cerimônia sem benefício. O banco é criado
+  em memória a cada execução e o esquema vem do próprio código da pessoa: ela
+  vê os dados que está consultando.
+
+  A última consulta do script é materializada na tabela `resposta`, com uma
+  coluna `__ordem` que guarda a ordem em que as linhas saíram. View não
+  serviria, porque o SQLite não garante a ordem ao reconsultar — e `ORDER BY` é
+  justamente uma das coisas que o exercício precisa testar. O caso de teste é
+  SQL comum sobre essa tabela.
+
+  `expectThrows` passa quando o comando falha, e é assim que se testa restrição
+  de verdade: inserir duplicata numa coluna `UNIQUE` **deve** falhar. Nenhuma
+  verificação por texto prova isso.
+
+  **O runner é SQLite e o módulo usa PostgreSQL como referência.** Onde os dois
+  divergem, o conteúdo fica estrutural e a nota diz por quê: `ALTER TABLE ...
+  ALTER COLUMN SET NOT NULL` não existe no SQLite, e `SERIAL`/`TIMESTAMPTZ`
+  também não. O que é portátil (SELECT, JOIN, GROUP BY, índice, constraint,
+  `IS DISTINCT FROM`, `EXPLAIN QUERY PLAN`) executa.
 - Demais linguagens: verificação estrutural (`src/lib/runner/structural.ts`),
   sempre rotulada como tal na interface.
 
