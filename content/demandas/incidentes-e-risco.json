@@ -1,0 +1,445 @@
+{
+  "demands": [
+    {
+      "id": "dem-upload-arquivo-perigoso",
+      "title": "Alguém enviou um arquivo .php como foto de perfil",
+      "type": "seguranca",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "incompleto",
+      "priority": "urgente",
+      "requester": "Time de infraestrutura",
+      "summary": "A validação de upload confia no que o navegador diz. Descobrir até onde isso vai e fechar.",
+      "context": "A infra encontrou um arquivo `avatar.php` na pasta de uploads, servida pelo mesmo servidor que a aplicação. Ninguém sabe quando entrou. A tela de perfil diz que aceita apenas imagem, e o time de frontend confirma que o campo tem `accept=\"image/*\"`.",
+      "request": "Garantir que só imagem seja aceita, e que o que já está lá não possa ser executado.",
+      "stack": ["python", "api", "seguranca"],
+      "moduleIds": ["seguranca-informacao", "software-seguro", "python-aplicado"],
+      "system": {
+        "description": "Rota de upload de avatar.",
+        "files": [
+          {
+            "path": "api/perfil/avatar.py",
+            "language": "python",
+            "code": "PASTA = \"/var/www/uploads\"\n\n@app.post(\"/perfil/avatar\")\ndef enviar_avatar(arquivo: UploadFile, usuario = Depends(sessao)):\n    if not arquivo.content_type.startswith(\"image/\"):\n        raise HTTPException(422, \"envie uma imagem\")\n\n    destino = os.path.join(PASTA, arquivo.filename)\n    with open(destino, \"wb\") as saida:\n        saida.write(arquivo.file.read())\n\n    usuario.avatar_url = f\"/uploads/{arquivo.filename}\"\n    repo.salvar(usuario)\n    return {\"url\": usuario.avatar_url}"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Só arquivo que é de fato imagem é aceito",
+        "O nome do arquivo gravado não vem do cliente",
+        "Arquivo enviado não pode ser executado pelo servidor",
+        "Arquivo grande demais é recusado antes de ocupar disco"
+      ],
+      "acceptance": [
+        "Enviar um .php renomeado para .jpg é recusado",
+        "Enviar um arquivo com nome `../../etc/x` não escreve fora da pasta de uploads",
+        "O nome gravado em disco é gerado pelo servidor, não pelo cliente",
+        "Existe limite de tamanho, aplicado antes de gravar",
+        "Existe teste que tenta enviar um arquivo não-imagem e espera recusa"
+      ],
+      "constraints": [
+        "A tela de perfil não muda: a correção é no servidor.",
+        "Avatares que já existem precisam continuar aparecendo."
+      ],
+      "investigation": {
+        "intro": "O que a infra reuniu antes de abrir o chamado.",
+        "logs": [
+          "2026-04-02T03:14:55Z INFO POST /perfil/avatar usuario=8812 nome=avatar.php tipo=image/jpeg 201",
+          "2026-04-02T03:15:02Z INFO GET /uploads/avatar.php 200 duracao=890ms",
+          "2026-04-02T03:15:40Z INFO GET /uploads/avatar.php?cmd=ls 200 duracao=120ms"
+        ],
+        "notes": [
+          "O `content_type` chega no cabeçalho da requisição e é escolhido por quem envia.",
+          "A pasta /var/www/uploads é servida diretamente, sem passar pela aplicação.",
+          "O atributo accept do input é dica para o seletor de arquivos do navegador, não validação."
+        ]
+      },
+      "hints": [
+        "O primeiro log já responde uma pergunta: o arquivo passou com `tipo=image/jpeg` e nome `.php`. Quem escolheu esse tipo?",
+        "São três problemas distintos no mesmo trecho: confiar no content-type, usar o nome do cliente, e a pasta ser executável.",
+        "Para saber se é imagem de verdade, olhe os primeiros bytes do arquivo, não o que o cliente disse."
+      ],
+      "reviewChecklist": [
+        "A validação olha o conteúdo do arquivo, não só o cabeçalho enviado",
+        "O nome em disco é gerado pelo servidor",
+        "Não é possível escrever fora da pasta de uploads",
+        "Há limite de tamanho e ele é aplicado antes da gravação",
+        "A mensagem de erro não revela o caminho do servidor",
+        "Existe teste para cada uma das recusas"
+      ]
+    },
+    {
+      "id": "dem-token-vazando-no-log",
+      "title": "A auditoria achou token de sessão no log de acesso",
+      "type": "seguranca",
+      "difficulty": "avancado",
+      "estimatedMinutes": 70,
+      "contextQuality": "incompleto",
+      "priority": "alta",
+      "requester": "Segurança da informação",
+      "summary": "Tokens aparecem em claro no log, e o log vai para três lugares. Achar todas as origens e fechar.",
+      "context": "Numa revisão de rotina, a área de segurança encontrou tokens de sessão legíveis no log de acesso do balanceador. O log é enviado para a ferramenta de busca, copiado para o backup diário e fica retido por 180 dias. Ninguém sabe há quanto tempo isso acontece nem por quantos caminhos.",
+      "request": "Fazer o token parar de aparecer em log, e decidir o que fazer com o que já foi registrado.",
+      "stack": ["python", "api", "seguranca"],
+      "moduleIds": ["software-seguro", "seguranca-informacao", "comunicacao-aplicacoes"],
+      "system": {
+        "description": "Dois trechos que a segurança apontou.",
+        "files": [
+          {
+            "path": "api/relatorios.py",
+            "language": "python",
+            "note": "Link gerado para download direto.",
+            "code": "def link_de_download(relatorio, token):\n    # Link enviado por email para o cliente baixar sem logar de novo.\n    return f\"https://app.exemplo.com/relatorios/{relatorio.id}/baixar?token={token}\""
+          },
+          {
+            "path": "api/middleware/registro.py",
+            "language": "python",
+            "code": "@app.middleware(\"http\")\nasync def registrar(requisicao, seguir):\n    resposta = await seguir(requisicao)\n    log.info(\n        \"requisicao\",\n        extra={\n            \"caminho\": str(requisicao.url),\n            \"cabecalhos\": dict(requisicao.headers),\n            \"status\": resposta.status_code,\n        },\n    )\n    return resposta"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Token não aparece em log, em nenhum dos caminhos",
+        "Token não viaja em query string",
+        "Investigação continua possível: o log ainda permite agrupar requisições",
+        "O que já foi registrado tem um destino decidido"
+      ],
+      "acceptance": [
+        "Nenhum cabeçalho de autorização é registrado em claro",
+        "A URL registrada no log não contém o token",
+        "O link de download deixa de carregar o token na query string",
+        "Continua sendo possível agrupar as linhas de uma mesma requisição",
+        "Existe teste que registra uma requisição autenticada e verifica que o token não está na saída"
+      ],
+      "constraints": [
+        "O link enviado por email precisa continuar funcionando sem a pessoa fazer login de novo.",
+        "Não é possível apagar o backup já gravado: a decisão sobre o retido precisa ser escrita, não executada."
+      ],
+      "investigation": {
+        "intro": "Duas linhas de log reais, com o valor substituído.",
+        "logs": [
+          "2026-04-10T11:02:03Z INFO requisicao caminho=https://app.exemplo.com/relatorios/77/baixar?token=eyJhbGciOi... status=200",
+          "2026-04-10T11:02:04Z INFO requisicao cabecalhos={'authorization': 'Bearer eyJhbGciOi...', 'user-agent': '...'} status=200"
+        ],
+        "metrics": [
+          { "label": "Retenção do log", "value": "180 dias" },
+          { "label": "Destinos do log", "value": "busca, backup diário, console do provedor" }
+        ],
+        "notes": [
+          "Query string aparece em log de servidor, de proxy, no histórico do navegador e no cabeçalho Referer.",
+          "O log precisa continuar permitindo agrupar o que é da mesma requisição."
+        ]
+      },
+      "hints": [
+        "São duas origens diferentes, e cada uma precisa de uma correção própria.",
+        "Para o link por email: existe uma forma de dar acesso temporário sem o segredo aparecer na URL?",
+        "Uma lista de cabeçalhos permitidos é mais segura que uma lista de proibidos — a de proibidos esquece o próximo."
+      ],
+      "reviewChecklist": [
+        "Nenhum cabeçalho sensível entra no log",
+        "A abordagem é lista de permitidos, não de proibidos",
+        "O token saiu da query string",
+        "Ainda dá para agrupar as linhas de uma requisição",
+        "A decisão sobre o log já retido está escrita",
+        "Existe teste que falharia se alguém reintroduzisse o vazamento"
+      ]
+    },
+    {
+      "id": "dem-estoque-negativo",
+      "title": "O estoque ficou negativo em três produtos",
+      "type": "bug",
+      "difficulty": "avancado",
+      "estimatedMinutes": 70,
+      "contextQuality": "incompleto",
+      "priority": "urgente",
+      "requester": "Operação de loja",
+      "summary": "Vendemos mais do que havia. Descobrir como e impedir que volte na próxima promoção.",
+      "context": "Na promoção de ontem, três produtos terminaram com quantidade negativa no estoque: -2, -1 e -4. A operação prometeu entrega para todos os pedidos e agora não tem o que enviar. Os produtos afetados foram os três mais vendidos da hora de pico; nenhum outro ficou negativo.",
+      "request": "Impedir que o estoque fique negativo, sem travar a loja na hora de pico.",
+      "stack": ["python", "banco", "backend"],
+      "moduleIds": ["banco-dados", "python-aplicado", "cloud-iot"],
+      "system": {
+        "description": "A rotina que baixa o estoque quando o pedido é confirmado.",
+        "files": [
+          {
+            "path": "api/pedidos/estoque.py",
+            "language": "python",
+            "code": "def baixar_estoque(produto_id, quantidade):\n    atual = repo.quantidade_de(produto_id)\n\n    if atual < quantidade:\n        raise SemEstoque(produto_id)\n\n    repo.atualizar_quantidade(produto_id, atual - quantidade)"
+          },
+          {
+            "path": "api/pedidos/repo.py",
+            "language": "python",
+            "code": "def quantidade_de(produto_id):\n    return db.query(\"SELECT quantidade FROM estoque WHERE produto_id = %s\", produto_id)\n\ndef atualizar_quantidade(produto_id, nova):\n    db.execute(\"UPDATE estoque SET quantidade = %s WHERE produto_id = %s\", nova, produto_id)"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Estoque nunca fica negativo",
+        "Pedido sem estoque é recusado com mensagem clara",
+        "A loja continua respondendo na hora de pico",
+        "A correção funciona com a aplicação rodando em várias instâncias"
+      ],
+      "acceptance": [
+        "Duas baixas simultâneas do último item resultam em uma venda e uma recusa",
+        "O estoque nunca termina negativo, em nenhum cenário de concorrência",
+        "A recusa continua levantando SemEstoque, para a camada de cima não mudar",
+        "Existe teste que simula duas baixas concorrentes do mesmo produto"
+      ],
+      "constraints": [
+        "Não é aceitável serializar toda a loja: só a disputa pelo mesmo produto pode esperar.",
+        "A assinatura de `baixar_estoque` não muda."
+      ],
+      "investigation": {
+        "intro": "Recortes do período de pico.",
+        "logs": [
+          "2026-04-15T20:14:02.113Z INFO baixar_estoque produto=412 pedido=90a leu_quantidade=1",
+          "2026-04-15T20:14:02.118Z INFO baixar_estoque produto=412 pedido=90b leu_quantidade=1",
+          "2026-04-15T20:14:02.140Z INFO estoque_atualizado produto=412 nova_quantidade=0 pedido=90a",
+          "2026-04-15T20:14:02.147Z INFO estoque_atualizado produto=412 nova_quantidade=0 pedido=90b"
+        ],
+        "metrics": [
+          { "label": "Pedidos por minuto no pico", "value": "340" },
+          { "label": "Instâncias da aplicação", "value": "4" },
+          { "label": "Produtos que ficaram negativos", "value": "3 de 1.200" }
+        ],
+        "notes": [
+          "Os três produtos negativos foram os de maior volume por minuto.",
+          "Fora do pico, o mesmo código roda há dois anos sem nenhum caso."
+        ]
+      },
+      "hints": [
+        "Olhe os horários no log: dois pedidos leram o mesmo valor com 5 ms de diferença.",
+        "O defeito está entre a leitura e a escrita. Quanto tempo esse intervalo dura, e o que pode acontecer nele?",
+        "Existem duas saídas: não ler antes, ou bloquear a linha ao ler. Uma delas é bem mais barata aqui."
+      ],
+      "reviewChecklist": [
+        "A correção elimina a janela entre ler e decidir",
+        "Só a disputa pelo mesmo produto espera, não a loja inteira",
+        "A recusa continua levantando o mesmo erro de antes",
+        "O teste de concorrência falha sem a correção",
+        "A solução funciona com várias instâncias, não só com uma"
+      ]
+    },
+    {
+      "id": "dem-email-do-cliente-errado",
+      "title": "Um cliente recebeu a confirmação do pedido de outro",
+      "type": "bug",
+      "difficulty": "avancado",
+      "estimatedMinutes": 70,
+      "contextQuality": "incompleto",
+      "priority": "urgente",
+      "requester": "Atendimento",
+      "summary": "Email de confirmação saiu para o destinatário errado, com dados de outra pessoa. Achar a causa.",
+      "context": "Uma cliente ligou dizendo que recebeu por email a confirmação de um pedido que não é dela, com o nome, o endereço e os itens de outra pessoa. O atendimento confirmou: o pedido existe e é de outro cliente. Aconteceu duas vezes esta semana, nas duas vezes em horário de movimento.",
+      "request": "Descobrir como o email de um pedido foi para o endereço de outro cliente, e impedir.",
+      "stack": ["python", "backend"],
+      "moduleIds": ["python-aplicado", "software-seguro", "cloud-iot"],
+      "system": {
+        "description": "O montador de email, usado pelo worker que processa a fila de confirmação.",
+        "files": [
+          {
+            "path": "api/email/confirmacao.py",
+            "language": "python",
+            "code": "# Reaproveitado entre chamadas para nao remontar o cabecalho toda vez.\ncontexto = {\"assunto\": \"Seu pedido foi confirmado\"}\n\n\ndef montar(pedido, cliente):\n    contexto[\"para\"] = cliente.email\n    contexto[\"nome\"] = cliente.nome\n    contexto[\"itens\"] = pedido.itens\n    contexto[\"endereco\"] = pedido.endereco\n    return contexto\n\n\ndef enviar_confirmacao(pedido):\n    cliente = repo.cliente_de(pedido)\n    mensagem = montar(pedido, cliente)\n    fila.publicar(mensagem)"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "Cada email leva os dados de um pedido só",
+        "Duas confirmações processadas ao mesmo tempo não se misturam",
+        "O destinatário é sempre o cliente daquele pedido"
+      ],
+      "acceptance": [
+        "Montar dois emails em sequência não faz o segundo herdar nada do primeiro",
+        "Montar dois emails concorrentes produz dois resultados independentes",
+        "Existe teste que monta dois emails e verifica que nenhum campo vazou de um para o outro",
+        "A assinatura de `enviar_confirmacao` não muda"
+      ],
+      "constraints": [
+        "A fila continua sendo a mesma; a correção é no montador.",
+        "Não é aceitável serializar o envio: o volume de pico depende de processar em paralelo."
+      ],
+      "investigation": {
+        "intro": "O que o atendimento e o time reuniram.",
+        "logs": [
+          "2026-04-18T14:03:11.001Z INFO montar pedido=5521 cliente=ana@exemplo.com",
+          "2026-04-18T14:03:11.004Z INFO montar pedido=5522 cliente=bruno@exemplo.com",
+          "2026-04-18T14:03:11.009Z INFO publicado para=bruno@exemplo.com itens=3 endereco='Rua das Acácias, 40'",
+          "2026-04-18T14:03:11.011Z INFO publicado para=bruno@exemplo.com itens=3 endereco='Rua das Acácias, 40'"
+        ],
+        "notes": [
+          "O pedido 5521 tem 1 item; o 5522 tem 3.",
+          "As duas linhas publicadas são idênticas, e os pedidos não eram.",
+          "O worker processa a fila com quatro threads."
+        ]
+      },
+      "hints": [
+        "Compare as duas linhas de `publicado`: elas deveriam ser diferentes. O que isso diz sobre o objeto publicado?",
+        "Procure o que vive FORA das funções. O que vive fora é compartilhado por todas as chamadas.",
+        "O comentário no código explica por que ficou assim. A intenção era boa: economizar remontagem."
+      ],
+      "reviewChecklist": [
+        "Nada que pertença a uma chamada vive fora dela",
+        "Duas chamadas simultâneas produzem resultados independentes",
+        "O teste falha sem a correção",
+        "A otimização que causou o problema, se ainda fizer sentido, foi refeita de forma segura",
+        "Foi verificado se o mesmo padrão existe em outro lugar do código"
+      ]
+    },
+    {
+      "id": "dem-exportacao-estoura",
+      "title": "A exportação de relatório dá timeout desde que crescemos",
+      "type": "investigacao",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "incompleto",
+      "priority": "alta",
+      "requester": "Financeiro",
+      "summary": "O CSV de fechamento parou de sair. Descobrir onde o tempo e a memória vão, e corrigir a causa certa.",
+      "context": "O financeiro exporta o fechamento mensal em CSV. Até março funcionava; em abril a exportação passou a dar timeout e, quando não dá, o processo é encerrado por falta de memória. A base cresceu de 40 mil para 180 mil pedidos no período. O time de produto sugeriu aumentar o timeout.",
+      "request": "Fazer a exportação voltar a funcionar, e continuar funcionando quando a base dobrar de novo.",
+      "stack": ["python", "banco", "backend"],
+      "moduleIds": ["banco-dados", "big-data-python", "python-aplicado"],
+      "system": {
+        "description": "A rota de exportação.",
+        "files": [
+          {
+            "path": "api/relatorios/exportar.py",
+            "language": "python",
+            "code": "@app.get(\"/relatorios/fechamento.csv\")\ndef exportar(mes: str):\n    pedidos = repo.listar_do_mes(mes)   # devolve lista completa\n\n    linhas = []\n    for pedido in pedidos:\n        cliente = repo.cliente_de(pedido.cliente_id)\n        linhas.append(f\"{pedido.id};{cliente.nome};{pedido.total};{pedido.criado_em}\")\n\n    corpo = \"\\n\".join(linhas)\n    return Response(corpo, media_type=\"text/csv\")"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "A exportação termina dentro do tempo, independentemente do tamanho do mês",
+        "O uso de memória não cresce junto com a quantidade de pedidos",
+        "O arquivo gerado é igual ao de antes"
+      ],
+      "acceptance": [
+        "A exportação de um mês com 180 mil pedidos termina sem timeout",
+        "A memória usada não é proporcional ao número de linhas",
+        "O número de consultas ao banco não cresce com o número de pedidos",
+        "O conteúdo do CSV é idêntico ao da versão anterior",
+        "Existe medição antes e depois registrada na descrição do PR"
+      ],
+      "constraints": [
+        "A URL e o formato do arquivo não mudam: o financeiro tem uma planilha que consome isso.",
+        "Aumentar o timeout não é a correção aceita — no máximo, uma medida paliativa documentada."
+      ],
+      "investigation": {
+        "intro": "Medições feitas em ambiente de homologação com cópia da base.",
+        "metrics": [
+          { "label": "Pedidos em março", "value": "41.200" },
+          { "label": "Pedidos em abril", "value": "183.900" },
+          { "label": "Tempo em março", "value": "11 s" },
+          { "label": "Tempo em abril", "value": "estourou em 120 s" },
+          { "label": "Consultas ao banco (abril)", "value": "183.901" },
+          { "label": "Memória no pico", "value": "2,8 GB" }
+        ],
+        "queries": [
+          { "label": "A consulta que lista o mês", "sql": "SELECT * FROM pedido WHERE criado_em >= :inicio AND criado_em < :fim" }
+        ],
+        "notes": [
+          "O número de consultas é quase exatamente o número de pedidos, mais uma.",
+          "A memória cresce durante a montagem e só cai no fim."
+        ]
+      },
+      "hints": [
+        "A métrica de consultas ao banco tem uma relação suspeita com a de pedidos. Qual é?",
+        "São dois problemas somados, não um: um de quantidade de idas ao banco, outro de tudo ficar na memória antes de sair.",
+        "Para o segundo, existe uma forma de a resposta ir saindo enquanto é produzida."
+      ],
+      "reviewChecklist": [
+        "O número de consultas deixou de crescer com o número de pedidos",
+        "A memória deixou de crescer com o número de linhas",
+        "O CSV gerado é idêntico ao anterior, conferido com um diff",
+        "Há medição antes e depois no PR",
+        "A solução continua valendo se a base dobrar"
+      ]
+    },
+    {
+      "id": "dem-tela-lenta-sem-mexer",
+      "title": "A tela de tickets ficou lenta e ninguém mexeu nela",
+      "type": "investigacao",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 60,
+      "contextQuality": "incompleto",
+      "priority": "media",
+      "requester": "Suporte",
+      "summary": "A listagem passou de 300 ms para 2,4 s depois de um deploy que não tocou nela. Achar a ligação.",
+      "context": "O suporte reclamou que a tela de tickets ficou lenta a partir de terça. O time conferiu o histórico: nenhuma alteração na listagem nem na consulta dela. O deploy de terça mexeu em outra parte do sistema — a de notificações — e ninguém viu relação.",
+      "request": "Descobrir por que a listagem ficou lenta e devolver o tempo de resposta anterior.",
+      "stack": ["python", "banco"],
+      "moduleIds": ["banco-dados", "python-aplicado", "computacao-nuvem"],
+      "system": {
+        "description": "A consulta da listagem, inalterada, e o que o deploy de terça acrescentou.",
+        "files": [
+          {
+            "path": "api/tickets/listar.py",
+            "language": "python",
+            "note": "Sem alterações desde janeiro.",
+            "code": "def listar(empresa_id, status):\n    return db.query(\n        \"\"\"\n        SELECT id, titulo, criado_em\n        FROM ticket\n        WHERE empresa_id = %s AND status = %s\n        ORDER BY criado_em DESC\n        LIMIT 50\n        \"\"\",\n        empresa_id, status,\n    )"
+          },
+          {
+            "path": "api/notificacoes/preferencias.py",
+            "language": "python",
+            "note": "Acrescentado no deploy de terça.",
+            "code": "# Guarda a preferencia de notificacao por ticket.\n# Migration do deploy de terca:\n#   ALTER TABLE ticket ADD COLUMN notificar BOOLEAN;\n#   UPDATE ticket SET notificar = true;\n#   CREATE INDEX idx_ticket_notificar ON ticket (notificar);\n\ndef quer_notificacao(ticket_id):\n    return db.query(\"SELECT notificar FROM ticket WHERE id = %s\", ticket_id)"
+          }
+        ]
+      },
+      "expectedBehavior": [
+        "A listagem volta ao tempo de resposta anterior",
+        "A funcionalidade de notificação continua funcionando",
+        "A causa está escrita, não só a correção"
+      ],
+      "acceptance": [
+        "A listagem responde em tempo comparável ao de antes do deploy",
+        "A explicação da causa aparece na descrição do PR",
+        "A nova funcionalidade de notificação continua atendida",
+        "Há plano de execução (EXPLAIN) antes e depois no PR"
+      ],
+      "constraints": [
+        "Reverter o deploy de terça não é opção: a funcionalidade de notificação já está em uso.",
+        "A consulta da listagem não deve precisar mudar."
+      ],
+      "investigation": {
+        "intro": "Medições e plano de execução coletados na segunda e na quarta.",
+        "metrics": [
+          { "label": "Listagem na segunda", "value": "310 ms" },
+          { "label": "Listagem na quarta", "value": "2.400 ms" },
+          { "label": "Linhas na tabela ticket", "value": "4,1 milhões" },
+          { "label": "Índices na tabela ticket (segunda)", "value": "2" },
+          { "label": "Índices na tabela ticket (quarta)", "value": "3" }
+        ],
+        "queries": [
+          {
+            "label": "Plano na segunda",
+            "sql": "Index Scan using idx_ticket_empresa_status_criado on ticket  (rows=50)"
+          },
+          {
+            "label": "Plano na quarta",
+            "sql": "Seq Scan on ticket  (rows=4100000)  Filter: (empresa_id = $1 AND status = $2)"
+          }
+        ],
+        "notes": [
+          "A migration de terça escreveu em todas as 4,1 milhões de linhas.",
+          "O banco escolhe o plano com base em estatísticas sobre a distribuição dos dados.",
+          "A coluna nova tem o mesmo valor em todas as linhas."
+        ]
+      },
+      "hints": [
+        "Compare os dois planos de execução: o índice que era usado deixou de ser. Por quê?",
+        "A migration de terça fez um UPDATE em toda a tabela. O que isso faz com as estatísticas que o banco usa para escolher plano?",
+        "Há também um índice novo que não serve para nada: coluna com um valor só não distingue nada."
+      ],
+      "reviewChecklist": [
+        "A causa está explicada no PR, não só a correção",
+        "O plano de execução voltou a usar o índice certo",
+        "O índice inútil foi avaliado, e a decisão sobre ele está registrada",
+        "A notificação continua funcionando",
+        "Existe medição antes e depois"
+      ]
+    }
+  ]
+}
