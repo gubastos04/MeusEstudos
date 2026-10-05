@@ -26,7 +26,7 @@ vi.mock('next/headers', () => ({
 
 const { db } = await import('@/lib/db')
 const { registerUser } = await import('@/lib/auth')
-const { getNextStep, getSuggestions } = await import('@/lib/next-step')
+const { getNextStep, getSuggestions, prontoParaRevisar } = await import('@/lib/next-step')
 const { bumpActivity, completeProgress, getActiveDaysInLast7, startProgress } = await import(
   '@/lib/progress'
 )
@@ -218,5 +218,33 @@ describe('limites de uso', () => {
     const depois = await rateLimit(chave, 1, 0)
 
     expect(depois.allowed).toBe(true)
+  })
+})
+
+describe('intervalo crescente entre revisões', () => {
+  const agora = new Date('2026-10-05T12:00:00Z')
+  const diasAtras = (n: number) => new Date(agora.getTime() - n * 24 * 60 * 60 * 1000)
+
+  it('erro nunca revisado está pronto', () => {
+    expect(prontoParaRevisar({ reviewedAt: null, reviewCount: 0 }, agora)).toBe(true)
+  })
+
+  it('o intervalo cresce a cada revisão', () => {
+    // 1, 3, 7 e 21 dias: na vespera ainda nao, no dia sim.
+    const esperado: [number, number][] = [
+      [0, 1],
+      [1, 3],
+      [2, 7],
+      [3, 21],
+    ]
+    for (const [reviewCount, dias] of esperado) {
+      expect(prontoParaRevisar({ reviewedAt: diasAtras(dias - 0.1), reviewCount }, agora)).toBe(false)
+      expect(prontoParaRevisar({ reviewedAt: diasAtras(dias), reviewCount }, agora)).toBe(true)
+    }
+  })
+
+  it('depois da quarta revisão o intervalo para de crescer', () => {
+    expect(prontoParaRevisar({ reviewedAt: diasAtras(21), reviewCount: 9 }, agora)).toBe(true)
+    expect(prontoParaRevisar({ reviewedAt: diasAtras(20), reviewCount: 9 }, agora)).toBe(false)
   })
 })

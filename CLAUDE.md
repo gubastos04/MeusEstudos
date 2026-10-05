@@ -65,7 +65,7 @@ npm run setup            # instala, gera o client, cria o banco, sincroniza cont
 npm run dev              # servidor de desenvolvimento
 npm run build            # build de produção (roda prisma generate antes)
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest (190 testes; cria prisma/test-vitest.db do zero)
+npm test                 # vitest (193 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
@@ -147,7 +147,7 @@ provedor de deploy. Não existe variável separada para produção.
 
 O `provider` do datasource não aceita `env()`, então ele é trocado por
 comando. O repositório versiona `sqlite`, porque é o que faz `npm run dev` e os
-190 testes funcionarem logo depois de um `git clone`. O build de produção roda
+193 testes funcionarem logo depois de um `git clone`. O build de produção roda
 `npm run db:provider postgresql` antes do `next build`.
 
 Ao trocar o provider à mão, rode `npx prisma generate` depois: o client gerado

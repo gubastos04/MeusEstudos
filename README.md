@@ -92,7 +92,7 @@ npm run db:migrate:deploy # aplica migrations (produção)
 npm test
 ```
 
-190 testes em onze arquivos. O banco de teste é criado do zero a cada execução em
+193 testes em onze arquivos. O banco de teste é criado do zero a cada execução em
 `prisma/test-vitest.db`, com o conteúdo de `/content` sincronizado — nenhum teste
 toca o banco de desenvolvimento.
 

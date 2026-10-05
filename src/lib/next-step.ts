@@ -55,6 +55,31 @@ function moduleOrderFor(trackId: string | null | undefined) {
   })
 }
 
+/**
+ * Intervalo minimo entre duas revisoes do mesmo erro, por numero de revisoes
+ * ja feitas: 1, 3, 7 e 21 dias, e 21 daí em diante.
+ *
+ * Antes havia um intervalo fixo de 14 dias no proximo passo e nenhum na lista
+ * de revisao, o que dava dois problemas opostos: um erro registrado hoje podia
+ * voltar hoje, e um assunto consolidado ha dois meses nao voltava nunca.
+ *
+ * Isto informa, nao premia: nao ha pontuacao, sequencia nem cobranca por
+ * revisao atrasada. So a ordem em que o material volta.
+ */
+const DIAS_ENTRE_REVISOES = [1, 3, 7, 21]
+
+export function prontoParaRevisar(
+  erro: { reviewedAt: Date | null; reviewCount: number },
+  agora: Date = new Date(),
+): boolean {
+  if (!erro.reviewedAt) return true
+
+  const dias = DIAS_ENTRE_REVISOES[Math.min(erro.reviewCount, DIAS_ENTRE_REVISOES.length - 1)] ?? 21
+  const proxima = erro.reviewedAt.getTime() + dias * 24 * 60 * 60 * 1000
+
+  return agora.getTime() >= proxima
+}
+
 function fitsBudget(minutes: number, budget: TimeBudget): boolean {
   // Uma folga de 5 minutos evita descartar um bloco de 12 min num orcamento de 10.
   return minutes <= budget + 5
@@ -183,13 +208,14 @@ async function buildSuggestions(userId: string, budget: TimeBudget | null): Prom
   }
 
   // 5. Revisao ---------------------------------------------------------------
-  const reviewError = await db.errorRecord.findFirst({
-    where: {
-      userId,
-      OR: [{ reviewedAt: null }, { reviewedAt: { lt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } }],
-    },
+  // Busca candidatos e aplica o intervalo crescente em memoria: ele depende do
+  // reviewCount de cada linha, o que nao cabe num `where` do Prisma.
+  const candidatos = await db.errorRecord.findMany({
+    where: { userId },
     orderBy: [{ reviewCount: 'asc' }, { createdAt: 'desc' }],
+    take: 20,
   })
+  const reviewError = candidatos.find((erro) => prontoParaRevisar(erro)) ?? null
   if (reviewError) {
     out.push({
       kind: 'review-error',
@@ -291,7 +317,8 @@ export async function getReviewItems(userId: string, limit = 6): Promise<ReviewI
     db.errorRecord.findMany({
       where: { userId },
       orderBy: [{ reviewCount: 'asc' }, { createdAt: 'desc' }],
-      take: limit,
+      // Pega folga porque o intervalo e aplicado depois, em memoria.
+      take: limit * 4,
     }),
     db.assessmentAttempt.findMany({
       where: { userId, status: 'finished' },
@@ -303,7 +330,7 @@ export async function getReviewItems(userId: string, limit = 6): Promise<ReviewI
 
   const items: ReviewItem[] = []
 
-  for (const error of errors) {
+  for (const error of errors.filter((erro) => prontoParaRevisar(erro)).slice(0, limit)) {
     items.push({
       kind: 'error',
       id: error.id,
