@@ -45,6 +45,7 @@ export default async function PaginaDesafios() {
                       )}
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
+                        {desafio.format === 'laboratorio' ? <Selo tom="accent">laboratório</Selo> : null}
                         <Selo>{desafio.difficulty}</Selo>
                         <Selo>~{desafio.estimatedMinutes} min</Selo>
                         <Selo>{desafio.language}</Selo>

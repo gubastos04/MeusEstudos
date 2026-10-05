@@ -429,6 +429,19 @@ export type Project = z.infer<typeof projectSchema>
 export const challengeSchema = z.object({
   id,
   title: z.string().min(5).max(140),
+  /**
+   * `laboratorio` e um desafio maior, de 60 a 90 minutos, que junta tres ou
+   * quatro aulas num sistema pequeno que roda.
+   *
+   * Existe porque faltava o degrau: o acervo ia de uma sessao de 20 minutos
+   * direto para um projeto de 9 a 23 horas, sem nada no meio. E porque a
+   * integracao estava inteiramente delegada aos projetos, que sao a unica
+   * parte sem verificacao — aqui ela e verificada por teste executado.
+   *
+   * Nao e um tipo novo de conteudo de proposito: a diferenca e de tamanho e de
+   * escopo, nao de mecanismo.
+   */
+  format: z.enum(['desafio', 'laboratorio']).default('desafio'),
   category: z.enum([
     'logica',
     'debugging',

@@ -393,6 +393,20 @@ sumir ao recarregar, sem erro. Coberto em `tests/integracao.test.ts`.
 O leitor offline mostra o "Tente agora" sem campo, de propósito: ele é de
 leitura, e a fila offline sincroniza progresso, não anotação.
 
+### Laboratório é um desafio maior, não um tipo novo
+
+`format: 'laboratorio'` no schema de desafio. São 60 a 90 minutos juntando três
+ou quatro aulas num sistema pequeno que roda, verificado por teste executado.
+
+Existe porque faltava o degrau: o acervo ia de uma sessão de 16 minutos direto
+para um projeto de 9 a 23 horas, sem nada no meio. E porque a integração estava
+inteiramente delegada aos projetos, que são a única parte sem verificação — no
+laboratório ela é verificada.
+
+Não virou tipo novo de conteúdo de propósito: a diferença é de tamanho e de
+escopo, não de mecanismo. A tela de desafio já sabe lidar com starter grande,
+testes e solução; o que mudou foi um selo na listagem.
+
 ### Bloco de código no celular
 
 Código de verdade rola na horizontal — quebrar linha no meio de uma expressão

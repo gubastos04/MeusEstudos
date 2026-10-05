@@ -1,0 +1,531 @@
+{
+  "challenges": [
+    {
+      "id": "lab-api-tickets",
+      "title": "Laboratório: a API de tickets inteira, em memória",
+      "format": "laboratorio",
+      "category": "api",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 80,
+      "stack": ["javascript", "api"],
+      "topics": ["validação", "status code", "formato de erro", "api"],
+      "context": "Até aqui cada aula tratou de uma peça: validar entrada, escolher status, manter um formato de erro, paginar. Este laboratório junta as quatro num serviço pequeno que roda.\n\nNão há banco: os tickets vivem num array. O que está em jogo é o contrato — o que entra, o que sai, e o que acontece quando o pedido não serve.",
+      "objective": "Implementar `criar`, `listar` e `fechar` com um formato de erro só, validação na entrada e paginação desde o início.",
+      "constraints": [
+        "Toda resposta é a tupla [status, corpo].",
+        "Todo erro tem o mesmo formato: { erro, codigo }.",
+        "A validação acontece antes de qualquer escrita."
+      ],
+      "acceptance": [
+        "Criar valida título e prioridade e devolve 201",
+        "Listar pagina desde a primeira chamada e nunca devolve tudo",
+        "Fechar é idempotente: fechar duas vezes não é erro",
+        "Erro de validação é 422, recurso ausente é 404, e os dois têm o mesmo formato"
+      ],
+      "starter": "// --- cenário: não precisa mudar nada aqui ---\nconst PRIORIDADES = ['baixa', 'media', 'alta']\nconst PAGINA_PADRAO = 10\nconst PAGINA_MAXIMA = 50\n\nlet proximoId = 1\nlet tickets = []\n\nfunction zerar() {\n  proximoId = 1\n  tickets = []\n}\n\n// --- daqui para baixo é com você ---\n\n// POST /tickets  -> [201, ticket] | [422, { erro, codigo }]\n// titulo: obrigatório, até 140 caracteres, sem espaços nas pontas\n// prioridade: opcional, uma de PRIORIDADES, padrão 'media'\n// o ticket criado nasce com status 'aberto'\nfunction criar(corpo) {\n  // escreva aqui\n}\n\n// GET /tickets?status=&pagina=&tamanho=  -> [200, { itens, pagina, total }]\n// status: opcional; quando vier e não for 'aberto' nem 'fechado', é 422\n// pagina: começa em 1; tamanho padrão 10, máximo 50\n// total é o número de tickets que casam com o filtro, não o da página\nfunction listar(parametros = {}) {\n  // escreva aqui\n}\n\n// POST /tickets/:id/fechar -> [200, ticket] | [404, { erro, codigo }]\n// fechar um ticket já fechado devolve 200 com o ticket, sem erro\nfunction fechar(id) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "criar devolve 201 e o ticket",
+          "expression": "(() => { zerar(); const [s, t] = criar({ titulo: 'impressora' }); return [s, t.status, t.prioridade] })()",
+          "expected": [201, "aberto", "media"]
+        },
+        {
+          "name": "título vazio é 422 com o formato de erro",
+          "expression": "(() => { zerar(); const [s, e] = criar({ titulo: '   ' }); return [s, e.codigo] })()",
+          "expected": [422, "validacao"]
+        },
+        {
+          "name": "prioridade inválida é 422",
+          "expression": "(() => { zerar(); return criar({ titulo: 'x', prioridade: 'urgentissima' })[0] })()",
+          "expected": 422
+        },
+        {
+          "name": "título com 140 caracteres passa",
+          "expression": "(() => { zerar(); return criar({ titulo: 'x'.repeat(140) })[0] })()",
+          "expected": 201
+        },
+        {
+          "name": "título com 141 não passa",
+          "expression": "(() => { zerar(); return criar({ titulo: 'x'.repeat(141) })[0] })()",
+          "expected": 422
+        },
+        {
+          "name": "entrada inválida não cria nada",
+          "expression": "(() => { zerar(); criar({ titulo: '' }); return listar()[1].total })()",
+          "expected": 0
+        },
+        {
+          "name": "listar pagina desde o começo",
+          "expression": "(() => { zerar(); for (let i = 0; i < 25; i++) criar({ titulo: 't' + i }); const [, c] = listar(); return [c.itens.length, c.total] })()",
+          "expected": [10, 25]
+        },
+        {
+          "name": "a segunda página não repete",
+          "expression": "(() => { zerar(); for (let i = 0; i < 25; i++) criar({ titulo: 't' + i }); const p1 = listar({ pagina: 1 })[1].itens.map((t) => t.id); const p2 = listar({ pagina: 2 })[1].itens.map((t) => t.id); return p1.some((id) => p2.includes(id)) })()",
+          "expected": false
+        },
+        {
+          "name": "tamanho acima do máximo é cortado",
+          "expression": "(() => { zerar(); for (let i = 0; i < 80; i++) criar({ titulo: 't' + i }); return listar({ tamanho: 500 })[1].itens.length })()",
+          "expected": 50
+        },
+        {
+          "name": "status desconhecido no filtro é 422",
+          "expression": "(() => { zerar(); return listar({ status: 'banana' })[0] })()",
+          "expected": 422
+        },
+        {
+          "name": "fechar devolve o ticket fechado",
+          "expression": "(() => { zerar(); const [, t] = criar({ titulo: 'x' }); const [s, f] = fechar(t.id); return [s, f.status] })()",
+          "expected": [200, "fechado"]
+        },
+        {
+          "name": "fechar duas vezes não é erro, e 404 tem o formato de sempre",
+          "expression": "(() => { zerar(); const [, t] = criar({ titulo: 'x' }); fechar(t.id); const dupla = fechar(t.id)[0]; const ausente = fechar(9999); return [dupla, ausente[0], ausente[1].codigo] })()",
+          "expected": [200, 404, "nao_encontrado"]
+        }
+      ],
+      "hints": [
+        "Comece pelo formato de erro: uma função que monta { erro, codigo } evita os três caminhos divergirem.",
+        "Em `listar`, calcule o total ANTES de cortar a página — o teste compara os dois.",
+        "Fechar duas vezes devolver 200 é idempotência: a segunda chamada não muda nada e também não falha.",
+        "A ordem em `criar` é sempre a mesma: validar tudo, só então escrever no array."
+      ],
+      "solution": "const PRIORIDADES = ['baixa', 'media', 'alta']\nconst PAGINA_PADRAO = 10\nconst PAGINA_MAXIMA = 50\nconst STATUS = ['aberto', 'fechado']\n\nlet proximoId = 1\nlet tickets = []\n\nfunction zerar() {\n  proximoId = 1\n  tickets = []\n}\n\n// Um lugar so monta o corpo de erro: e o que mantem o formato igual nos tres.\nfunction erro(status, mensagem, codigo) {\n  return [status, { erro: mensagem, codigo }]\n}\n\nfunction criar(corpo) {\n  const titulo = (corpo.titulo ?? '').trim()\n  if (titulo === '') return erro(422, 'titulo é obrigatório', 'validacao')\n  if (titulo.length > 140) return erro(422, 'titulo tem no máximo 140 caracteres', 'validacao')\n\n  const prioridade = corpo.prioridade ?? 'media'\n  if (!PRIORIDADES.includes(prioridade)) return erro(422, 'prioridade inválida', 'validacao')\n\n  // So escreve depois que tudo passou.\n  const ticket = { id: proximoId++, titulo, prioridade, status: 'aberto' }\n  tickets.push(ticket)\n  return [201, ticket]\n}\n\nfunction listar(parametros = {}) {\n  const { status } = parametros\n  if (status !== undefined && !STATUS.includes(status)) {\n    return erro(422, 'status inválido', 'validacao')\n  }\n\n  const casam = tickets.filter((t) => status === undefined || t.status === status)\n\n  const pagina = Math.max(1, parametros.pagina ?? 1)\n  const tamanho = Math.min(parametros.tamanho ?? PAGINA_PADRAO, PAGINA_MAXIMA)\n  const inicio = (pagina - 1) * tamanho\n\n  // total e do filtro, nao da pagina: e o que diz a quem chama se ha mais.\n  return [200, { itens: casam.slice(inicio, inicio + tamanho), pagina, total: casam.length }]\n}\n\nfunction fechar(id) {\n  const ticket = tickets.find((t) => t.id === id)\n  if (!ticket) return erro(404, 'ticket não encontrado', 'nao_encontrado')\n\n  // Idempotente: ja fechado nao e erro, e o resultado e o mesmo.\n  ticket.status = 'fechado'\n  return [200, ticket]\n}\n",
+      "solutionNotes": "Três coisas aqui só aparecem quando as peças estão juntas, e nenhuma aula sozinha mostra. A primeira é o formato de erro: com três caminhos devolvendo erro, montar o corpo em três lugares faz eles divergirem em semanas. A segunda é o `total` do filtro e não da página — quem consome precisa saber se há mais. A terceira é fechar ser idempotente: a tentação é devolver 409 na segunda vez, e aí qualquer retentativa de rede vira erro na tela de quem já conseguiu fechar."
+    },
+    {
+      "id": "lab-eventos-idempotentes",
+      "title": "Laboratório: receber evento repetido sem fazer duas vezes",
+      "format": "laboratorio",
+      "category": "arquitetura",
+      "difficulty": "avancado",
+      "estimatedMinutes": 90,
+      "stack": ["javascript", "integracao"],
+      "topics": ["idempotência", "retentativa", "integração", "log"],
+      "context": "Entrega repetida é comportamento normal de quem envia evento, não defeito. Este laboratório junta quatro coisas que vieram em aulas separadas — idempotência, retentativa com limite, registro do que foi ignorado, e a decisão do que vale repetir — num processador que aguenta o mundo real.\n\nO envio é simulado: `enviarEmail` falha de forma previsível para você conseguir reproduzir.",
+      "objective": "Processar uma fila de eventos tratando repetição, falha temporária e falha permanente, cada uma de um jeito.",
+      "constraints": [
+        "Evento repetido é ignorado e registrado, nunca reprocessado.",
+        "Falha temporária é repetida até o limite; falha permanente não é repetida.",
+        "A ordem de chegada é preservada no relatório."
+      ],
+      "acceptance": [
+        "O mesmo eventoId processado três vezes envia um email só",
+        "Falha temporária é repetida e, se passar, conta como enviada",
+        "Falha permanente não é repetida e vai para a lista de descartadas",
+        "Esgotar as tentativas também descarta, com o motivo registrado"
+      ],
+      "starter": "// --- cenário: não precisa mudar nada aqui ---\nconst MAXIMO_TENTATIVAS = 3\n\n// Cada chamada conta. 'falha-temporaria' falha nas 2 primeiras e passa na 3a;\n// 'falha-permanente' falha sempre; o resto passa de primeira.\nconst chamadas = {}\n\nfunction enviarEmail(pedidoId) {\n  chamadas[pedidoId] = (chamadas[pedidoId] ?? 0) + 1\n\n  if (pedidoId === 'falha-permanente') {\n    const erro = new Error('endereço inválido')\n    erro.temporario = false\n    throw erro\n  }\n\n  if (pedidoId === 'falha-temporaria' && chamadas[pedidoId] < 3) {\n    const erro = new Error('provedor indisponível')\n    erro.temporario = true\n    throw erro\n  }\n\n  return true\n}\n\nfunction zerar() {\n  for (const chave of Object.keys(chamadas)) delete chamadas[chave]\n}\n\nfunction vezesChamado(pedidoId) {\n  return chamadas[pedidoId] ?? 0\n}\n\n// --- daqui para baixo é com você ---\n\n// Recebe [{ eventoId, pedidoId }] e devolve\n//   { enviados, ignorados, descartados }\n// enviados:    pedidoId de cada envio que deu certo, na ordem de chegada\n// ignorados:   eventoId de cada repetição, na ordem em que a repetição chegou\n// descartados: { pedidoId, motivo } com motivo 'permanente' ou 'tentativas'\nfunction processar(eventos) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "evento único é enviado",
+          "expression": "(() => { zerar(); return processar([{ eventoId: 'a', pedidoId: 'p1' }]).enviados })()",
+          "expected": ["p1"]
+        },
+        {
+          "name": "o mesmo evento três vezes envia um email só",
+          "expression": "(() => { zerar(); const e = { eventoId: 'a', pedidoId: 'p1' }; processar([e, e, e]); return vezesChamado('p1') })()",
+          "expected": 1
+        },
+        {
+          "name": "as duas repetições ficam registradas",
+          "expression": "(() => { zerar(); const e = { eventoId: 'a', pedidoId: 'p1' }; return processar([e, e, e]).ignorados })()",
+          "expected": ["a", "a"]
+        },
+        {
+          "name": "eventos distintos sobre o mesmo pedido são dois trabalhos",
+          "expression": "(() => { zerar(); processar([{ eventoId: 'a', pedidoId: 'p9' }, { eventoId: 'b', pedidoId: 'p9' }]); return vezesChamado('p9') })()",
+          "expected": 2
+        },
+        {
+          "name": "falha temporária é repetida até passar",
+          "expression": "(() => { zerar(); return processar([{ eventoId: 'a', pedidoId: 'falha-temporaria' }]).enviados })()",
+          "expected": ["falha-temporaria"]
+        },
+        {
+          "name": "e foram exatamente três tentativas",
+          "expression": "(() => { zerar(); processar([{ eventoId: 'a', pedidoId: 'falha-temporaria' }]); return vezesChamado('falha-temporaria') })()",
+          "expected": 3
+        },
+        {
+          "name": "falha permanente não é repetida",
+          "expression": "(() => { zerar(); processar([{ eventoId: 'a', pedidoId: 'falha-permanente' }]); return vezesChamado('falha-permanente') })()",
+          "expected": 1
+        },
+        {
+          "name": "falha permanente é descartada com o motivo",
+          "expression": "(() => { zerar(); return processar([{ eventoId: 'a', pedidoId: 'falha-permanente' }]).descartados })()",
+          "expected": [{ "pedidoId": "falha-permanente", "motivo": "permanente" }]
+        },
+        {
+          "name": "fila vazia devolve as três listas vazias",
+          "expression": "(() => { zerar(); const r = processar([]); return [r.enviados.length, r.ignorados.length, r.descartados.length] })()",
+          "expected": [0, 0, 0]
+        },
+        {
+          "name": "uma falha não impede o evento seguinte",
+          "expression": "(() => { zerar(); return processar([{ eventoId: 'a', pedidoId: 'falha-permanente' }, { eventoId: 'b', pedidoId: 'p2' }]).enviados })()",
+          "expected": ["p2"]
+        },
+        {
+          "name": "a ordem de chegada é preservada",
+          "expression": "(() => { zerar(); return processar([{ eventoId: 'a', pedidoId: 'p1' }, { eventoId: 'b', pedidoId: 'p2' }, { eventoId: 'c', pedidoId: 'p3' }]).enviados })()",
+          "expected": ["p1", "p2", "p3"],
+          "hidden": true
+        },
+        {
+          "name": "repetição depois de um envio bem-sucedido continua sendo ignorada",
+          "expression": "(() => { zerar(); const r = processar([{ eventoId: 'a', pedidoId: 'p1' }, { eventoId: 'b', pedidoId: 'p2' }, { eventoId: 'a', pedidoId: 'p1' }]); return [r.enviados, r.ignorados] })()",
+          "expected": [["p1", "p2"], ["a"]],
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "São três decisões em sequência para cada evento: já vi este eventoId? consegui enviar? se falhou, vale repetir?",
+        "A marca de 'já processei' precisa ser gravada ANTES de o envio poder falhar, ou uma falha permanente faria a repetição ser processada de novo.",
+        "`erro.temporario` é o que separa repetir de desistir. Erro de endereço inválido não melhora na segunda tentativa.",
+        "Esgotar as tentativas e falhar permanentemente levam ao mesmo lugar, com motivos diferentes."
+      ],
+      "solution": "const MAXIMO_TENTATIVAS = 3\n\nconst chamadas = {}\n\nfunction enviarEmail(pedidoId) {\n  chamadas[pedidoId] = (chamadas[pedidoId] ?? 0) + 1\n\n  if (pedidoId === 'falha-permanente') {\n    const erro = new Error('endereço inválido')\n    erro.temporario = false\n    throw erro\n  }\n\n  if (pedidoId === 'falha-temporaria' && chamadas[pedidoId] < 3) {\n    const erro = new Error('provedor indisponível')\n    erro.temporario = true\n    throw erro\n  }\n\n  return true\n}\n\nfunction zerar() {\n  for (const chave of Object.keys(chamadas)) delete chamadas[chave]\n}\n\nfunction vezesChamado(pedidoId) {\n  return chamadas[pedidoId] ?? 0\n}\n\nfunction processar(eventos) {\n  const vistos = new Set()\n  const enviados = []\n  const ignorados = []\n  const descartados = []\n\n  for (const evento of eventos) {\n    // A identidade e o eventoId: dois eventos sobre o mesmo pedido sao dois\n    // trabalhos, e o mesmo evento duas vezes e um so.\n    if (vistos.has(evento.eventoId)) {\n      ignorados.push(evento.eventoId)\n      continue\n    }\n    vistos.add(evento.eventoId)\n\n    let ultimoErro = null\n\n    for (let tentativa = 1; tentativa <= MAXIMO_TENTATIVAS; tentativa++) {\n      try {\n        enviarEmail(evento.pedidoId)\n        enviados.push(evento.pedidoId)\n        ultimoErro = null\n        break\n      } catch (erro) {\n        ultimoErro = erro\n        // Repetir erro permanente so gasta tentativa: ele nao melhora.\n        if (!erro.temporario) break\n      }\n    }\n\n    if (ultimoErro) {\n      descartados.push({\n        pedidoId: evento.pedidoId,\n        motivo: ultimoErro.temporario ? 'tentativas' : 'permanente',\n      })\n    }\n  }\n\n  return { enviados, ignorados, descartados }\n}\n",
+      "solutionNotes": "O detalhe que decide está em marcar o evento como visto ANTES de tentar enviar. Se a marca ficasse depois do sucesso, uma falha permanente deixaria o evento não-visto — e a próxima entrega repetida tentaria de novo um envio que nunca vai funcionar. Isso é o que diferencia \"já processei\" de \"já consegui\": são perguntas distintas, e a idempotência depende da primeira."
+    },
+    {
+      "id": "lab-importador-planilha",
+      "title": "Laboratório: importar planilha suja e explicar o que ficou de fora",
+      "format": "laboratorio",
+      "category": "backend",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 75,
+      "stack": ["javascript", "dados"],
+      "topics": ["dado sujo", "validação", "estruturas", "pipeline"],
+      "context": "Toda planilha de cliente vem suja: linha em branco, número com vírgula, SKU repetido, coluna faltando. O erro caro não é descartar linha — é descartar em silêncio e produzir um relatório confiante.\n\nEste laboratório junta limpeza, escolha de estrutura e relatório de descarte num importador que você conseguiria defender numa reunião.",
+      "objective": "Transformar linhas cruas em produtos válidos, com um relatório que explica cada linha que não entrou.",
+      "constraints": [
+        "Toda linha de entrada aparece no resultado ou no relatório de descarte.",
+        "O primeiro SKU vence: repetições posteriores são descartadas, não sobrescrevem.",
+        "A ordem original dos válidos é preservada."
+      ],
+      "acceptance": [
+        "Preço com vírgula decimal é aceito e convertido",
+        "SKU repetido é descartado com o motivo, e o primeiro permanece",
+        "Cada descarte traz a linha de origem e o motivo",
+        "A soma de válidos e descartados é igual ao total de entrada"
+      ],
+      "starter": "// --- cenário: não precisa mudar nada aqui ---\nconst LINHAS = [\n  { linha: 1, sku: 'ABC-1', nome: 'Caneta', preco: '4,50', quantidade: '10' },\n  { linha: 2, sku: '', nome: 'Sem SKU', preco: '9,90', quantidade: '2' },\n  { linha: 3, sku: 'ABC-2', nome: 'Caderno', preco: '19.90', quantidade: '5' },\n  { linha: 4, sku: 'ABC-1', nome: 'Caneta azul', preco: '4,90', quantidade: '7' },\n  { linha: 5, sku: 'ABC-3', nome: 'Borracha', preco: 'grátis', quantidade: '1' },\n  { linha: 6, sku: 'ABC-4', nome: '', preco: '2,00', quantidade: '3' },\n  { linha: 7, sku: 'ABC-5', nome: 'Lápis', preco: '1,50', quantidade: '0' },\n  { linha: 8, sku: 'ABC-6', nome: 'Régua', preco: '-3,00', quantidade: '4' },\n]\n\n// --- daqui para baixo é com você ---\n\n// Devolve { produtos, descartados, total }\n//\n// produto válido: { sku, nome, preco (número), quantidade (inteiro) }\n//   - sku e nome não podem ser vazios\n//   - preco aceita vírgula ou ponto decimal, e precisa ser maior que zero\n//   - quantidade precisa ser inteiro maior ou igual a zero\n//   - sku repetido: o primeiro fica, os seguintes são descartados\n//\n// descarte: { linha, motivo }, com motivo entre\n//   'sku ausente' | 'nome ausente' | 'preço inválido' | 'quantidade inválida' | 'sku repetido'\n//   verificados nessa ordem\n//\n// total: quantas linhas entraram\nfunction importar(linhas) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "nada é perdido em silêncio",
+          "expression": "(() => { const r = importar(LINHAS); return r.produtos.length + r.descartados.length === r.total })()",
+          "expected": true
+        },
+        {
+          "name": "o total é o da entrada",
+          "expression": "importar(LINHAS).total",
+          "expected": 8
+        },
+        {
+          "name": "três produtos sobrevivem",
+          "expression": "importar(LINHAS).produtos.map((p) => p.sku)",
+          "expected": ["ABC-1", "ABC-2", "ABC-5"]
+        },
+        {
+          "name": "preço com vírgula vira número",
+          "expression": "importar(LINHAS).produtos[0].preco",
+          "expected": 4.5
+        },
+        {
+          "name": "preço com ponto também",
+          "expression": "importar(LINHAS).produtos[1].preco",
+          "expected": 19.9
+        },
+        {
+          "name": "quantidade zero é válida",
+          "expression": "importar(LINHAS).produtos[2].quantidade",
+          "expected": 0
+        },
+        {
+          "name": "o primeiro SKU vence",
+          "expression": "importar(LINHAS).produtos[0].nome",
+          "expected": "Caneta"
+        },
+        {
+          "name": "a repetição é descartada com o motivo",
+          "expression": "importar(LINHAS).descartados.find((d) => d.linha === 4)",
+          "expected": { "linha": 4, "motivo": "sku repetido" }
+        },
+        {
+          "name": "cada descarte diz o porquê",
+          "expression": "importar(LINHAS).descartados.map((d) => d.motivo)",
+          "expected": ["sku ausente", "sku repetido", "preço inválido", "nome ausente", "preço inválido"]
+        },
+        {
+          "name": "entrada vazia não quebra",
+          "expression": "(() => { const r = importar([]); return [r.produtos.length, r.descartados.length, r.total] })()",
+          "expected": [0, 0, 0]
+        },
+        {
+          "name": "quantidade fracionada é inválida",
+          "expression": "importar([{ linha: 1, sku: 'X', nome: 'n', preco: '1,00', quantidade: '2,5' }]).descartados[0].motivo",
+          "expected": "quantidade inválida",
+          "hidden": true
+        },
+        {
+          "name": "a ordem dos válidos é a da entrada",
+          "expression": "importar([{ linha: 1, sku: 'B', nome: 'b', preco: '1', quantidade: '1' }, { linha: 2, sku: 'A', nome: 'a', preco: '1', quantidade: '1' }]).produtos.map((p) => p.sku)",
+          "expected": ["B", "A"],
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "A pergunta 'já vi este SKU?' se repete a cada linha — escolha a estrutura que responde isso sem percorrer o que já passou.",
+        "Para o preço, trocar a vírgula por ponto antes de converter resolve os dois formatos de uma vez.",
+        "`Number('grátis')` devolve NaN, e NaN não é maior que zero — essa comparação já descarta o caso.",
+        "A ordem dos motivos é o enunciado: verifique na sequência dada e devolva no primeiro que falhar."
+      ],
+      "solution": "const LINHAS = [\n  { linha: 1, sku: 'ABC-1', nome: 'Caneta', preco: '4,50', quantidade: '10' },\n  { linha: 2, sku: '', nome: 'Sem SKU', preco: '9,90', quantidade: '2' },\n  { linha: 3, sku: 'ABC-2', nome: 'Caderno', preco: '19.90', quantidade: '5' },\n  { linha: 4, sku: 'ABC-1', nome: 'Caneta azul', preco: '4,90', quantidade: '7' },\n  { linha: 5, sku: 'ABC-3', nome: 'Borracha', preco: 'grátis', quantidade: '1' },\n  { linha: 6, sku: 'ABC-4', nome: '', preco: '2,00', quantidade: '3' },\n  { linha: 7, sku: 'ABC-5', nome: 'Lápis', preco: '1,50', quantidade: '0' },\n  { linha: 8, sku: 'ABC-6', nome: 'Régua', preco: '-3,00', quantidade: '4' },\n]\n\nfunction comoNumero(valor) {\n  // Planilha brasileira usa virgula; exportacao de sistema usa ponto.\n  return Number(String(valor ?? '').trim().replace(',', '.'))\n}\n\nfunction importar(linhas) {\n  // Set responde \"ja vi este SKU?\" sem percorrer o que ja passou.\n  const vistos = new Set()\n  const produtos = []\n  const descartados = []\n\n  for (const bruta of linhas) {\n    const sku = String(bruta.sku ?? '').trim()\n    const nome = String(bruta.nome ?? '').trim()\n    const preco = comoNumero(bruta.preco)\n    const quantidade = comoNumero(bruta.quantidade)\n\n    const motivo =\n      sku === ''\n        ? 'sku ausente'\n        : vistos.has(sku)\n          ? 'sku repetido'\n          : nome === ''\n            ? 'nome ausente'\n            : !(preco > 0)\n              ? 'preço inválido'\n              : !Number.isInteger(quantidade) || quantidade < 0\n                ? 'quantidade inválida'\n                : null\n\n    if (motivo) {\n      descartados.push({ linha: bruta.linha, motivo })\n      continue\n    }\n\n    vistos.add(sku)\n    produtos.push({ sku, nome, preco, quantidade })\n  }\n\n  return { produtos, descartados, total: linhas.length }\n}\n",
+      "solutionNotes": "O primeiro teste é o mais importante e o que menos parece teste: `produtos + descartados === total`. Ele é a garantia de que o importador não engole linha — e é o tipo de verificação que vale repetir em qualquer pipeline, porque o defeito que ela pega não produz erro nenhum, só um número errado no relatório. Repare também que `!(preco > 0)` cobre NaN, zero e negativo de uma vez; `preco <= 0` deixaria NaN passar."
+    },
+    {
+      "id": "lab-autorizacao-ponta-a-ponta",
+      "title": "Laboratório: autorização que não vaza e não espalha if",
+      "format": "laboratorio",
+      "category": "seguranca",
+      "difficulty": "avancado",
+      "estimatedMinutes": 85,
+      "stack": ["python", "seguranca"],
+      "topics": ["autorização", "formato de erro", "validação", "menor privilégio"],
+      "context": "Autorização aparece em três lugares que costumam divergir: quem pode fazer a ação, quais registros a pessoa enxerga, e o que a resposta conta a quem não pode. Quando cada um é decidido num canto, o sistema fica com buracos que ninguém consegue auditar.\n\nEste laboratório junta os três numa camada só, com a decisão vindo de uma tabela.",
+      "objective": "Implementar a tabela de permissões, o filtro por dono e as rotas, de forma que a resposta nunca revele a existência de um recurso que a pessoa não pode ver.",
+      "constraints": [
+        "A decisão de permissão vem de uma tabela, não de ifs espalhados.",
+        "Recurso de outra pessoa e recurso inexistente devolvem exatamente a mesma resposta.",
+        "O papel vem do usuário da sessão; nada é aceito por parâmetro."
+      ],
+      "acceptance": [
+        "Cliente não enxerga ticket de outro cliente, nem por listagem nem por id",
+        "Suporte enxerga todos, mas não gerencia usuários",
+        "Ticket de outra pessoa e ticket inexistente devolvem a mesma resposta",
+        "Acrescentar um papel novo é mudar dado, não código"
+      ],
+      "starter": "# --- cenário: não precisa mudar nada aqui ---\nTICKETS = [\n    {\"id\": 1, \"dono\": \"ana\", \"titulo\": \"impressora\", \"status\": \"aberto\"},\n    {\"id\": 2, \"dono\": \"bruno\", \"titulo\": \"vpn\", \"status\": \"aberto\"},\n    {\"id\": 3, \"dono\": \"ana\", \"titulo\": \"acesso\", \"status\": \"fechado\"},\n]\n\nana = {\"id\": \"ana\", \"papel\": \"cliente\"}\nbruno = {\"id\": \"bruno\", \"papel\": \"cliente\"}\ncarla = {\"id\": \"carla\", \"papel\": \"suporte\"}\nchefe = {\"id\": \"chefe\", \"papel\": \"admin\"}\nestranho = {\"id\": \"x\", \"papel\": \"diretor\"}\n\n\n# --- daqui para baixo é com você ---\n\n# 1. A tabela. Papéis e o que cada um pode:\n#    cliente: abrir_ticket, ver_proprio\n#    suporte: tudo de cliente + ver_todos, fechar_ticket\n#    admin:   tudo de suporte + gerenciar_usuarios\n#    Papel ausente ou desconhecido não pode nada.\ndef pode(usuario, acao):\n    pass\n\n\n# 2. GET /tickets -> (200, lista)\n#    Quem tem ver_todos enxerga tudo; o resto, só os próprios.\ndef listar(usuario):\n    pass\n\n\n# 3. GET /tickets/<id> -> (200, ticket) | (404, {\"erro\": \"não encontrado\"})\n#    Ticket de outra pessoa responde IGUAL a ticket inexistente.\ndef obter(usuario, ticket_id):\n    pass\n\n\n# 4. POST /tickets/<id>/fechar -> (200, ticket) | (403, {\"erro\": \"sem permissão\"})\n#                                               | (404, {\"erro\": \"não encontrado\"})\n#    Sem a ação fechar_ticket é 403. Com a ação, mas ticket inexistente, é 404.\ndef fechar(usuario, ticket_id):\n    pass\n",
+      "language": "python",
+      "tests": [
+        { "name": "cliente abre ticket", "expression": "pode(ana, \"abrir_ticket\")", "expected": true },
+        { "name": "cliente não vê todos", "expression": "pode(ana, \"ver_todos\")", "expected": false },
+        { "name": "suporte herda o que cliente pode", "expression": "pode(carla, \"abrir_ticket\")", "expected": true },
+        { "name": "suporte não gerencia usuários", "expression": "pode(carla, \"gerenciar_usuarios\")", "expected": false },
+        { "name": "papel desconhecido não pode nada", "expression": "pode(estranho, \"abrir_ticket\")", "expected": false },
+        {
+          "name": "cliente lista só os seus",
+          "expression": "[t[\"id\"] for t in listar(ana)[1]]",
+          "expected": [1, 3]
+        },
+        {
+          "name": "suporte lista todos",
+          "expression": "[t[\"id\"] for t in listar(carla)[1]]",
+          "expected": [1, 2, 3]
+        },
+        { "name": "cliente obtém o próprio ticket", "expression": "obter(ana, 1)[1][\"titulo\"]", "expected": "impressora" },
+        {
+          "name": "ticket de outra pessoa e inexistente são indistinguíveis",
+          "expression": "[obter(ana, 2), obter(ana, 999)]",
+          "expected": [
+            [
+              404,
+              { "erro": "não encontrado" }
+            ],
+            [
+              404,
+              { "erro": "não encontrado" }
+            ]
+          ]
+        },
+        { "name": "cliente não fecha ticket", "expression": "fechar(ana, 1)[0]", "expected": 403 },
+        { "name": "suporte fecha", "expression": "fechar(carla, 1)[1][\"status\"]", "expected": "fechado" },
+        { "name": "quem pode fechar recebe 404 em ticket inexistente", "expression": "fechar(carla, 999)[0]", "expected": 404 }
+      ],
+      "hints": [
+        "Comece pela tabela: um conjunto por papel, e os papéis maiores construídos a partir do menor com união.",
+        "A regra \"não pode nada\" por padrão sai de graça se a consulta devolver conjunto vazio para papel desconhecido.",
+        "Em `obter`, decida primeiro se a pessoa pode ver AQUELE ticket, e só então responda — com a mesma saída para os dois casos de não.",
+        "Em `fechar`, a ordem é outra: permissão da ação vem antes da existência do recurso, porque quem não pode fechar nada não deve descobrir o que existe."
+      ],
+      "solution": "TICKETS = [\n    {\"id\": 1, \"dono\": \"ana\", \"titulo\": \"impressora\", \"status\": \"aberto\"},\n    {\"id\": 2, \"dono\": \"bruno\", \"titulo\": \"vpn\", \"status\": \"aberto\"},\n    {\"id\": 3, \"dono\": \"ana\", \"titulo\": \"acesso\", \"status\": \"fechado\"},\n]\n\nana = {\"id\": \"ana\", \"papel\": \"cliente\"}\nbruno = {\"id\": \"bruno\", \"papel\": \"cliente\"}\ncarla = {\"id\": \"carla\", \"papel\": \"suporte\"}\nchefe = {\"id\": \"chefe\", \"papel\": \"admin\"}\nestranho = {\"id\": \"x\", \"papel\": \"diretor\"}\n\n# A tabela responde \"o que este papel pode?\" numa olhada, e acrescentar um\n# papel e mudar dado, nao codigo.\nCLIENTE = {\"abrir_ticket\", \"ver_proprio\"}\nSUPORTE = CLIENTE | {\"ver_todos\", \"fechar_ticket\"}\nADMIN = SUPORTE | {\"gerenciar_usuarios\"}\n\nPERMISSOES = {\"cliente\": CLIENTE, \"suporte\": SUPORTE, \"admin\": ADMIN}\n\nNAO_ENCONTRADO = (404, {\"erro\": \"não encontrado\"})\nSEM_PERMISSAO = (403, {\"erro\": \"sem permissão\"})\n\n\ndef pode(usuario, acao):\n    # Padrao negar: papel ausente ou desconhecido cai no conjunto vazio.\n    return acao in PERMISSOES.get(usuario.get(\"papel\"), set())\n\n\ndef _visiveis(usuario):\n    if pode(usuario, \"ver_todos\"):\n        return list(TICKETS)\n    return [t for t in TICKETS if t[\"dono\"] == usuario.get(\"id\")]\n\n\ndef listar(usuario):\n    return 200, _visiveis(usuario)\n\n\ndef obter(usuario, ticket_id):\n    # Procura so no que a pessoa ja pode ver: assim \"nao e seu\" e \"nao existe\"\n    # saem pelo mesmo caminho, sem o codigo precisar lembrar de disfarcar.\n    for ticket in _visiveis(usuario):\n        if ticket[\"id\"] == ticket_id:\n            return 200, ticket\n    return NAO_ENCONTRADO\n\n\ndef fechar(usuario, ticket_id):\n    # Permissao da acao antes da existencia: quem nao pode fechar nada nao\n    # deve descobrir o que existe tentando ids.\n    if not pode(usuario, \"fechar_ticket\"):\n        return SEM_PERMISSAO\n\n    for ticket in _visiveis(usuario):\n        if ticket[\"id\"] == ticket_id:\n            ticket[\"status\"] = \"fechado\"\n            return 200, ticket\n\n    return NAO_ENCONTRADO\n",
+      "solutionNotes": "A decisão de desenho que carrega o laboratório é `_visiveis`: ao procurar o ticket apenas dentro do que a pessoa já pode ver, \"não é seu\" e \"não existe\" saem pelo mesmo caminho sem o código precisar lembrar de disfarçar. A alternativa — buscar na lista inteira e depois comparar o dono — funciona e é frágil, porque basta alguém esquecer a comparação num lugar.\n\nRepare também que `obter` e `fechar` ordenam as verificações de forma oposta, e os dois estão certos: em `obter`, revelar existência é o risco; em `fechar`, 403 antes de 404 impede que alguém sem permissão enumere ids."
+    },
+    {
+      "id": "lab-cache-com-metrica",
+      "title": "Laboratório: cache que invalida certo e se mede",
+      "format": "laboratorio",
+      "category": "performance",
+      "difficulty": "avancado",
+      "estimatedMinutes": 80,
+      "stack": ["javascript", "performance"],
+      "topics": ["performance", "estado", "investigação", "otimização"],
+      "context": "Guardar é a parte fácil do cache. As duas difíceis são saber quando o guardado deixou de valer e saber se ele está ajudando — e a segunda quase sempre é esquecida, o que produz cache que ninguém ousa remover porque ninguém sabe o que ele faz.\n\nEste laboratório junta cache, invalidação seletiva e medição por percentil.",
+      "objective": "Construir um cache com invalidação por entidade e um relatório que diz se ele vale a pena.",
+      "constraints": [
+        "Invalidar uma entidade não pode derrubar o cache das outras.",
+        "O relatório usa percentil, não média.",
+        "A medição não pode alterar o comportamento do cache."
+      ],
+      "acceptance": [
+        "Busca repetida não vai à origem",
+        "Alterar uma entidade invalida só o que depende dela",
+        "O relatório traz taxa de acerto e p95 do que foi à origem",
+        "Cache vazio não produz NaN no relatório"
+      ],
+      "starter": "// --- cenário: não precisa mudar nada aqui ---\nlet relogio = 0\n\n// Simula a consulta cara. Cada tipo custa um tempo diferente.\nconst CUSTO = { pedido: 120, cliente: 40, relatorio: 900 }\n\nfunction consultarOrigem(tipo, id) {\n  relogio += CUSTO[tipo] ?? 10\n  return { tipo, id, geradoEm: relogio }\n}\n\nfunction agora() {\n  return relogio\n}\n\nfunction zerar() {\n  relogio = 0\n}\n\n// --- daqui para baixo é com você ---\n\n// buscar(tipo, id)\n//   devolve o valor, vindo do cache quando já houver\n//   quando for à origem, registra quanto tempo custou\n//\n// invalidar(tipo, id)\n//   remove do cache só a entrada daquele tipo e id\n//\n// invalidarTipo(tipo)\n//   remove todas as entradas daquele tipo, e só delas\n//\n// relatorio()\n//   { buscas, acertos, taxaAcerto, p95 }\n//   taxaAcerto em porcentagem inteira; p95 das durações que foram à origem\n//   sem nenhuma busca, os quatro valem 0\nfunction buscar(tipo, id) {\n  // escreva aqui\n}\n\nfunction invalidar(tipo, id) {\n  // escreva aqui\n}\n\nfunction invalidarTipo(tipo) {\n  // escreva aqui\n}\n\nfunction relatorio() {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "a primeira busca vai à origem", "expression": "(() => { zerar(); buscar('pedido', 1); return relatorio().acertos })()", "expected": 0 },
+        {
+          "name": "a segunda busca igual vem do cache",
+          "expression": "(() => { zerar(); buscar('pedido', 1); buscar('pedido', 1); return relatorio().acertos })()",
+          "expected": 1
+        },
+        {
+          "name": "o valor do cache é o mesmo da origem",
+          "expression": "(() => { zerar(); const a = buscar('pedido', 1); const b = buscar('pedido', 1); return a.geradoEm === b.geradoEm })()",
+          "expected": true
+        },
+        {
+          "name": "ids diferentes são entradas diferentes",
+          "expression": "(() => { zerar(); buscar('pedido', 1); buscar('pedido', 2); return relatorio().acertos })()",
+          "expected": 0
+        },
+        {
+          "name": "invalidar derruba só aquela entrada",
+          "expression": "(() => { zerar(); buscar('pedido', 1); buscar('pedido', 2); invalidar('pedido', 1); buscar('pedido', 2); return relatorio().acertos })()",
+          "expected": 1
+        },
+        {
+          "name": "depois de invalidar, a busca vai à origem de novo",
+          "expression": "(() => { zerar(); const a = buscar('pedido', 1); invalidar('pedido', 1); const b = buscar('pedido', 1); return a.geradoEm === b.geradoEm })()",
+          "expected": false
+        },
+        {
+          "name": "invalidar um tipo não derruba o outro",
+          "expression": "(() => { zerar(); buscar('pedido', 1); buscar('cliente', 1); invalidarTipo('pedido'); buscar('cliente', 1); return relatorio().acertos })()",
+          "expected": 1
+        },
+        {
+          "name": "a taxa de acerto é percentual inteiro",
+          "expression": "(() => { zerar(); buscar('pedido', 1); buscar('pedido', 1); buscar('pedido', 1); buscar('pedido', 1); return relatorio().taxaAcerto })()",
+          "expected": 75
+        },
+        {
+          "name": "o p95 reflete a consulta mais cara que foi à origem",
+          "expression": "(() => { zerar(); buscar('cliente', 1); buscar('cliente', 2); buscar('relatorio', 1); return relatorio().p95 })()",
+          "expected": 900
+        },
+        {
+          "name": "o acerto não entra na conta de duração",
+          "expression": "(() => { zerar(); buscar('relatorio', 1); buscar('relatorio', 1); return relatorio().buscas })()",
+          "expected": 2
+        },
+        {
+          "name": "sem busca nenhuma, nada vira NaN",
+          "expression": "(() => { zerar(); const r = relatorio(); return [r.buscas, r.acertos, r.taxaAcerto, r.p95] })()",
+          "expected": [0, 0, 0, 0],
+          "hidden": true
+        },
+        {
+          "name": "invalidar o que não está no cache não quebra",
+          "expression": "(() => { zerar(); invalidar('pedido', 77); invalidarTipo('inexistente'); return relatorio().buscas })()",
+          "expected": 0,
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "Uma chave que combine tipo e id resolve o cache; guardar o tipo também permite invalidar por tipo sem percorrer tudo errado.",
+        "Meça a duração em volta da chamada à origem, nunca em volta do acerto — o teste da taxa depende disso.",
+        "A duração é a diferença de `agora()` antes e depois da consulta.",
+        "Para o p95, ordene as durações e pegue a posição `ceil(0.95 * n) - 1`. Lista vazia devolve 0 antes de qualquer conta."
+      ],
+      "solution": "let relogio = 0\n\nconst CUSTO = { pedido: 120, cliente: 40, relatorio: 900 }\n\nfunction consultarOrigem(tipo, id) {\n  relogio += CUSTO[tipo] ?? 10\n  return { tipo, id, geradoEm: relogio }\n}\n\nfunction agora() {\n  return relogio\n}\n\nconst cache = new Map()\nlet buscas = 0\nlet acertos = 0\nlet duracoes = []\n\nfunction zerar() {\n  relogio = 0\n  cache.clear()\n  buscas = 0\n  acertos = 0\n  duracoes = []\n}\n\nconst chaveDe = (tipo, id) => `${tipo}:${id}`\n\nfunction buscar(tipo, id) {\n  buscas += 1\n  const chave = chaveDe(tipo, id)\n\n  if (cache.has(chave)) {\n    acertos += 1\n    return cache.get(chave)\n  }\n\n  // A medicao envolve so a ida a origem: acerto nao tem duracao a medir.\n  const inicio = agora()\n  const valor = consultarOrigem(tipo, id)\n  duracoes.push(agora() - inicio)\n\n  cache.set(chave, valor)\n  return valor\n}\n\nfunction invalidar(tipo, id) {\n  cache.delete(chaveDe(tipo, id))\n}\n\nfunction invalidarTipo(tipo) {\n  // Remove so as entradas daquele tipo: limpar tudo devolveria a lentidao\n  // que o cache resolveu, a cada alteracao de qualquer entidade.\n  const prefixo = `${tipo}:`\n  for (const chave of [...cache.keys()]) {\n    if (chave.startsWith(prefixo)) cache.delete(chave)\n  }\n}\n\nfunction relatorio() {\n  if (buscas === 0) return { buscas: 0, acertos: 0, taxaAcerto: 0, p95: 0 }\n\n  const ordenadas = [...duracoes].sort((a, b) => a - b)\n  const p95 = ordenadas.length === 0 ? 0 : ordenadas[Math.ceil(0.95 * ordenadas.length) - 1]\n\n  return {\n    buscas,\n    acertos,\n    taxaAcerto: Math.round((acertos / buscas) * 100),\n    p95,\n  }\n}\n",
+      "solutionNotes": "Dois detalhes separam este cache de um que dá problema. O primeiro é medir só a ida à origem: incluir os acertos na lista de durações faria o p95 despencar conforme o cache esquenta, e o número passaria a dizer que a origem ficou rápida quando na verdade ela só está sendo chamada menos.\n\nO segundo é a invalidação por prefixo em vez de limpar tudo. Limpar o cache inteiro a cada alteração é tecnicamente correto e devolve exatamente a lentidão que o cache existia para resolver — com o agravante de parecer que o cache está funcionando, porque a taxa de acerto continua alta nas leituras entre uma escrita e outra."
+    },
+    {
+      "id": "lab-carrinho-regras",
+      "title": "Laboratório: o carrinho com as regras que foram se acumulando",
+      "format": "laboratorio",
+      "category": "backend",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 70,
+      "stack": ["javascript"],
+      "topics": ["casos de borda", "separação de responsabilidades", "refatoração", "validação"],
+      "context": "Regra de negócio não chega pronta: ela se acumula, uma reunião por vez, e cada uma interage com as anteriores de um jeito que ninguém escreveu. Este laboratório entrega as cinco regras de uma vez — que é justamente o que não acontece na vida real — para você montar a estrutura que aguenta a sexta.\n\nA ordem em que elas se aplicam é o laboratório inteiro.",
+      "objective": "Calcular o total do carrinho com cinco regras que interagem, de forma que a sexta não exija reescrever as outras.",
+      "constraints": [
+        "O total nunca é negativo.",
+        "Valores em centavos, como inteiro: não use ponto flutuante para dinheiro.",
+        "Cada regra precisa poder ser lida isoladamente."
+      ],
+      "acceptance": [
+        "As cinco regras se aplicam na ordem correta",
+        "O desconto acumulado respeita o teto",
+        "Frete grátis por valor e por cupom chegam ao mesmo resultado",
+        "Carrinho vazio não quebra nem cobra frete"
+      ],
+      "starter": "// --- cenário: não precisa mudar nada aqui ---\n// Tudo em centavos, inteiro. Dinheiro em ponto flutuante acumula erro.\nconst FRETE_PADRAO = 2500\nconst FRETE_GRATIS_ACIMA_DE = 30000\nconst TETO_DESCONTO_PERCENTUAL = 20 // sobre o subtotal\n\nconst CUPONS = {\n  PRIMEIRA: { tipo: 'percentual', valor: 10 },\n  VOLTA15: { tipo: 'percentual', valor: 15 },\n  MENOS50: { tipo: 'fixo', valor: 5000 },\n  FRETEGRATIS: { tipo: 'frete' },\n}\n\n// --- daqui para baixo é com você ---\n\n// calcular(itens, cupons = []) -> { subtotal, desconto, frete, total }\n//\n// As regras, na ordem em que se aplicam:\n//   1. subtotal = soma de preco * quantidade de cada item\n//   2. cupons percentuais somam entre si, sobre o subtotal\n//   3. cupons fixos somam ao desconto, depois dos percentuais\n//   4. o desconto total nunca passa de TETO_DESCONTO_PERCENTUAL do subtotal\n//   5. frete é grátis se o subtotal (antes do desconto) alcançar o limite,\n//      ou se houver cupom de frete; caso contrário, FRETE_PADRAO\n//\n// Carrinho vazio: tudo zero, inclusive o frete.\n// Cupom desconhecido é ignorado, sem erro.\nfunction calcular(itens, cupons = []) {\n  // escreva aqui\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "carrinho simples sem cupom",
+          "expression": "calcular([{ preco: 10000, quantidade: 2 }])",
+          "expected": { "subtotal": 20000, "desconto": 0, "frete": 2500, "total": 22500 }
+        },
+        {
+          "name": "carrinho vazio não cobra frete",
+          "expression": "calcular([])",
+          "expected": { "subtotal": 0, "desconto": 0, "frete": 0, "total": 0 }
+        },
+        { "name": "frete grátis por valor", "expression": "calcular([{ preco: 30000, quantidade: 1 }]).frete", "expected": 0 },
+        { "name": "o limite de frete grátis é inclusivo", "expression": "calcular([{ preco: 29999, quantidade: 1 }]).frete", "expected": 2500 },
+        { "name": "cupom percentual", "expression": "calcular([{ preco: 10000, quantidade: 1 }], ['PRIMEIRA']).desconto", "expected": 1000 },
+        { "name": "dois percentuais somam", "expression": "calcular([{ preco: 10000, quantidade: 1 }], ['PRIMEIRA', 'VOLTA15']).desconto", "expected": 2000 },
+        {
+          "name": "o teto corta o acumulado",
+          "expression": "calcular([{ preco: 10000, quantidade: 1 }], ['PRIMEIRA', 'VOLTA15', 'MENOS50']).desconto",
+          "expected": 2000
+        },
+        {
+          "name": "cupom fixo sozinho entra inteiro quando cabe",
+          "expression": "calcular([{ preco: 100000, quantidade: 1 }], ['MENOS50']).desconto",
+          "expected": 5000
+        },
+        {
+          "name": "cupom de frete zera o frete sem mexer no desconto",
+          "expression": "calcular([{ preco: 10000, quantidade: 1 }], ['FRETEGRATIS'])",
+          "expected": { "subtotal": 10000, "desconto": 0, "frete": 0, "total": 10000 }
+        },
+        { "name": "cupom desconhecido é ignorado", "expression": "calcular([{ preco: 10000, quantidade: 1 }], ['INVENTADO']).total", "expected": 12500 },
+        {
+          "name": "o frete é decidido pelo subtotal, não pelo total com desconto",
+          "expression": "calcular([{ preco: 30000, quantidade: 1 }], ['PRIMEIRA']).frete",
+          "expected": 0,
+          "hidden": true
+        },
+        {
+          "name": "o teto impede o cupom fixo de passar do subtotal",
+          "expression": "calcular([{ preco: 100, quantidade: 1 }], ['MENOS50']).total",
+          "expected": 2580,
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "Escreva uma função por regra e deixe `calcular` apenas chamá-las na ordem. É o que faz a sexta regra caber.",
+        "O teto se aplica ao desconto SOMADO, não a cada cupom — some tudo e corte no fim.",
+        "A regra 5 diz \"subtotal antes do desconto\". O teste escondido existe só por causa disso.",
+        "Arredonde o percentual com `Math.round` para o resultado continuar em centavos inteiros."
+      ],
+      "solution": "const FRETE_PADRAO = 2500\nconst FRETE_GRATIS_ACIMA_DE = 30000\nconst TETO_DESCONTO_PERCENTUAL = 20\n\nconst CUPONS = {\n  PRIMEIRA: { tipo: 'percentual', valor: 10 },\n  VOLTA15: { tipo: 'percentual', valor: 15 },\n  MENOS50: { tipo: 'fixo', valor: 5000 },\n  FRETEGRATIS: { tipo: 'frete' },\n}\n\nconst regrasDe = (cupons) => cupons.map((nome) => CUPONS[nome]).filter(Boolean)\n\nfunction subtotalDe(itens) {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0)\n}\n\nfunction descontoDe(subtotal, regras) {\n  const percentual = regras\n    .filter((r) => r.tipo === 'percentual')\n    .reduce((soma, r) => soma + r.valor, 0)\n\n  const fixo = regras.filter((r) => r.tipo === 'fixo').reduce((soma, r) => soma + r.valor, 0)\n\n  const bruto = Math.round((subtotal * percentual) / 100) + fixo\n\n  // O teto vale sobre a SOMA, nao sobre cada cupom.\n  const teto = Math.round((subtotal * TETO_DESCONTO_PERCENTUAL) / 100)\n  return Math.min(bruto, teto)\n}\n\nfunction freteDe(subtotal, regras) {\n  if (subtotal === 0) return 0\n  // Decidido pelo subtotal, antes do desconto: desconto nao tira frete gratis.\n  if (subtotal >= FRETE_GRATIS_ACIMA_DE) return 0\n  if (regras.some((r) => r.tipo === 'frete')) return 0\n  return FRETE_PADRAO\n}\n\nfunction calcular(itens, cupons = []) {\n  const regras = regrasDe(cupons)\n\n  const subtotal = subtotalDe(itens)\n  const desconto = descontoDe(subtotal, regras)\n  const frete = freteDe(subtotal, regras)\n\n  return { subtotal, desconto, frete, total: Math.max(0, subtotal - desconto) + frete }\n}\n",
+      "solutionNotes": "A estrutura é o resultado, não o cálculo: `calcular` só chama as três regras na ordem, e cada uma cabe na tela. É isso que faz a sexta regra ser uma função nova em vez de mais um `if` num bloco de quarenta linhas.\n\nDuas decisões escondidas valem nota. O frete olha o subtotal antes do desconto — se olhasse depois, aplicar um cupom poderia fazer o cliente perder o frete grátis, que é a surpresa mais detestada de carrinho. E o teto é calculado sobre a soma dos descontos, não por cupom: aplicar o teto a cada um deixaria três cupons de 20% passarem como 60%."
+    }
+  ]
+}
