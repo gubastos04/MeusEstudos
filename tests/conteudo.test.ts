@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { reloadContent } from '@/lib/content/loader'
 import { stripTypes } from '@/lib/runner/run-js'
+import { runStructuralChecks } from '@/lib/runner/structural'
 
 /**
  * Conteudo.
@@ -319,5 +320,51 @@ describe('revisão aponta para prática', () => {
   it('uma parte relevante dos tópicos de avaliação tem desafio', () => {
     const cobertos = [...topicosDeAvaliacao].filter((topico) => topicosDeDesafio.has(topico))
     expect(cobertos.length).toBeGreaterThan(15)
+  })
+})
+
+describe('a solução oficial passa nas próprias verificações estruturais', () => {
+  /**
+   * Analogo ao teste da solucao executada, para o outro modo de verificacao.
+   * Sem ele, uma expressao regular errada so apareceria para quem estuda — e
+   * ali o erro parece ser dela, nao do conteudo.
+   *
+   * `reflection` fica de fora: a resposta esperada e um texto da pessoa, e a
+   * "solucao" e um exemplo, nao a unica forma certa de responder.
+   */
+  const comChecks = [
+    ...conteudo.modules.flatMap((modulo) =>
+      modulo.items.flatMap((item) => {
+        const exercicio = item.type === 'lesson' ? item.exercise : undefined
+        if (!exercicio || exercicio.kind === 'reflection') return []
+        if (!exercicio.solution || exercicio.checks.length === 0) return []
+        return [{ onde: `${modulo.id} / ${exercicio.id}`, alvo: exercicio }]
+      }),
+    ),
+    ...conteudo.modules.flatMap((modulo) =>
+      modulo.assessments.flatMap((avaliacao) =>
+        avaliacao.questions.flatMap((questao) => {
+          if (questao.kind !== 'pratica') return []
+          if (!questao.solution || questao.checks.length === 0) return []
+          return [{ onde: `${modulo.id} / ${questao.id}`, alvo: questao }]
+        }),
+      ),
+    ),
+    ...conteudo.challenges.flatMap((desafio) => {
+      if (!desafio.solution || desafio.checks.length === 0) return []
+      return [{ onde: `desafio / ${desafio.id}`, alvo: desafio }]
+    }),
+  ]
+
+  it('há verificações estruturais para conferir', () => {
+    expect(comChecks.length).toBeGreaterThan(15)
+  })
+
+  it.each(comChecks)('$onde', ({ alvo }) => {
+    const falhas = runStructuralChecks(alvo.solution!, alvo.checks)
+      .filter((caso) => !caso.passed)
+      .map((caso) => caso.name)
+
+    expect(falhas).toEqual([])
   })
 })

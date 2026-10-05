@@ -65,7 +65,7 @@ npm run setup            # instala, gera o client, cria o banco, sincroniza cont
 npm run dev              # servidor de desenvolvimento
 npm run build            # build de produção (roda prisma generate antes)
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest (219 testes; cria prisma/test-vitest.db do zero)
+npm test                 # vitest (244 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
@@ -147,7 +147,7 @@ provedor de deploy. Não existe variável separada para produção.
 
 O `provider` do datasource não aceita `env()`, então ele é trocado por
 comando. O repositório versiona `sqlite`, porque é o que faz `npm run dev` e os
-219 testes funcionarem logo depois de um `git clone`. O build de produção roda
+244 testes funcionarem logo depois de um `git clone`. O build de produção roda
 `npm run db:provider postgresql` antes do `next build`.
 
 Ao trocar o provider à mão, rode `npx prisma generate` depois: o client gerado
@@ -431,6 +431,18 @@ caminho e nenhum intervalo no outro.
   fazer agora. Nunca stack trace para o usuário.
 - Toda tela com dados trata quatro estados: carregando, vazio, erro, sucesso.
 
+### java-oo é o módulo de ler código alheio
+
+Java não executa no navegador, e isso deixou de ser um defeito quando o módulo
+assumiu o objetivo que ele já declarava: ler código corporativo que existe por
+aí. As atividades deixaram de ser "escreva uma classe" e passaram a ser achar
+onde uma regra mora, explicar o fluxo, e alterar sem quebrar — sobre um
+`ServicoPedido` de 80 linhas que a pessoa não escreveu.
+
+As verificações conferem duas coisas: a mudança está no lugar certo, e o que já
+existia continua lá. "Não apaguei nada" é checável por texto, e é metade do que
+significa mudança pequena com segurança.
+
 ## Testes
 
 `npm test`. O banco de teste é recriado a cada execução em
@@ -450,6 +462,16 @@ SQLite.
 
 Ao criar um recurso por usuário, o teste de isolamento ("A não alcança o de B")
 é obrigatório — veja `tests/integracao.test.ts`.
+
+**A solução oficial de todo conteúdo é verificada contra os próprios critérios**
+(`tests/conteudo.test.ts`), nos dois modos: executando os testes, para exercício,
+questão prática e desafio em JavaScript e TypeScript, e rodando as verificações
+estruturais, para os três. Sem isso, uma expressão regular errada só apareceria
+para quem estuda — e ali o erro parece ser dela, não do conteúdo.
+
+Python e SQL ficam fora da suíte de propósito: verificá-los exigiria Pyodide e
+sql.js instalados, e `npm test` precisa funcionar logo depois de um `git clone`.
+Os dois são conferidos por scripts à parte quando o conteúdo muda.
 
 ## Acessibilidade (obrigatório, não opcional)
 

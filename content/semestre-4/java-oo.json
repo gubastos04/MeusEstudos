@@ -3,8 +3,8 @@
   "semester": 4,
   "order": 2,
   "title": "Java e orientação a objetos",
-  "summary": "Tipagem estática, interfaces, composição e exceções. Java aqui serve para entender OO de verdade e ler o código corporativo que existe por aí.",
-  "outcome": "Você lê e escreve classes com responsabilidade clara, prefere composição a herança quando faz sentido e entende o que a tipagem estática garante.",
+  "summary": "O módulo de ler código que outra pessoa escreveu. Tipagem estática, interfaces, composição e exceções, com Java como veículo — porque código corporativo verboso é justamente o que se precisa aprender a navegar.",
+  "outcome": "Você entra num arquivo que não escreveu, encontra onde uma regra é aplicada, explica o fluxo para outra pessoa e faz uma alteração pequena sem quebrar o que já existia.",
   "tags": [
     "java",
     "oo",
@@ -85,51 +85,59 @@
         }
       ],
       "exercise": {
-        "id": "ex-java-interface-01",
-        "title": "Assinatura de repositório",
-        "kind": "structural",
-        "language": "java",
-        "estimatedMinutes": 7,
-        "prompt": "Escreva a interface `RepositorioPedidos` com: buscar por id (pode não existir), listar por status com limite, e salvar. Use tipos que comuniquem ausência.",
-        "starter": "public interface RepositorioPedidos {\n\n}\n",
-        "checks": [
-          {
-            "name": "declara interface",
-            "type": "contains",
-            "value": "interface",
-            "hint": "É uma interface, não uma classe."
-          },
-          {
-            "name": "busca por id comunica ausencia",
-            "type": "contains",
-            "value": "Optional",
-            "hint": "O que devolver quando o pedido não existe?"
-          },
-          {
-            "name": "listagem devolve colecao",
-            "type": "regex",
-            "value": "List<|Collection<",
-            "hint": "Listar devolve vários."
-          },
-          {
-            "name": "listagem tem limite",
-            "type": "regex",
-            "value": "int\\s+limite|int\\s+limit",
-            "hint": "Listagem sem limite quebra quando a tabela cresce."
-          },
-          {
-            "name": "tem metodo de salvar",
-            "type": "regex",
-            "value": "salvar|save",
-            "hint": "Faltou a operação de gravar."
-          }
-        ],
-        "hints": [
-          "São três métodos.",
-          "Optional<Pedido> para a busca por id."
-        ],
-        "solution": "public interface RepositorioPedidos {\n    Optional<Pedido> buscarPorId(long id);\n\n    List<Pedido> listarPorStatus(String status, int limite);\n\n    Pedido salvar(Pedido pedido);\n}\n"
-      },
+                    "id": "ex-java-interface-01",
+                    "title": "Achar onde o desconto é aplicado",
+                    "kind": "structural",
+                    "language": "java",
+                    "estimatedMinutes": 12,
+                    "prompt": "Você nunca viu este arquivo. Chegou o pedido: **clientes com mais de 10 pedidos ganham 5% de desconto**, acumulável com o desconto de primeira compra, até o limite de 15% no total.\n\nAntes de escrever qualquer coisa, encontre onde o desconto mora hoje. Depois faça a alteração **só ali** — o método público `abrir` e a assinatura de `totalCom` não mudam.\n\n`Cliente` tem o método `totalDePedidos()`.",
+                    "starter": "// ServicoPedido.java — em producao desde 2023.\npackage com.empresa.pedidos;\n\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.Optional;\n\npublic class ServicoPedido {\n\n    private final RepositorioPedidos repositorio;\n    private final CalculadoraFrete frete;\n    private final Notificador notificador;\n\n    public ServicoPedido(RepositorioPedidos repositorio, CalculadoraFrete frete, Notificador notificador) {\n        this.repositorio = repositorio;\n        this.frete = frete;\n        this.notificador = notificador;\n    }\n\n    public Pedido abrir(Carrinho carrinho, Cliente cliente) {\n        if (carrinho.itens().isEmpty()) {\n            throw new PedidoInvalido(\"carrinho vazio\");\n        }\n\n        Pedido pedido = new Pedido(cliente.id(), carrinho.itens());\n        pedido.setValorFrete(frete.calcular(carrinho, cliente.endereco()));\n        pedido.setTotal(totalCom(carrinho, cliente));\n\n        repositorio.salvar(pedido);\n        notificador.pedidoAberto(pedido);\n        return pedido;\n    }\n\n    private long totalCom(Carrinho carrinho, Cliente cliente) {\n        long subtotal = 0;\n        for (Item item : carrinho.itens()) {\n            subtotal += item.precoCentavos() * item.quantidade();\n        }\n\n        long desconto = descontoDe(subtotal, cliente);\n        long freteCentavos = frete.calcular(carrinho, cliente.endereco());\n\n        return Math.max(0, subtotal - desconto) + freteCentavos;\n    }\n\n    private long descontoDe(long subtotal, Cliente cliente) {\n        if (cliente.primeiraCompra()) {\n            return subtotal / 10;\n        }\n        return 0;\n    }\n\n    public List<Pedido> pendentesDoCliente(String clienteId) {\n        List<Pedido> todos = repositorio.listarPorStatus(\"pending\", 100);\n        List<Pedido> meus = new ArrayList<>();\n        for (Pedido pedido : todos) {\n            if (pedido.clienteId().equals(clienteId)) {\n                meus.add(pedido);\n            }\n        }\n        return meus;\n    }\n\n    public Optional<Pedido> porId(String id) {\n        return repositorio.buscar(id);\n    }\n}\n",
+                    "checks": [
+                      {
+                        "name": "a mudança está em descontoDe",
+                        "type": "regex",
+                        "value": "descontoDe[\\s\\S]*totalDePedidos",
+                        "hint": "O desconto é decidido num método só. Encontre-o antes de escrever."
+                      },
+                      {
+                        "name": "usa o limite de 15%",
+                        "type": "regex",
+                        "value": "subtotal\\s*\\*\\s*15\\s*/\\s*100|subtotal\\s*\\*\\s*0\\.15|15\\s*/\\s*100",
+                        "hint": "O teto é 15% do subtotal, e precisa aparecer como conta."
+                      },
+                      {
+                        "name": "mantém o desconto de primeira compra",
+                        "type": "regex",
+                        "value": "primeiraCompra",
+                        "hint": "A regra que já existia continua valendo: a nova é acumulável."
+                      },
+                      {
+                        "name": "não mexeu na assinatura de abrir",
+                        "type": "contains",
+                        "value": "public Pedido abrir(Carrinho carrinho, Cliente cliente)",
+                        "hint": "Método público é contrato: quem chama não pode ser obrigado a mudar."
+                      },
+                      {
+                        "name": "não mexeu na assinatura de totalCom",
+                        "type": "contains",
+                        "value": "private long totalCom(Carrinho carrinho, Cliente cliente)",
+                        "hint": "O enunciado pede a alteração num lugar só."
+                      },
+                      {
+                        "name": "manteve o cálculo do subtotal",
+                        "type": "regex",
+                        "value": "precoCentavos\\(\\)\\s*\\*\\s*item\\.quantidade\\(\\)",
+                        "hint": "Nada fora da regra de desconto precisava mudar."
+                      }
+                    ],
+                    "hints": [
+                      "Leia de cima para baixo e liste o que cada método faz, numa linha. São seis.",
+                      "`abrir` chama `totalCom`, que chama `descontoDe`. O desconto mora no último.",
+                      "Acumular é somar antes de aplicar o teto, não aplicar um teto por regra."
+                    ],
+                    "solution": "// ServicoPedido.java — em producao desde 2023.\npackage com.empresa.pedidos;\n\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.Optional;\n\npublic class ServicoPedido {\n\n    private final RepositorioPedidos repositorio;\n    private final CalculadoraFrete frete;\n    private final Notificador notificador;\n\n    public ServicoPedido(RepositorioPedidos repositorio, CalculadoraFrete frete, Notificador notificador) {\n        this.repositorio = repositorio;\n        this.frete = frete;\n        this.notificador = notificador;\n    }\n\n    public Pedido abrir(Carrinho carrinho, Cliente cliente) {\n        if (carrinho.itens().isEmpty()) {\n            throw new PedidoInvalido(\"carrinho vazio\");\n        }\n\n        Pedido pedido = new Pedido(cliente.id(), carrinho.itens());\n        pedido.setValorFrete(frete.calcular(carrinho, cliente.endereco()));\n        pedido.setTotal(totalCom(carrinho, cliente));\n\n        repositorio.salvar(pedido);\n        notificador.pedidoAberto(pedido);\n        return pedido;\n    }\n\n    private long totalCom(Carrinho carrinho, Cliente cliente) {\n        long subtotal = 0;\n        for (Item item : carrinho.itens()) {\n            subtotal += item.precoCentavos() * item.quantidade();\n        }\n\n        long desconto = descontoDe(subtotal, cliente);\n        long freteCentavos = frete.calcular(carrinho, cliente.endereco());\n\n        return Math.max(0, subtotal - desconto) + freteCentavos;\n    }\n\n    private long descontoDe(long subtotal, Cliente cliente) {\n        long desconto = 0;\n\n        if (cliente.primeiraCompra()) {\n            desconto += subtotal / 10;\n        }\n        if (cliente.totalDePedidos() > 10) {\n            desconto += subtotal * 5 / 100;\n        }\n\n        // Acumulam, mas com teto: o limite vale sobre a soma, nao por regra.\n        long teto = subtotal * 15 / 100;\n        return Math.min(desconto, teto);\n    }\n\n    public List<Pedido> pendentesDoCliente(String clienteId) {\n        List<Pedido> todos = repositorio.listarPorStatus(\"pending\", 100);\n        List<Pedido> meus = new ArrayList<>();\n        for (Pedido pedido : todos) {\n            if (pedido.clienteId().equals(clienteId)) {\n                meus.add(pedido);\n            }\n        }\n        return meus;\n    }\n\n    public Optional<Pedido> porId(String id) {\n        return repositorio.buscar(id);\n    }\n}\n",
+                    "solutionNotes": "A alteração inteira cabe num método privado de seis linhas, e achar esse método é o exercício. As verificações conferem duas coisas: que a mudança está no lugar certo, e que o que já existia continua lá — \"não apaguei nada\" é metade do que significa mudança pequena com segurança. Java não executa no navegador, então isto é leitura de código, não prova de compilação."
+                  },
       "glossary": [
         "Teste unitário",
         "Refatoração",
@@ -141,10 +149,7 @@
       "type": "lesson",
       "title": "Composição, herança e exceções",
       "estimatedMinutes": 10,
-      "tags": [
-        "java",
-        "oo"
-      ],
+      "tags": ["java", "oo"],
       "why": "Herança mal usada cria hierarquias que ninguém consegue alterar. Composição resolve a maior parte dos casos com menos acoplamento.",
       "goal": "Escolher entre herança e composição e definir exceções úteis.",
       "blocks": [
@@ -163,10 +168,7 @@
           "title": "O custo da herança",
           "text": "A subclasse depende de detalhes internos da superclasse. Uma mudança lá quebra todas as filhas, às vezes de forma silenciosa. Composição mantém a dependência explícita e limitada ao que foi combinado."
         },
-        {
-          "kind": "text",
-          "text": "Exceções: crie as suas quando o chamador pode decidir algo diferente para cada caso."
-        },
+        { "kind": "text", "text": "Exceções: crie as suas quando o chamador pode decidir algo diferente para cada caso." },
         {
           "kind": "code",
           "language": "java",
@@ -176,11 +178,7 @@
           "kind": "text",
           "text": "Na borda da aplicação, cada exceção vira um status HTTP. É aí que o tipo da exceção passa a valer: `TicketNaoEncontrado` vira 404, `SemPermissao` vira 403, o resto vira 500."
         },
-        {
-          "kind": "code",
-          "language": "java",
-          "code": "// nunca faça isto\ntry {\n    processar();\n} catch (Exception e) {\n    // silêncio\n}"
-        },
+        { "kind": "code", "language": "java", "code": "// nunca faça isto\ntry {\n    processar();\n} catch (Exception e) {\n    // silêncio\n}" },
         {
           "kind": "text",
           "text": "Capturar tudo e não fazer nada transforma uma falha em comportamento imprevisível. Se não sabe tratar, deixe subir: alguém acima sabe, nem que seja o log."
@@ -196,18 +194,14 @@
           ],
           "answerIndex": 1,
           "explanation": "Reaproveitar código não é motivo suficiente: para isso existe composição. Herança é sobre substituição, e quebrar essa expectativa gera bug difícil de achar.",
-          "topics": [
-            "oo"
-          ]
+          "topics": ["oo"]
         }
       ],
       "tryNow": {
         "instructions": "Pegue duas classes do seu projeto que compartilham código. Decida se o caso é herança ou composição, e escreva por quê em uma frase.",
         "expected": "A justificativa usa \"é um\" ou \"tem um\", não \"tem código repetido\"."
       },
-      "ifStuck": [
-        "Teste a frase: \"todo X é um Y\". Se soar estranho, é composição."
-      ],
+      "ifStuck": ["Teste a frase: \"todo X é um Y\". Se soar estranho, é composição."],
       "commonErrors": [
         {
           "error": "catch (Exception e) genérico no meio do código.",
@@ -215,11 +209,32 @@
           "fix": "Capture os tipos que você sabe tratar. Deixe o resto subir até a borda."
         }
       ],
-      "glossary": [
-        "Exceção",
-        "status-code",
-        "Refatoração"
-      ]
+      "glossary": ["Exceção", "status-code", "Refatoração"],
+      "exercise": {
+        "id": "ex-java-explicar-fluxo-01",
+        "title": "Explicar o fluxo para quem chega amanhã",
+        "kind": "reflection",
+        "language": "text",
+        "estimatedMinutes": 10,
+        "prompt": "Olhando o mesmo `ServicoPedido`, escreva o que você diria para alguém que entra no time amanhã e precisa mexer nele:\n\n1. O que acontece, em ordem, quando `abrir` é chamado?\n2. Quais dependências ele recebe de fora, e por que isso importa para testá-lo?\n3. Qual trecho você mudaria primeiro, e por quê?\n\nTrês parágrafos curtos bastam. Explicar código que você acabou de ler é a melhor prova de que entendeu.",
+        "starter": "1. O que acontece quando abrir é chamado:\n\n\n2. Dependências que chegam de fora:\n\n\n3. O que eu mudaria primeiro:\n",
+        "checks": [
+          { "name": "respondeu as três partes", "type": "minLines", "value": "6", "hint": "São três perguntas, cada uma com uma resposta própria." },
+          {
+            "name": "cita o fluxo de abertura",
+            "type": "regex",
+            "value": "abrir|carrinho|repositorio",
+            "hint": "A primeira pergunta é sobre a ordem do que acontece."
+          }
+        ],
+        "hints": [
+          "A ordem está no corpo de `abrir`: validar, montar, calcular, salvar, notificar.",
+          "As três dependências chegam pelo construtor — isso tem nome e tem consequência para teste.",
+          "Para a terceira, repare que `totalCom` chama `frete.calcular` e `abrir` já tinha chamado."
+        ],
+        "solution": "1. `abrir` recusa carrinho vazio com `PedidoInvalido`, monta o Pedido, calcula frete e total, salva no repositório e só então notifica. A ordem importa: notificar antes de salvar avisaria sobre um pedido que pode não existir.\n\n2. Recebe repositório, calculadora de frete e notificador pelo construtor. Como nada é criado dentro da classe, dá para testá-la passando dublês dos três — nenhum teste precisa de banco nem de envio real.\n\n3. `frete.calcular` é chamado duas vezes para o mesmo pedido: uma em `abrir` e outra dentro de `totalCom`. Se o cálculo for caro ou tiver qualquer variação, o valor gravado pode divergir do somado. Eu calcularia uma vez e passaria o resultado adiante.",
+        "solutionNotes": "A terceira resposta é o achado que só aparece lendo com atenção: a chamada duplicada de `frete.calcular` não quebra nada hoje e é exatamente o tipo de coisa que você encontra ao entrar num arquivo pela primeira vez. Esta atividade não tem verificação automática além do formato — explicar bem é julgamento, e inventar nota para isso seria fingir medição."
+      }
     },
     {
       "id": "java-colecoes-01",
@@ -327,52 +342,53 @@
         }
       ],
       "exercise": {
-        "id": "ex-java-colecao-01",
-        "title": "Escolher a coleção certa",
-        "kind": "structural",
-        "language": "java",
-        "estimatedMinutes": 8,
-        "prompt": "Escreva a declaração de três campos de uma classe de importação: os SKUs já processados (sem repetição), os clientes indexados por id (long) e as linhas rejeitadas em ordem. Declare as interfaces à esquerda e instancie as implementações.",
-        "starter": "public class ImportacaoDeProdutos {\n\n}\n",
-        "checks": [
-          {
-            "name": "usa Set para os SKUs",
-            "type": "regex",
-            "value": "Set<String>",
-            "hint": "Sem repetição e verificação rápida: Set."
-          },
-          {
-            "name": "usa Map para os clientes por id",
-            "type": "regex",
-            "value": "Map<Long,\\s*\\w+>",
-            "hint": "Busca por id é Map, com a chave do tipo do id."
-          },
-          {
-            "name": "usa List para as rejeitadas",
-            "type": "regex",
-            "value": "List<",
-            "hint": "Ordem importa e pode repetir: List."
-          },
-          {
-            "name": "instancia implementacoes concretas",
-            "type": "regex",
-            "value": "new (HashSet|LinkedHashSet)<>\\(\\)",
-            "hint": "A interface fica à esquerda; a implementação, no new."
-          },
-          {
-            "name": "nao declara a implementacao a esquerda",
-            "type": "regex",
-            "value": "^(?![\\s\\S]*(ArrayList|HashMap|HashSet)\\s+\\w+\\s*=)[\\s\\S]*$",
-            "hint": "Declarar ArrayList à esquerda amarra quem usa à implementação."
-          }
-        ],
-        "hints": [
-          "São três campos privados.",
-          "Formato: `private final Set<String> nome = new HashSet<>();`"
-        ],
-        "solution": "public class ImportacaoDeProdutos {\n\n    private final Set<String> skusProcessados = new HashSet<>();\n\n    private final Map<Long, Cliente> clientesPorId = new HashMap<>();\n\n    private final List<LinhaRejeitada> rejeitadas = new ArrayList<>();\n}\n",
-        "solutionNotes": "Esta verificação lê o código e confere padrões: ela não compila nada. O `final` nos campos é um extra que vale o hábito — impede que a coleção inteira seja trocada por engano."
-      },
+                    "id": "ex-java-colecao-01",
+                    "title": "A importação aceita o mesmo SKU duas vezes",
+                    "kind": "structural",
+                    "language": "java",
+                    "estimatedMinutes": 12,
+                    "prompt": "Relato do time de dados: \"a importação de planilha às vezes cria o mesmo produto duas vezes\". O importador abaixo já existe.\n\nEncontre por que a duplicata passa e corrija trocando a estrutura de dados — sem mudar a assinatura de `importar` nem a ordem em que os erros são relatados.",
+                    "starter": "// ImportadorProdutos.java\npackage com.empresa.produtos;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class ImportadorProdutos {\n\n    private final List<String> skusProcessados = new ArrayList<>();\n    private final List<String> erros = new ArrayList<>();\n\n    public Resultado importar(List<LinhaPlanilha> linhas) {\n        for (LinhaPlanilha linha : linhas) {\n            if (linha.sku() == null || linha.sku().isBlank()) {\n                erros.add(\"linha sem SKU\");\n                continue;\n            }\n\n            if (skusProcessados.contains(linha.sku())) {\n                erros.add(\"SKU repetido: \" + linha.sku());\n                continue;\n            }\n\n            skusProcessados.add(linha.sku());\n            salvar(linha);\n        }\n\n        return new Resultado(skusProcessados.size(), erros);\n    }\n\n    private void salvar(LinhaPlanilha linha) {\n        // grava no banco\n    }\n}\n",
+                    "checks": [
+                      {
+                        "name": "usa uma estrutura sem repetição para os SKUs",
+                        "type": "regex",
+                        "value": "(Set|HashSet|LinkedHashSet)<String>\\s+skusProcessados",
+                        "hint": "A pergunta repetida é \"já vi este SKU?\". Qual estrutura responde isso sem percorrer?"
+                      },
+                      {
+                        "name": "importou a estrutura nova",
+                        "type": "regex",
+                        "value": "import java\\.util\\.(Set|HashSet|LinkedHashSet)",
+                        "hint": "Java exige o import."
+                      },
+                      {
+                        "name": "mantém a lista de erros como lista",
+                        "type": "regex",
+                        "value": "List<String>\\s+erros",
+                        "hint": "A ordem dos erros faz parte do relatório: lista continua sendo a escolha certa."
+                      },
+                      {
+                        "name": "não mudou a assinatura de importar",
+                        "type": "contains",
+                        "value": "public Resultado importar(List<LinhaPlanilha> linhas)",
+                        "hint": "Quem chama não pode ser obrigado a mudar."
+                      },
+                      {
+                        "name": "manteve a verificação de SKU em branco",
+                        "type": "regex",
+                        "value": "isBlank\\(\\)",
+                        "hint": "A outra validação continua valendo."
+                      }
+                    ],
+                    "hints": [
+                      "Leia a declaração dos dois campos antes de olhar o laço: a causa está ali.",
+                      "`List.contains` percorre a lista inteira a cada chamada, e aceita repetido — a estrutura é que permite a duplicata existir.",
+                      "Erro continua sendo lista: a ordem importa no relatório. Só os SKUs mudam de estrutura."
+                    ],
+                    "solution": "// ImportadorProdutos.java\npackage com.empresa.produtos;\n\nimport java.util.ArrayList;\nimport java.util.LinkedHashSet;\nimport java.util.List;\nimport java.util.Set;\n\npublic class ImportadorProdutos {\n\n    // Set recusa repetido por definicao, e responde \"ja vi este?\" em tempo\n    // constante. LinkedHashSet preserva a ordem de insercao, caso ela importe.\n    private final Set<String> skusProcessados = new LinkedHashSet<>();\n    private final List<String> erros = new ArrayList<>();\n\n    public Resultado importar(List<LinhaPlanilha> linhas) {\n        for (LinhaPlanilha linha : linhas) {\n            if (linha.sku() == null || linha.sku().isBlank()) {\n                erros.add(\"linha sem SKU\");\n                continue;\n            }\n\n            if (skusProcessados.contains(linha.sku())) {\n                erros.add(\"SKU repetido: \" + linha.sku());\n                continue;\n            }\n\n            skusProcessados.add(linha.sku());\n            salvar(linha);\n        }\n\n        return new Resultado(skusProcessados.size(), erros);\n    }\n\n    private void salvar(LinhaPlanilha linha) {\n        // grava no banco\n    }\n}\n",
+                    "solutionNotes": "A duplicata passava por concorrência ou por reentrada, e o `List.contains` só reduzia a chance — com `Set`, a estrutura recusa por definição. O ganho de custo vem junto: `contains` numa lista percorre tudo, num conjunto é constante. Repare que a lista de erros NÃO vira conjunto: lá a ordem e a repetição fazem parte do relatório."
+                  },
       "glossary": [
         "Complexidade",
         "Big O"
