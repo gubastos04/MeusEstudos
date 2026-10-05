@@ -111,6 +111,23 @@ async function buildSuggestions(userId: string, budget: TimeBudget | null): Prom
   const modules = moduleOrderFor(profile?.trackId)
   const out: Suggestion[] = []
 
+  /**
+   * Trabalho comecado e parado ha muito tempo.
+   *
+   * Demanda e projeto tem prioridade 2 e 3, acima de exercicio e revisao, e os
+   * projetos levam de 9 a 23 horas. Quem travava na etapa 6 de 11 recebia
+   * "continue o projeto" como unica recomendacao por semanas, sem nada mais
+   * conseguir aparecer — o pior modo de falha do sistema.
+   *
+   * Parar e legitimo (regra 4), entao isto nao cobra nem marca em vermelho:
+   * so deixa de prender o topo. O item continua na lista, no fim, com a data.
+   */
+  const adiados: Suggestion[] = []
+  const PARADO_APOS_DIAS = 10
+  const paradoDesde = (data: Date) => Date.now() - data.getTime() > PARADO_APOS_DIAS * 24 * 60 * 60 * 1000
+  const emDiaDe = (data: Date) =>
+    data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })
+
   const progressRows = await db.progress.findMany({
     where: { userId, nodeType: { in: ['lesson', 'checkpoint'] } },
     select: { nodeId: true, status: true, resumeBlock: true, lastSeenAt: true },
@@ -148,14 +165,17 @@ async function buildSuggestions(userId: string, budget: TimeBudget | null): Prom
     if (demand) {
       const minutes = Math.round(demand.estimatedMinutes / 2)
       if (!budget || fitsBudget(minutes, budget)) {
-        out.push({
+        const parada = paradoDesde(openDemand.updatedAt)
+        ;(parada ? adiados : out).push({
           kind: 'demand',
           id: demand.id,
           title: demand.title,
-          reason: `Demanda em andamento (${statusLabel(openDemand.status)}).`,
+          reason: parada
+            ? `Sem avanço desde ${emDiaDe(openDemand.updatedAt)}. Continua aqui quando você quiser.`
+            : `Demanda em andamento (${statusLabel(openDemand.status)}).`,
           href: `/demandas/${demand.id}`,
           minutes,
-          action: 'Continuar',
+          action: parada ? 'Retomar' : 'Continuar',
         })
       }
     }
@@ -171,14 +191,17 @@ async function buildSuggestions(userId: string, budget: TimeBudget | null): Prom
     const step = project?.steps.find((s) => s.order === openProject.currentStep) ?? project?.steps[0]
     if (project && step) {
       if (!budget || fitsBudget(step.estimatedMinutes, budget)) {
-        out.push({
+        const parado = paradoDesde(openProject.updatedAt)
+        ;(parado ? adiados : out).push({
           kind: 'project',
           id: project.id,
           title: `${project.title} — etapa ${step.order}: ${step.title}`,
-          reason: 'Projeto em andamento.',
+          reason: parado
+            ? `Na etapa ${step.order} desde ${emDiaDe(openProject.updatedAt)}. Continua aqui quando você quiser.`
+            : 'Projeto em andamento.',
           href: `/projetos/${project.id}`,
           minutes: step.estimatedMinutes,
-          action: 'Continuar',
+          action: parado ? 'Retomar' : 'Continuar',
         })
       }
     }
@@ -264,6 +287,9 @@ async function buildSuggestions(userId: string, budget: TimeBudget | null): Prom
     }
   }
 
+  // O que esta parado fica no fim: continua acessivel, sem bloquear o resto.
+  out.push(...adiados)
+
   return out
 }
 
@@ -347,14 +373,28 @@ export async function getReviewItems(userId: string, limit = 6): Promise<ReviewI
       if (!topics.has(topic)) topics.set(topic, attempt.assessmentId)
     }
   }
+  // Revisar fazendo, e nao relendo: quando existe desafio que exercita o
+  // topico, a revisao aponta para ele. A ligacao vem do campo `topics` do
+  // proprio desafio, entao ela envelhece junto com o conteudo, nao com o codigo.
+  const desafiosPorTopico = new Map<string, { id: string; title: string; estimatedMinutes: number }>()
+  for (const challenge of getChallenges()) {
+    for (const topic of challenge.topics) {
+      if (!desafiosPorTopico.has(topic)) desafiosPorTopico.set(topic, challenge)
+    }
+  }
+
   for (const [topic, assessmentId] of topics) {
+    const desafio = desafiosPorTopico.get(topic)
+
     items.push({
       kind: 'topic',
       id: `${assessmentId}:${topic}`,
       title: topic,
-      detail: 'Apareceu como ponto a revisar na sua última avaliação.',
-      href: `/progresso#avaliacoes`,
-      minutes: 10,
+      detail: desafio
+        ? `Ponto a revisar na sua última avaliação. O desafio "${desafio.title}" exercita isso.`
+        : 'Apareceu como ponto a revisar na sua última avaliação.',
+      href: desafio ? `/desafios/${desafio.id}` : `/progresso#avaliacoes`,
+      minutes: desafio ? desafio.estimatedMinutes : 10,
     })
   }
 

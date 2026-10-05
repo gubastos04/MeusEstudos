@@ -39,6 +39,7 @@
         "Uma cadeia de if/else if resolve a classificação.",
         "Number.isFinite descarta texto, null e undefined de uma vez."
       ],
+      "topics": ["estruturas", "lógica"],
       "solution": "function agruparPorFaixa(pedidos) {\n  const faixas = { 'ate-50': 0, '50-200': 0, '200-500': 0, 'acima-500': 0 }\n\n  for (const pedido of pedidos) {\n    const valor = pedido?.valor\n    if (!Number.isFinite(valor)) continue\n\n    if (valor < 50) faixas['ate-50'] += 1\n    else if (valor < 200) faixas['50-200'] += 1\n    else if (valor < 500) faixas['200-500'] += 1\n    else faixas['acima-500'] += 1\n  }\n\n  return faixas\n}\n",
       "solutionNotes": "Inicializar todas as faixas garante que o gráfico não fique com buracos quando uma faixa não tem nenhum pedido."
     },
@@ -64,11 +65,7 @@
         { "name": "sem cupons", "expression": "aplicarCupons(100, [])", "expected": 100 },
         { "name": "cupom fixo", "expression": "aplicarCupons(100, [{tipo:'fixo', valor:30}])", "expected": 70 },
         { "name": "cupom percentual", "expression": "aplicarCupons(100, [{tipo:'percentual', valor:10}])", "expected": 90 },
-        {
-          "name": "dois cupons em sequencia",
-          "expression": "aplicarCupons(200, [{tipo:'percentual', valor:50}, {tipo:'fixo', valor:20}])",
-          "expected": 80
-        },
+        { "name": "dois cupons em sequencia", "expression": "aplicarCupons(200, [{tipo:'percentual', valor:50}, {tipo:'fixo', valor:20}])", "expected": 80 },
         { "name": "nao fica negativo", "expression": "aplicarCupons(50, [{tipo:'fixo', valor:80}])", "expected": 0 },
         {
           "name": "percentual depois de zerar continua zero",
@@ -81,6 +78,7 @@
         "Expressão sem atribuição é calculada e descartada.",
         "O piso em zero precisa ser aplicado dentro do laço, não só no retorno."
       ],
+      "topics": ["casos de borda", "validação"],
       "solution": "function aplicarCupons(total, cupons) {\n  for (const cupom of cupons) {\n    if (cupom.tipo === 'percentual') {\n      total = total - total * (cupom.valor / 100)\n    } else {\n      total = total - cupom.valor\n    }\n    total = Math.max(0, total)\n  }\n  return total\n}\n",
       "solutionNotes": "O defeito original é silencioso: nenhum erro, nenhum aviso, só um desconto que não acontece. É o tipo de bug que sobrevive meses em produção."
     },
@@ -119,11 +117,7 @@
           "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], 'b', 2).itens.map(r => r.id)",
           "expected": ["c"]
         },
-        {
-          "name": "ultima pagina tem cursor nulo",
-          "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], 'b', 2).proximoCursor",
-          "expected": null
-        },
+        { "name": "ultima pagina tem cursor nulo", "expression": "paginarPorCursor([{id:'a'},{id:'b'},{id:'c'}], 'b', 2).proximoCursor", "expected": null },
         {
           "name": "cursor inexistente devolve vazio",
           "expression": "paginarPorCursor([{id:'a'},{id:'b'}], 'zzz', 2).itens",
@@ -140,6 +134,7 @@
         "Cursor não encontrado precisa devolver lista vazia, e não a primeira página.",
         "proximoCursor só existe quando ainda sobraram registros depois da fatia."
       ],
+      "topics": ["casos de borda", "api"],
       "solution": "function paginarPorCursor(registros, cursor, limite) {\n  const tamanho = Math.min(Math.max(1, limite || 20), 100)\n\n  let inicio = 0\n  if (cursor !== null && cursor !== undefined) {\n    const posicao = registros.findIndex((registro) => registro.id === cursor)\n    if (posicao === -1) return { itens: [], proximoCursor: null }\n    inicio = posicao + 1\n  }\n\n  const itens = registros.slice(inicio, inicio + tamanho)\n  const temMais = inicio + tamanho < registros.length\n\n  return {\n    itens,\n    proximoCursor: temMais && itens.length > 0 ? itens[itens.length - 1].id : null,\n  }\n}\n",
       "solutionNotes": "No banco, o equivalente é `WHERE (criado_em, id) < (:cursor_data, :cursor_id) ORDER BY criado_em DESC, id DESC LIMIT :limite`. O par data e id desempata registros com o mesmo instante."
     },
@@ -171,27 +166,34 @@
         {
           "name": "campo aninhado",
           "expression": "mascarar({dados:{token:'abc', nome:'x'}})",
-          "expected": { "dados": { "token": "***", "nome": "x" } }
+          "expected": {
+            "dados": { "token": "***", "nome": "x" }
+          }
         },
         {
           "name": "dentro de lista",
           "expression": "mascarar({usuarios:[{cpf:'111'},{cpf:'222'}]})",
-          "expected": { "usuarios": [{ "cpf": "***" }, { "cpf": "***" }] }
+          "expected": {
+            "usuarios": [
+              { "cpf": "***" },
+              { "cpf": "***" }
+            ]
+          }
         },
         {
           "name": "nome em maiusculas",
           "expression": "mascarar({Authorization:'Bearer x'})",
           "expected": { "Authorization": "***" }
         },
-        {
-          "name": "nao altera o original",
-          "expression": "(() => { const o = {senha:'123'}; mascarar(o); return o.senha })()",
-          "expected": "123"
-        },
+        { "name": "nao altera o original", "expression": "(() => { const o = {senha:'123'}; mascarar(o); return o.senha })()", "expected": "123" },
         {
           "name": "preserva tipos nao sensiveis",
           "expression": "mascarar({id:7, ativo:true, tags:['a','b']})",
-          "expected": { "id": 7, "ativo": true, "tags": ["a", "b"] }
+          "expected": {
+            "id": 7,
+            "ativo": true,
+            "tags": ["a", "b"]
+          }
         }
       ],
       "hints": [
@@ -199,6 +201,7 @@
         "Compare o nome do campo em minúsculas com a lista de sensíveis.",
         "Array também é object em JavaScript: trate a lista antes do objeto."
       ],
+      "topics": ["log", "segredos", "segurança"],
       "solution": "const SENSIVEIS = new Set(['senha', 'password', 'token', 'authorization', 'apikey', 'secret', 'cpf'])\n\nfunction mascarar(valor) {\n  if (Array.isArray(valor)) {\n    return valor.map((item) => mascarar(item))\n  }\n\n  if (valor === null || typeof valor !== 'object') {\n    return valor\n  }\n\n  const saida = {}\n  for (const [chave, conteudo] of Object.entries(valor)) {\n    saida[chave] = SENSIVEIS.has(chave.toLowerCase()) ? '***' : mascarar(conteudo)\n  }\n  return saida\n}\n",
       "solutionNotes": "Lista de campos sensíveis sempre fica incompleta. Em sistemas com dado crítico, o padrão inverso é mais seguro: registrar apenas os campos explicitamente permitidos."
     },
@@ -232,8 +235,6 @@
         "A coluna do ORDER BY vem depois, e a direção importa.",
         "Com a ordem certa, o banco encontra o grupo e já lê na ordem pedida, sem ordenar depois."
       ],
-      "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  empresa_id INTEGER NOT NULL,\n  status TEXT NOT NULL,\n  titulo TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO ticket (id, empresa_id, status, titulo, criado_em) VALUES\n  (1, 7, 'aberto',  'impressora',  '2026-03-01'),\n  (2, 7, 'fechado', 'vpn',         '2026-03-02'),\n  (3, 9, 'aberto',  'acesso',      '2026-03-03'),\n  (4, 7, 'aberto',  'notebook',    '2026-03-04');\n\n-- Ordem: primeiro as colunas comparadas por igualdade (empresa_id, status),\n-- que reduzem o conjunto; por último criado_em, que atende o ORDER BY.\n-- Assim o banco localiza o grupo e já lê na ordem final, sem passo de ordenação,\n-- e o LIMIT 50 interrompe a leitura logo no início.\nCREATE INDEX idx_ticket_empresa_status_criado\n  ON ticket (empresa_id, status, criado_em DESC);\n",
-      "solutionNotes": "Os testes rodam de verdade: eles leem o catálogo do SQLite e conferem as três colunas do índice **na ordem**. Inverter para (criado_em, empresa_id, status) cria um índice válido que o banco quase não usa nessa consulta — e os testes de posição pegam isso, o que nenhuma verificação por texto conseguiria.",
       "tests": [
         { "name": "o índice foi criado em ticket", "expression": "SELECT count(*) FROM pragma_index_list('ticket') WHERE origin = 'c'", "expected": 1 },
         {
@@ -262,7 +263,10 @@
           "expected": 0,
           "hidden": true
         }
-      ]
+      ],
+      "topics": ["índice", "performance", "sql"],
+      "solution": "-- cenário: não precisa mudar nada daqui até a linha em branco\nCREATE TABLE ticket (\n  id INTEGER PRIMARY KEY,\n  empresa_id INTEGER NOT NULL,\n  status TEXT NOT NULL,\n  titulo TEXT NOT NULL,\n  criado_em TEXT NOT NULL\n);\n\nINSERT INTO ticket (id, empresa_id, status, titulo, criado_em) VALUES\n  (1, 7, 'aberto',  'impressora',  '2026-03-01'),\n  (2, 7, 'fechado', 'vpn',         '2026-03-02'),\n  (3, 9, 'aberto',  'acesso',      '2026-03-03'),\n  (4, 7, 'aberto',  'notebook',    '2026-03-04');\n\n-- Ordem: primeiro as colunas comparadas por igualdade (empresa_id, status),\n-- que reduzem o conjunto; por último criado_em, que atende o ORDER BY.\n-- Assim o banco localiza o grupo e já lê na ordem final, sem passo de ordenação,\n-- e o LIMIT 50 interrompe a leitura logo no início.\nCREATE INDEX idx_ticket_empresa_status_criado\n  ON ticket (empresa_id, status, criado_em DESC);\n",
+      "solutionNotes": "Os testes rodam de verdade: eles leem o catálogo do SQLite e conferem as três colunas do índice **na ordem**. Inverter para (criado_em, empresa_id, status) cria um índice válido que o banco quase não usa nessa consulta — e os testes de posição pegam isso, o que nenhuma verificação por texto conseguiria."
     },
     {
       "id": "des-git-desfazer",
@@ -283,16 +287,32 @@
       "starter": "# escreva a sequência de comandos, com comentários\n",
       "language": "bash",
       "checks": [
-        { "name": "cria a branch a partir do estado atual", "type": "regex", "value": "git (switch -c|checkout -b|branch)\\s+feat/relatorio", "hint": "A branch nova precisa apontar para os commits atuais." },
-        { "name": "volta a main ao remoto", "type": "regex", "value": "reset[\\s\\S]*origin/main", "hint": "A main local precisa voltar ao estado de origin/main." },
+        {
+          "name": "cria a branch a partir do estado atual",
+          "type": "regex",
+          "value": "git (switch -c|checkout -b|branch)\\s+feat/relatorio",
+          "hint": "A branch nova precisa apontar para os commits atuais."
+        },
+        {
+          "name": "volta a main ao remoto",
+          "type": "regex",
+          "value": "reset[\\s\\S]*origin/main",
+          "hint": "A main local precisa voltar ao estado de origin/main."
+        },
         { "name": "explica os comandos", "type": "contains", "value": "#", "hint": "O enunciado pede comentários." },
-        { "name": "nao descarta trabalho na branch de feature", "type": "regex", "value": "^(?![\\s\\S]*reset --hard\\s+HEAD~3)[\\s\\S]*$", "hint": "reset --hard sobre os commits perderia o trabalho." }
+        {
+          "name": "nao descarta trabalho na branch de feature",
+          "type": "regex",
+          "value": "^(?![\\s\\S]*reset --hard\\s+HEAD~3)[\\s\\S]*$",
+          "hint": "reset --hard sobre os commits perderia o trabalho."
+        }
       ],
       "hints": [
         "Primeiro garanta que os commits existam em algum lugar seguro: crie a branch antes de mexer na main.",
         "Criar a branch a partir da main atual faz os três commits pertencerem às duas.",
         "Depois disso, a main pode voltar ao estado do remoto sem perder nada — os commits continuam na outra branch."
       ],
+      "topics": ["git"],
       "solution": "# 1. Cria a branch de feature apontando para o estado atual da main.\n#    Os três commits passam a existir também nesta branch.\ngit switch -c feat/relatorio\n\n# 2. Volta para a main.\ngit switch main\n\n# 3. Traz a referência atualizada do remoto.\ngit fetch origin\n\n# 4. Devolve a main local ao estado do remoto.\n#    É seguro porque os commits estão preservados em feat/relatorio.\ngit reset --hard origin/main\n\n# 5. Confere: a main está igual ao remoto e a feature tem os três commits.\ngit log --oneline -3 main\ngit log --oneline -3 feat/relatorio\n",
       "solutionNotes": "A ordem é o que torna a operação segura: criar a branch primeiro faz o reset --hard perder apenas a referência, nunca o trabalho."
     },
@@ -318,7 +338,11 @@
         {
           "name": "sem erros preserva tudo",
           "expression": "mesclarErros({nome:'Ana', cep:'01000'}, [])",
-          "expected": { "valores": { "nome": "Ana", "cep": "01000" }, "erros": {}, "primeiroCampoComErro": null }
+          "expected": {
+            "valores": { "nome": "Ana", "cep": "01000" },
+            "erros": {},
+            "primeiroCampoComErro": null
+          }
         },
         {
           "name": "preserva valores mesmo com erro",
@@ -351,6 +375,7 @@
         "Object.keys preserva a ordem de inserção para chaves de texto.",
         "Erro apontando para campo que não existe no formulário não pode virar foco."
       ],
+      "topics": ["formulário", "estados da tela"],
       "solution": "function mesclarErros(valores, erros) {\n  const mapa = {}\n  for (const erro of erros ?? []) {\n    if (erro?.campo) mapa[erro.campo] = erro.mensagem\n  }\n\n  const ordem = Object.keys(valores ?? {})\n  const primeiro = ordem.find((campo) => campo in mapa) ?? null\n\n  return {\n    valores: { ...valores },\n    erros: mapa,\n    primeiroCampoComErro: primeiro,\n  }\n}\n",
       "solutionNotes": "Mover o foco para o primeiro campo com erro, na ordem visual, é o que evita a pessoa procurar o problema numa tela longa."
     },
@@ -377,17 +402,29 @@
         {
           "name": "sucesso de primeira",
           "expression": "planejarTentativas([200], 3)",
-          "expected": { "tentativas": 1, "resultado": "ok", "esperas": [] }
+          "expected": {
+            "tentativas": 1,
+            "resultado": "ok",
+            "esperas": []
+          }
         },
         {
           "name": "erro permanente nao repete",
           "expression": "planejarTentativas([400, 200], 3)",
-          "expected": { "tentativas": 1, "resultado": "falha-permanente", "esperas": [] }
+          "expected": {
+            "tentativas": 1,
+            "resultado": "falha-permanente",
+            "esperas": []
+          }
         },
         {
           "name": "repete timeout e depois ok",
           "expression": "planejarTentativas(['timeout', 200], 3)",
-          "expected": { "tentativas": 2, "resultado": "ok", "esperas": [1000] }
+          "expected": {
+            "tentativas": 2,
+            "resultado": "ok",
+            "esperas": [1000]
+          }
         },
         {
           "name": "esperas crescem",
@@ -397,19 +434,20 @@
         {
           "name": "esgota o limite",
           "expression": "planejarTentativas([500, 500, 500], 3)",
-          "expected": { "tentativas": 3, "resultado": "esgotou", "esperas": [1000, 2000] }
+          "expected": {
+            "tentativas": 3,
+            "resultado": "esgotou",
+            "esperas": [1000, 2000]
+          }
         },
-        {
-          "name": "429 e repetido",
-          "expression": "planejarTentativas([429, 200], 3).resultado",
-          "expected": "ok"
-        }
+        { "name": "429 e repetido", "expression": "planejarTentativas([429, 200], 3).resultado", "expected": "ok" }
       ],
       "hints": [
         "Percorra a sequência de status até o limite de tentativas.",
         "A espera é registrada antes de cada nova tentativa, então há sempre uma espera a menos que o número de tentativas.",
         "2xx encerra com ok; 4xx que não é 429 encerra com falha-permanente."
       ],
+      "topics": ["retentativa", "integração"],
       "solution": "function planejarTentativas(statusSequencia, maxTentativas) {\n  const esperas = []\n  let tentativas = 0\n\n  for (let indice = 0; indice < maxTentativas; indice += 1) {\n    const status = statusSequencia[indice]\n    tentativas += 1\n\n    const transitorio = status === 'timeout' || status === 429 || (typeof status === 'number' && status >= 500)\n\n    if (!transitorio) {\n      const sucesso = typeof status === 'number' && status >= 200 && status < 300\n      return { tentativas, resultado: sucesso ? 'ok' : 'falha-permanente', esperas }\n    }\n\n    if (indice < maxTentativas - 1) {\n      esperas.push(1000 * 2 ** indice)\n    }\n  }\n\n  return { tentativas, resultado: 'esgotou', esperas }\n}\n",
       "solutionNotes": "Em produção, some um valor aleatório a cada espera. Sem isso, todos os clientes que falharam juntos voltam juntos, e o serviço recebe outra onda no mesmo instante."
     },
@@ -444,6 +482,7 @@
         "Atenção aos limites: 60 dias ainda é 'medio'; 'alto' é acima de 60.",
         "Escreva as condições na ordem exata do enunciado."
       ],
+      "topics": ["separação de responsabilidades", "refatoração", "testabilidade"],
       "solution": "function classificarRisco(diasAtraso, valor, clienteVip) {\n  if (clienteVip && diasAtraso <= 30) return 'baixo'\n  if (diasAtraso > 60) return 'alto'\n  if (diasAtraso > 30 || valor > 10000) return 'medio'\n  return 'baixo'\n}\n",
       "solutionNotes": "Com a regra isolada assim, a regra nova da próxima semana entra com um teste, e não com medo."
     },
@@ -469,39 +508,33 @@
         {
           "name": "lista vazia",
           "expression": "resumirMedicoes([])",
-          "expected": { "total": 0, "porEtapa": {}, "gargalo": null, "percentualDoGargalo": 0 }
+          "expected": {
+            "total": 0,
+            "porEtapa": {},
+            "gargalo": null,
+            "percentualDoGargalo": 0
+          }
         },
         {
           "name": "soma etapas repetidas",
           "expression": "resumirMedicoes([{etapa:'banco', ms:100},{etapa:'banco', ms:200},{etapa:'render', ms:50}]).porEtapa",
           "expected": { "banco": 300, "render": 50 }
         },
-        {
-          "name": "identifica o gargalo",
-          "expression": "resumirMedicoes([{etapa:'banco', ms:300},{etapa:'render', ms:50}]).gargalo",
-          "expected": "banco"
-        },
+        { "name": "identifica o gargalo", "expression": "resumirMedicoes([{etapa:'banco', ms:300},{etapa:'render', ms:50}]).gargalo", "expected": "banco" },
         {
           "name": "percentual do gargalo",
           "expression": "resumirMedicoes([{etapa:'banco', ms:300},{etapa:'render', ms:100}]).percentualDoGargalo",
           "expected": 75
         },
-        {
-          "name": "total correto",
-          "expression": "resumirMedicoes([{etapa:'a', ms:10},{etapa:'b', ms:15}]).total",
-          "expected": 25
-        },
-        {
-          "name": "ignora medicao invalida",
-          "expression": "resumirMedicoes([{etapa:'a', ms:'x'},{etapa:'b', ms:10}]).total",
-          "expected": 10
-        }
+        { "name": "total correto", "expression": "resumirMedicoes([{etapa:'a', ms:10},{etapa:'b', ms:15}]).total", "expected": 25 },
+        { "name": "ignora medicao invalida", "expression": "resumirMedicoes([{etapa:'a', ms:'x'},{etapa:'b', ms:10}]).total", "expected": 10 }
       ],
       "hints": [
         "Acumule num objeto por etapa enquanto soma o total.",
         "Depois do laço, percorra as somas para achar a maior.",
         "Cuidado com divisão por zero no cálculo do percentual."
       ],
+      "topics": ["otimização", "performance", "custo"],
       "solution": "function resumirMedicoes(medicoes) {\n  const porEtapa = {}\n  let total = 0\n\n  for (const medicao of medicoes ?? []) {\n    const ms = medicao?.ms\n    if (!Number.isFinite(ms)) continue\n    const etapa = medicao.etapa\n    porEtapa[etapa] = (porEtapa[etapa] ?? 0) + ms\n    total += ms\n  }\n\n  let gargalo = null\n  let maior = -1\n  for (const [etapa, soma] of Object.entries(porEtapa)) {\n    if (soma > maior) {\n      maior = soma\n      gargalo = etapa\n    }\n  }\n\n  return {\n    total,\n    porEtapa,\n    gargalo,\n    percentualDoGargalo: total === 0 ? 0 : Math.round((maior / total) * 100),\n  }\n}\n",
       "solutionNotes": "Saber que uma etapa consome 80% do tempo muda completamente onde vale investir. Esse número é o que transforma \"está lento\" em tarefa."
     }

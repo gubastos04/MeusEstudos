@@ -18,17 +18,43 @@
       "starter": "function paginar(itens, pagina, tamanho) {\n  const inicio = (pagina - 1) * tamanho\n  return itens.slice(inicio, inicio + tamanho + 1)\n}\n",
       "language": "javascript",
       "tests": [
-        { "name": "a primeira página tem o tamanho pedido", "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 1, 3)", "expected": [1, 2, 3] },
-        { "name": "a segunda página não repete o item anterior", "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 2, 3)", "expected": [4, 5, 6] },
-        { "name": "a última página pode ser menor", "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 3, 3)", "expected": [7] },
-        { "name": "página além do fim devolve vazio", "expression": "paginar([1, 2, 3], 9, 3)", "expected": [] },
-        { "name": "lista vazia", "expression": "paginar([], 1, 10)", "expected": [] },
-        { "name": "nenhum item é pulado", "expression": "[...paginar([1,2,3,4,5,6], 1, 2), ...paginar([1,2,3,4,5,6], 2, 2), ...paginar([1,2,3,4,5,6], 3, 2)]", "expected": [1, 2, 3, 4, 5, 6], "hidden": true }
+        {
+          "name": "a primeira página tem o tamanho pedido",
+          "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 1, 3)",
+          "expected": [1, 2, 3]
+        },
+        {
+          "name": "a segunda página não repete o item anterior",
+          "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 2, 3)",
+          "expected": [4, 5, 6]
+        },
+        {
+          "name": "a última página pode ser menor",
+          "expression": "paginar([1, 2, 3, 4, 5, 6, 7], 3, 3)",
+          "expected": [7]
+        },
+        {
+          "name": "página além do fim devolve vazio",
+          "expression": "paginar([1, 2, 3], 9, 3)",
+          "expected": []
+        },
+        {
+          "name": "lista vazia",
+          "expression": "paginar([], 1, 10)",
+          "expected": []
+        },
+        {
+          "name": "nenhum item é pulado",
+          "expression": "[...paginar([1,2,3,4,5,6], 1, 2), ...paginar([1,2,3,4,5,6], 2, 2), ...paginar([1,2,3,4,5,6], 3, 2)]",
+          "expected": [1, 2, 3, 4, 5, 6],
+          "hidden": true
+        }
       ],
       "hints": [
         "Reproduza antes: chame a página 1 e a página 2 com uma lista pequena e compare as duas saídas.",
         "`slice(inicio, fim)` não inclui o índice `fim`. Quantos itens o segundo argumento está pedindo?"
       ],
+      "topics": ["casos de borda", "investigação"],
       "solution": "function paginar(itens, pagina, tamanho) {\n  const inicio = (pagina - 1) * tamanho\n  // slice ja exclui o fim: somar 1 fazia a pagina ter tamanho + 1 item,\n  // e o excedente era o primeiro item da pagina seguinte.\n  return itens.slice(inicio, inicio + tamanho)\n}\n",
       "solutionNotes": "O `+ 1` vinha de confundir \"fim exclusivo\" com \"último índice\". O defeito não aparece na página 1 isolada — só quando duas páginas são comparadas, que é por que a reprodução precisa de duas chamadas."
     },
@@ -63,6 +89,7 @@
         "Número com casa decimal em binário quase nunca é exato. A comparação precisa de tolerância.",
         "A tolerância precisa valer nos dois sentidos — pense em valor absoluto."
       ],
+      "topics": ["casos de borda", "investigação"],
       "solution": "function totalBate(calculado, informado) {\n  // Decimal em binario quase nunca e exato: 0.1 + 0.2 da 0.30000000000000004.\n  // Comparar com tolerancia e o unico jeito de a conferencia nao acusar\n  // divergencia em valores que sao iguais na pratica.\n  return Math.abs(calculado - informado) <= 0.01\n}\n",
       "solutionNotes": "A tela mostrava os dois iguais porque formatava com duas casas. O defeito só é visível com a comparação crua — e é por isso que o passo 2 do método é observar o valor real, não o exibido. Em dinheiro, a solução definitiva é guardar centavos como inteiro."
     },
@@ -94,7 +121,11 @@
           "expression": "(() => { const original = [{ id: 1, criadoEm: '2026-01-01' }, { id: 2, criadoEm: '2026-03-01' }]; maisRecentes(original); return original.map((t) => t.id) })()",
           "expected": [1, 2]
         },
-        { "name": "lista vazia", "expression": "maisRecentes([])", "expected": [] },
+        {
+          "name": "lista vazia",
+          "expression": "maisRecentes([])",
+          "expected": []
+        },
         {
           "name": "um item só",
           "expression": "maisRecentes([{ id: 9, criadoEm: '2026-05-05' }]).map((t) => t.id)",
@@ -118,6 +149,7 @@
         "`sort` não devolve uma lista nova. Procure na documentação o que ele faz com o array original.",
         "Copiar antes de ordenar resolve, e o custo é desprezível para lista de tela."
       ],
+      "topics": ["funções", "investigação"],
       "solution": "function maisRecentes(tickets) {\n  // sort ordena NO LUGAR e devolve o mesmo array: quem chamou tem a ordem\n  // trocada debaixo dele. Copiar antes isola a funcao de quem a usa.\n  return [...tickets].sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1))\n}\n",
       "solutionNotes": "É um defeito de efeito colateral: a função parece de leitura e escreve. `toSorted()` resolve igual em ambientes recentes. O teste escondido que compara as referências é o que prova a correção, não só o sintoma."
     },
@@ -135,18 +167,44 @@
       "starter": "function ranking(valores) {\n  return [...valores].sort().reverse()\n}\n",
       "language": "javascript",
       "tests": [
-        { "name": "o caso relatado", "expression": "ranking([9, 100, 20])", "expected": [100, 20, 9] },
-        { "name": "um dígito só continua certo", "expression": "ranking([3, 1, 2])", "expected": [3, 2, 1] },
-        { "name": "lista vazia", "expression": "ranking([])", "expected": [] },
-        { "name": "com zero", "expression": "ranking([0, 5, 0, 10])", "expected": [10, 5, 0, 0] },
-        { "name": "com negativo", "expression": "ranking([-5, 3, -10])", "expected": [3, -5, -10] },
-        { "name": "vários dígitos misturados", "expression": "ranking([7, 1000, 85, 9])", "expected": [1000, 85, 9, 7], "hidden": true }
+        {
+          "name": "o caso relatado",
+          "expression": "ranking([9, 100, 20])",
+          "expected": [100, 20, 9]
+        },
+        {
+          "name": "um dígito só continua certo",
+          "expression": "ranking([3, 1, 2])",
+          "expected": [3, 2, 1]
+        },
+        {
+          "name": "lista vazia",
+          "expression": "ranking([])",
+          "expected": []
+        },
+        {
+          "name": "com zero",
+          "expression": "ranking([0, 5, 0, 10])",
+          "expected": [10, 5, 0, 0]
+        },
+        {
+          "name": "com negativo",
+          "expression": "ranking([-5, 3, -10])",
+          "expected": [3, -5, -10]
+        },
+        {
+          "name": "vários dígitos misturados",
+          "expression": "ranking([7, 1000, 85, 9])",
+          "expected": [1000, 85, 9, 7],
+          "hidden": true
+        }
       ],
       "hints": [
         "Rode `[9, 100, 20].sort()` sozinho e olhe o resultado. A causa aparece na hora.",
         "O `sort` sem argumento compara os valores como texto: '100' vem antes de '9' no alfabeto.",
         "A função de comparação de números cabe numa expressão."
       ],
+      "topics": ["ordenação", "investigação"],
       "solution": "function ranking(valores) {\n  // sort() sem comparador converte para texto: '100' < '9' alfabeticamente.\n  // Com numeros, o comparador e obrigatorio.\n  return [...valores].sort((a, b) => b - a)\n}\n",
       "solutionNotes": "Trocar `.sort().reverse()` por `.sort((a, b) => b - a)` resolve e também remove uma passada extra. O `reverse()` escondia o defeito em listas pequenas, porque com um dígito só a ordem alfabética coincide com a numérica."
     },
@@ -180,6 +238,7 @@
         "`||` cai no padrão para todo valor falsy, e zero, texto vazio e false são falsy.",
         "Existe um operador que só cai no padrão quando o valor é null ou undefined."
       ],
+      "topics": ["validação", "casos de borda"],
       "solution": "function normalizar(pedido) {\n  // || cai no padrao para TODO valor falsy, e zero e um valor informado.\n  // ?? so cai quando o valor e null ou undefined, que e o que \"ausente\" significa.\n  return {\n    quantidade: pedido.quantidade ?? 1,\n    observacao: pedido.observacao ?? 'sem observação',\n    urgente: pedido.urgente ?? false,\n  }\n}\n",
       "solutionNotes": "O defeito é invisível enquanto ninguém informa zero, texto vazio ou false — e por isso ele costuma viver meses em produção. A distinção que importa é entre \"não informado\" e \"informado como vazio\"."
     },
@@ -192,8 +251,15 @@
       "stack": ["javascript"],
       "context": "Gerar dois relatórios seguidos faz o segundo vir com o dobro de linhas: as dele mais as do anterior. Reiniciar o servidor resolve até o próximo relatório.",
       "objective": "Encontrar o estado que sobrevive entre chamadas e corrigir, mantendo a assinatura das funções.",
-      "constraints": ["As duas funções continuam exportadas e com a mesma assinatura.", "Chamar duas vezes com a mesma entrada devolve o mesmo resultado."],
-      "acceptance": ["Chamadas seguidas não acumulam", "O resultado da segunda chamada é igual ao da primeira", "Entrada vazia devolve lista vazia"],
+      "constraints": [
+        "As duas funções continuam exportadas e com a mesma assinatura.",
+        "Chamar duas vezes com a mesma entrada devolve o mesmo resultado."
+      ],
+      "acceptance": [
+        "Chamadas seguidas não acumulam",
+        "O resultado da segunda chamada é igual ao da primeira",
+        "Entrada vazia devolve lista vazia"
+      ],
       "starter": "const linhas = []\n\nfunction acrescentar(pedido) {\n  linhas.push(`${pedido.id};${pedido.total}`)\n}\n\nfunction gerarRelatorio(pedidos) {\n  for (const pedido of pedidos) acrescentar(pedido)\n  return linhas\n}\n",
       "language": "javascript",
       "tests": [
@@ -212,7 +278,11 @@
           "expression": "(() => { gerarRelatorio([{ id: 7, total: 70 }]); return gerarRelatorio([{ id: 8, total: 80 }]) })()",
           "expected": ["8;80"]
         },
-        { "name": "entrada vazia", "expression": "gerarRelatorio([])", "expected": [] },
+        {
+          "name": "entrada vazia",
+          "expression": "gerarRelatorio([])",
+          "expected": []
+        },
         {
           "name": "entrada vazia depois de uma chamada cheia",
           "expression": "(() => { gerarRelatorio([{ id: 1, total: 10 }]); return gerarRelatorio([]) })()",
@@ -225,6 +295,7 @@
         "Procure o que existe fora das funções. O que vive fora sobrevive entre chamadas.",
         "Se `acrescentar` precisa escrever em algum lugar, esse lugar pode chegar como argumento."
       ],
+      "topics": ["estado", "investigação"],
       "solution": "function acrescentar(linhas, pedido) {\n  linhas.push(`${pedido.id};${pedido.total}`)\n}\n\nfunction gerarRelatorio(pedidos) {\n  // O acumulador nasce e morre dentro da chamada: nada sobrevive para a proxima.\n  const linhas = []\n  for (const pedido of pedidos) acrescentar(linhas, pedido)\n  return linhas\n}\n",
       "solutionNotes": "Estado em escopo de módulo é a causa de quase todo defeito que \"some ao reiniciar\". Em servidor com várias instâncias ele fica pior: o resultado passa a depender de qual instância atendeu, e a reprodução local deixa de funcionar."
     },
@@ -267,6 +338,7 @@
         "A expressão tem a flag `g`. Procure o que `test` faz com `lastIndex` quando ela está ligada.",
         "A expressão não pode mudar — mas onde ela é criada, sim."
       ],
+      "topics": ["javascript", "investigação"],
       "solution": "const PADRAO = /[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/g\n\nfunction emailValido(email) {\n  // Com a flag g, `test` guarda onde parou em lastIndex e a proxima chamada\n  // comeca dali — por isso a mesma entrada alterna. Zerar antes de usar torna\n  // a funcao independente da chamada anterior.\n  PADRAO.lastIndex = 0\n  return PADRAO.test(String(email).toLowerCase())\n}\n",
       "solutionNotes": "Também resolve criar a expressão dentro da função, ou remover a flag `g` — que aqui não serve para nada, já que a pergunta é \"casa ou não\". O defeito é um estado escondido dentro de um objeto que parece constante, e é por isso que ele sobrevive tanto tempo: `PADRAO` está em maiúsculas e parece imutável."
     },
@@ -279,7 +351,10 @@
       "stack": ["javascript"],
       "context": "A tela abre um rascunho a partir do pedido salvo, para a pessoa editar e só então confirmar. Mas cancelar a edição não desfaz nada: o endereço do pedido original já foi alterado. Quem revisou o código achou a cópia e disse que estava certa.",
       "objective": "Entender por que a cópia não protege o original e corrigir, mantendo a assinatura.",
-      "constraints": ["A função continua recebendo o pedido e devolvendo o rascunho.", "O rascunho precisa ser editável sem afetar o original."],
+      "constraints": [
+        "A função continua recebendo o pedido e devolvendo o rascunho.",
+        "O rascunho precisa ser editável sem afetar o original."
+      ],
       "acceptance": [
         "Alterar campo simples do rascunho não muda o original",
         "Alterar campo aninhado do rascunho não muda o original",
@@ -326,6 +401,7 @@
         "O espalhamento copia um nível. O que está dentro continua sendo o mesmo objeto nos dois.",
         "Procure uma forma de copiar em profundidade — o navegador tem uma função pronta para isso."
       ],
+      "topics": ["javascript", "investigação"],
       "solution": "function abrirRascunho(pedido) {\n  // { ...pedido } copia UM nivel: endereco e itens continuam sendo os mesmos\n  // objetos nos dois lados, entao editar o rascunho edita o original.\n  return structuredClone(pedido)\n}\n",
       "solutionNotes": "`structuredClone` copia em profundidade e existe no navegador e no Node recentes. O defeito é difícil porque a cópia rasa funciona para o primeiro campo testado — e quem revisou olhou justamente esse. Os testes aqui vão de propósito dos dois níveis, nessa ordem."
     }

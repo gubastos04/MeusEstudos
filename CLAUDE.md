@@ -65,7 +65,7 @@ npm run setup            # instala, gera o client, cria o banco, sincroniza cont
 npm run dev              # servidor de desenvolvimento
 npm run build            # build de produção (roda prisma generate antes)
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest (216 testes; cria prisma/test-vitest.db do zero)
+npm test                 # vitest (219 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
@@ -147,7 +147,7 @@ provedor de deploy. Não existe variável separada para produção.
 
 O `provider` do datasource não aceita `env()`, então ele é trocado por
 comando. O repositório versiona `sqlite`, porque é o que faz `npm run dev` e os
-216 testes funcionarem logo depois de um `git clone`. O build de produção roda
+219 testes funcionarem logo depois de um `git clone`. O build de produção roda
 `npm run db:provider postgresql` antes do `next build`.
 
 Ao trocar o provider à mão, rode `npx prisma generate` depois: o client gerado
@@ -400,6 +400,23 @@ acima de 48 caracteres, que é o que estoura em 360px.
 `src/lib/next-step.ts`, na ordem da spec: conteúdo interrompido > demanda em
 andamento > projeto em andamento > exercício pendente > revisão > próximo
 conteúdo. O orçamento de tempo filtra por duração com folga de 5 minutos.
+
+**Demanda ou projeto sem avanço há mais de 10 dias vai para o fim da lista.**
+Eles têm prioridade 2 e 3, acima de exercício e revisão, e os projetos levam de
+9 a 23 horas — quem travava na etapa 6 de 11 recebia "continue o projeto" como
+única recomendação por semanas, e nada mais conseguia aparecer. Parar é legítimo
+(regra 4), então nada disso cobra nem marca em vermelho: o item continua na
+lista, com a data, e deixa de prender o topo.
+
+**A revisão aponta para prática quando ela existe.** Quando a avaliação marca um
+tópico a revisar, o sistema procura um desafio cujo campo `topics` contenha esse
+tópico e sugere o desafio em vez de mandar reler. A ligação mora no conteúdo, não
+num mapa dentro do código, e `content:validate` avisa quando um tópico de desafio
+não aparece em nenhuma avaliação — ele nunca seria oferecido.
+
+**O intervalo entre revisões do mesmo erro cresce:** 1, 3, 7 e 21 dias, por
+número de revisões já feitas (`prontoParaRevisar`). Antes havia 14 dias fixos num
+caminho e nenhum intervalo no outro.
 
 ## Convenções
 

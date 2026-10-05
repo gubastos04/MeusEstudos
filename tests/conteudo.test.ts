@@ -292,3 +292,32 @@ describe('a solução oficial resolve o próprio exercício', () => {
     expect(falhas).toEqual([])
   })
 })
+
+describe('revisão aponta para prática', () => {
+  /**
+   * A revisao oferece um desafio quando ele exercita o topico que a avaliacao
+   * apontou. Sem esta guarda, renomear topicos de um lado esvaziaria a ligacao
+   * em silencio e a revisao voltaria a ser releitura.
+   */
+  const topicosDeAvaliacao = new Set(
+    conteudo.modules.flatMap((modulo) =>
+      modulo.assessments.flatMap((avaliacao) => avaliacao.questions.flatMap((questao) => questao.topics)),
+    ),
+  )
+  const topicosDeDesafio = new Set(conteudo.challenges.flatMap((desafio) => desafio.topics))
+
+  it('todo desafio declara pelo menos um tópico', () => {
+    const semTopico = conteudo.challenges.filter((desafio) => desafio.topics.length === 0)
+    expect(semTopico.map((d) => d.id)).toEqual([])
+  })
+
+  it('os tópicos dos desafios existem no vocabulário das avaliações', () => {
+    const orfaos = [...topicosDeDesafio].filter((topico) => !topicosDeAvaliacao.has(topico))
+    expect(orfaos).toEqual([])
+  })
+
+  it('uma parte relevante dos tópicos de avaliação tem desafio', () => {
+    const cobertos = [...topicosDeAvaliacao].filter((topico) => topicosDeDesafio.has(topico))
+    expect(cobertos.length).toBeGreaterThan(15)
+  })
+})

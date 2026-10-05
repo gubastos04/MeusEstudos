@@ -91,6 +91,21 @@ function main() {
     }
   }
 
+  // Topico de desafio que nenhuma avaliacao usa nunca sera oferecido na
+  // revisao: e peso morto, e quase sempre um erro de digitacao.
+  const topicosDeAvaliacao = new Set(
+    content.modules.flatMap((modulo) =>
+      modulo.assessments.flatMap((avaliacao) => avaliacao.questions.flatMap((questao) => questao.topics)),
+    ),
+  )
+  for (const challenge of content.challenges) {
+    for (const topic of challenge.topics) {
+      if (!topicosDeAvaliacao.has(topic)) {
+        warnings.push(`${challenge.id}: tópico "${topic}" não aparece em nenhuma avaliação — a revisão nunca vai oferecê-lo.`)
+      }
+    }
+  }
+
   // Projeto citado por demanda de manutencao precisa existir: a tela promete
   // "o sistema que voce construiu" e um id errado deixaria a promessa sem nada.
   const projectIds = new Set(content.projects.map((project) => project.id))

@@ -453,6 +453,16 @@ export const challengeSchema = z.object({
   tests: z.array(testCaseSchema).max(12).default([]),
   checks: z.array(structuralCheckSchema).max(12).default([]),
   hints: z.array(z.string().min(5).max(400)).max(4).default([]),
+  /**
+   * Topicos que este desafio exercita, no mesmo vocabulario dos `topics` das
+   * questoes de avaliacao.
+   *
+   * Serve para a revisao oferecer PRATICA em vez de releitura: quando a
+   * avaliacao aponta um topico a revisar, o sistema procura um desafio que o
+   * exercite. A ligacao mora no conteudo, nao num mapa dentro do codigo, para
+   * nao envelhecer separada dele.
+   */
+  topics: z.array(z.string().min(2).max(60)).max(5).default([]),
   solution: z.string().max(4000).optional(),
   solutionNotes: z.string().max(1200).optional(),
 })
