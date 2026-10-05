@@ -706,6 +706,74 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-dados-pratica",
+      "title": "Processamento de dados com Python — prática",
+      "format": "pratica",
+      "summary": "Limpar sem esconder: as linhas válidas de um lado, e o registro do que foi descartado e por quê.",
+      "estimatedMinutes": 20,
+      "topics": ["dado sujo", "pipeline"],
+      "afterItemId": "dados-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-dados-pratica-limpar-01",
+          "kind": "pratica",
+          "prompt": "Pipeline que descarta linha em silêncio produz relatório confiante e errado. Escreva `limpar(linhas)` devolvendo a tupla `(validas, descartes)`.\n\nUma linha é válida quando `valor` é número maior que zero e `data` tem o formato `AAAA-MM-DD` (10 caracteres, hífen na posição 5 e 8). Para cada linha inválida, acrescente a `descartes` o dicionário `{\"indice\": <posição na entrada>, \"motivo\": <\"valor inválido\" ou \"data inválida\">}`. Valor é verificado antes da data.\n\nAs linhas válidas saem na ordem original, sem alteração.",
+          "language": "python",
+          "starter": "LINHAS = [\n    {\"valor\": 100, \"data\": \"2026-03-10\"},\n    {\"valor\": -5, \"data\": \"2026-03-11\"},\n    {\"valor\": 20, \"data\": \"10/03/2026\"},\n    {\"valor\": \"muito\", \"data\": \"2026-03-12\"},\n    {\"valor\": 7, \"data\": \"2026-03-13\"},\n]\n\n\ndef limpar(linhas):\n    # escreva aqui\n    pass\n",
+          "tests": [
+            { "name": "duas linhas válidas", "expression": "len(limpar(LINHAS)[0])", "expected": 2 },
+            { "name": "três descartes", "expression": "len(limpar(LINHAS)[1])", "expected": 3 },
+            {
+              "name": "valor negativo é descartado",
+              "expression": "limpar(LINHAS)[1][0]",
+              "expected": { "indice": 1, "motivo": "valor inválido" }
+            },
+            { "name": "data em outro formato é descartada", "expression": "limpar(LINHAS)[1][1][\"motivo\"]", "expected": "data inválida" },
+            { "name": "valor em texto é descartado", "expression": "limpar(LINHAS)[1][2][\"motivo\"]", "expected": "valor inválido" },
+            {
+              "name": "a ordem das válidas é preservada",
+              "expression": "[l[\"valor\"] for l in limpar(LINHAS)[0]]",
+              "expected": [100, 7]
+            },
+            {
+              "name": "entrada vazia",
+              "expression": "limpar([])",
+              "expected": [
+                [],
+                []
+              ]
+            },
+            {
+              "name": "valor zero não passa",
+              "expression": "limpar([{\"valor\": 0, \"data\": \"2026-03-10\"}])[1][0][\"motivo\"]",
+              "expected": "valor inválido",
+              "hidden": true
+            },
+            {
+              "name": "valor é verificado antes da data",
+              "expression": "limpar([{\"valor\": -1, \"data\": \"errado\"}])[1][0][\"motivo\"]",
+              "expected": "valor inválido",
+              "hidden": true
+            },
+            { "name": "nada é descartado em silêncio", "expression": "len(limpar(LINHAS)[0]) + len(limpar(LINHAS)[1])", "expected": 5, "hidden": true }
+          ],
+          "hints": [
+            "`isinstance(valor, bool)` é True para True e False: descarte booleano antes de aceitar como número.",
+            "Para a data, o enunciado dá a verificação por posição — não precisa de biblioteca de datas.",
+            "O último teste escondido confere a soma: toda linha que entra sai em algum dos dois lados."
+          ],
+          "criteria": [
+            "Toda linha de entrada aparece em válidas ou em descartes",
+            "Cada descarte diz o índice e o motivo",
+            "Valor é verificado antes da data",
+            "A ordem original das válidas é preservada"
+          ],
+          "topics": ["dado sujo", "pipeline"],
+          "solution": "LINHAS = [\n    {\"valor\": 100, \"data\": \"2026-03-10\"},\n    {\"valor\": -5, \"data\": \"2026-03-11\"},\n    {\"valor\": 20, \"data\": \"10/03/2026\"},\n    {\"valor\": \"muito\", \"data\": \"2026-03-12\"},\n    {\"valor\": 7, \"data\": \"2026-03-13\"},\n]\n\n\ndef _valor_valido(valor):\n    # bool e subclasse de int: True passaria como numero sem este descarte.\n    if isinstance(valor, bool) or not isinstance(valor, (int, float)):\n        return False\n    return valor > 0\n\n\ndef _data_valida(data):\n    if not isinstance(data, str) or len(data) != 10:\n        return False\n    return data[4] == \"-\" and data[7] == \"-\"\n\n\ndef limpar(linhas):\n    validas = []\n    descartes = []\n\n    for indice, linha in enumerate(linhas):\n        if not _valor_valido(linha.get(\"valor\")):\n            descartes.append({\"indice\": indice, \"motivo\": \"valor inválido\"})\n            continue\n        if not _data_valida(linha.get(\"data\")):\n            descartes.append({\"indice\": indice, \"motivo\": \"data inválida\"})\n            continue\n        validas.append(linha)\n\n    # Nada sai em silencio: o que entra aparece num dos dois lados.\n    return validas, descartes\n"
+        }
+      ]
     }
   ]
 }

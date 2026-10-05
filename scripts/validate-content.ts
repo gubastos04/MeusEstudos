@@ -91,6 +91,15 @@ function main() {
     }
   }
 
+  // Projeto citado por demanda de manutencao precisa existir: a tela promete
+  // "o sistema que voce construiu" e um id errado deixaria a promessa sem nada.
+  const projectIds = new Set(content.projects.map((project) => project.id))
+  for (const demand of content.demands) {
+    if (demand.continuesProjectId && !projectIds.has(demand.continuesProjectId)) {
+      errors.push(`${demand.id}: continuesProjectId "${demand.continuesProjectId}" não existe em content/projetos.`)
+    }
+  }
+
   const totals = {
     módulos: content.modules.length,
     itens: content.modules.reduce((sum, m) => sum + m.items.length, 0),

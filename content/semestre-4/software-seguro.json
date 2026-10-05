@@ -699,6 +699,50 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-seg2-pratica",
+      "title": "Desenvolvimento de software seguro — prática",
+      "format": "pratica",
+      "summary": "Autorização por papel numa tabela de permissões, em vez de if espalhado pelo código.",
+      "estimatedMinutes": 18,
+      "topics": ["autorização", "menor privilégio"],
+      "afterItemId": "seg2-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-seg2-pratica-permissao-01",
+          "kind": "pratica",
+          "prompt": "Autorização escrita como `if usuario.papel == \"suporte\"` espalhado por vinte arquivos é impossível de auditar: ninguém consegue responder \"o que o papel X pode fazer?\" sem ler tudo.\n\nEscreva `pode(usuario, acao)` decidindo a partir de uma tabela de permissões que você também declara. Os papéis são:\n\n- `cliente`: `abrir_ticket`, `ver_proprio_ticket`\n- `suporte`: tudo de cliente, mais `ver_todos_tickets` e `fechar_ticket`\n- `admin`: tudo de suporte, mais `gerenciar_usuarios`\n\nPapel ausente ou desconhecido não pode nada. Ação desconhecida também é negada — a decisão padrão é não.",
+          "language": "python",
+          "starter": "ana = {\"id\": \"ana\", \"papel\": \"cliente\"}\ncarla = {\"id\": \"carla\", \"papel\": \"suporte\"}\nchefe = {\"id\": \"chefe\", \"papel\": \"admin\"}\nestranho = {\"id\": \"x\", \"papel\": \"diretor\"}\nsem_papel = {\"id\": \"y\"}\n\n\ndef pode(usuario, acao):\n    # escreva aqui\n    pass\n",
+          "tests": [
+            { "name": "cliente abre ticket", "expression": "pode(ana, \"abrir_ticket\")", "expected": true },
+            { "name": "cliente não vê todos", "expression": "pode(ana, \"ver_todos_tickets\")", "expected": false },
+            { "name": "suporte vê todos", "expression": "pode(carla, \"ver_todos_tickets\")", "expected": true },
+            { "name": "suporte herda o que cliente pode", "expression": "pode(carla, \"abrir_ticket\")", "expected": true },
+            { "name": "suporte não gerencia usuários", "expression": "pode(carla, \"gerenciar_usuarios\")", "expected": false },
+            { "name": "admin gerencia usuários", "expression": "pode(chefe, \"gerenciar_usuarios\")", "expected": true },
+            { "name": "admin herda tudo de suporte", "expression": "pode(chefe, \"fechar_ticket\")", "expected": true },
+            { "name": "papel desconhecido não pode nada", "expression": "pode(estranho, \"abrir_ticket\")", "expected": false },
+            { "name": "papel ausente não pode nada", "expression": "pode(sem_papel, \"abrir_ticket\")", "expected": false, "hidden": true },
+            { "name": "ação desconhecida é negada", "expression": "pode(chefe, \"desligar_servidor\")", "expected": false, "hidden": true },
+            { "name": "cliente não fecha ticket", "expression": "pode(ana, \"fechar_ticket\")", "expected": false, "hidden": true }
+          ],
+          "hints": [
+            "Uma estrutura de dados por papel responde \"o que este papel pode fazer?\" numa olhada.",
+            "\"Tudo de cliente, mais…\" dá para escrever reusando o conjunto do papel anterior, sem repetir a lista.",
+            "O padrão é negar: use consulta que devolve conjunto vazio quando o papel não existe."
+          ],
+          "criteria": [
+            "A decisão vem de uma tabela, não de ifs por papel",
+            "A herança entre papéis não repete listas de ação",
+            "Papel ausente ou desconhecido não recebe permissão",
+            "Ação desconhecida é negada"
+          ],
+          "topics": ["autorização", "menor privilégio"],
+          "solution": "ana = {\"id\": \"ana\", \"papel\": \"cliente\"}\ncarla = {\"id\": \"carla\", \"papel\": \"suporte\"}\nchefe = {\"id\": \"chefe\", \"papel\": \"admin\"}\nestranho = {\"id\": \"x\", \"papel\": \"diretor\"}\nsem_papel = {\"id\": \"y\"}\n\n# A tabela responde \"o que este papel pode fazer?\" numa olhada,\n# e acrescentar um papel e mudar dado, nao codigo.\nCLIENTE = {\"abrir_ticket\", \"ver_proprio_ticket\"}\nSUPORTE = CLIENTE | {\"ver_todos_tickets\", \"fechar_ticket\"}\nADMIN = SUPORTE | {\"gerenciar_usuarios\"}\n\nPERMISSOES = {\"cliente\": CLIENTE, \"suporte\": SUPORTE, \"admin\": ADMIN}\n\n\ndef pode(usuario, acao):\n    # Padrao negar: papel ausente ou desconhecido cai no conjunto vazio.\n    return acao in PERMISSOES.get(usuario.get(\"papel\"), set())\n"
+        }
+      ]
     }
   ]
 }

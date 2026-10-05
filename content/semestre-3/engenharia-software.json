@@ -512,6 +512,61 @@
           "topics": ["git"]
         }
       ]
+    },
+    {
+      "id": "aval-eng-pratica",
+      "title": "Engenharia de software — prática",
+      "format": "pratica",
+      "summary": "Separar a regra do que formata, mantendo verde o contrato que já existe.",
+      "estimatedMinutes": 20,
+      "topics": ["refatoração", "separação de responsabilidades"],
+      "afterItemId": "eng-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-eng-pratica-refatorar-01",
+          "kind": "pratica",
+          "prompt": "A função abaixo faz três coisas: conhece o formato que vem do banco, decide a regra do cupom e monta o texto da tela. Vai entrar uma regra nova de cupom, e ninguém consegue testar a regra sem passar pelo texto.\n\nExtraia `calcularTotal(linhas, cupom)`, que devolve **o número** do total, e reescreva `resumoDoCarrinho` usando ela. O texto de saída de `resumoDoCarrinho` não pode mudar: já existe tela dependendo dele, e refatorar é melhorar a forma sem mudar o comportamento.",
+          "language": "javascript",
+          "starter": "// Faz tudo: conhece o formato do banco, decide a regra e formata a saída.\nfunction resumoDoCarrinho(linhas, cupom) {\n  let total = 0\n  for (const linha of linhas) {\n    total += linha.preco_unitario * linha.qtd\n  }\n  if (cupom === 'PRIMEIRA') total = total * 0.9\n  return 'Total: R$ ' + total.toFixed(2)\n}\n",
+          "tests": [
+            { "name": "o texto existente não mudou", "expression": "resumoDoCarrinho([{ preco_unitario: 10, qtd: 2 }], null)", "expected": "Total: R$ 20.00" },
+            {
+              "name": "o cupom continua valendo no texto",
+              "expression": "resumoDoCarrinho([{ preco_unitario: 10, qtd: 2 }], 'PRIMEIRA')",
+              "expected": "Total: R$ 18.00"
+            },
+            { "name": "carrinho vazio mantém o formato", "expression": "resumoDoCarrinho([], null)", "expected": "Total: R$ 0.00" },
+            { "name": "a regra ficou testável sozinha", "expression": "calcularTotal([{ preco_unitario: 10, qtd: 2 }], 'PRIMEIRA')", "expected": 18 },
+            { "name": "a regra devolve número, não texto", "expression": "typeof calcularTotal([], null)", "expected": "number" },
+            { "name": "carrinho vazio soma zero", "expression": "calcularTotal([], 'PRIMEIRA')", "expected": 0 },
+            {
+              "name": "soma de várias linhas",
+              "expression": "calcularTotal([{ preco_unitario: 5, qtd: 3 }, { preco_unitario: 2, qtd: 1 }], null)",
+              "expected": 17,
+              "hidden": true
+            },
+            {
+              "name": "cupom desconhecido não desconta",
+              "expression": "calcularTotal([{ preco_unitario: 10, qtd: 1 }], 'INEXISTENTE')",
+              "expected": 10,
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Comece movendo o cálculo para a função nova, sem mudar nada do que ele faz.",
+            "Depois faça `resumoDoCarrinho` chamar a função nova e só formatar o resultado.",
+            "Os três primeiros testes são o contrato que já existe: eles precisam continuar passando do começo ao fim."
+          ],
+          "criteria": [
+            "O texto de resumoDoCarrinho é idêntico ao de antes",
+            "calcularTotal devolve número e não formata nada",
+            "A regra do cupom vive em um lugar só",
+            "Carrinho vazio funciona nos dois caminhos"
+          ],
+          "topics": ["refatoração", "separação de responsabilidades"],
+          "solution": "// A regra, testável sem passar pelo texto.\nfunction calcularTotal(linhas, cupom) {\n  const soma = linhas.reduce((total, linha) => total + linha.preco_unitario * linha.qtd, 0)\n  return cupom === 'PRIMEIRA' ? soma * 0.9 : soma\n}\n\n// Só formata. O texto é o mesmo de antes, porque é contrato de tela.\nfunction resumoDoCarrinho(linhas, cupom) {\n  return 'Total: R$ ' + calcularTotal(linhas, cupom).toFixed(2)\n}\n"
+        }
+      ]
     }
   ]
 }

@@ -712,6 +712,52 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-ed-pratica",
+      "title": "Estrutura de dados — prática",
+      "format": "pratica",
+      "summary": "Encontrar a primeira repetição numa passada, escolhendo a estrutura pelo acesso que ela precisa ser rápido.",
+      "estimatedMinutes": 12,
+      "topics": ["escolha da estrutura", "custo"],
+      "afterItemId": "ed-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-ed-pratica-duplicado-01",
+          "kind": "pratica",
+          "prompt": "A importação recebe uma lista de códigos e precisa parar no primeiro que já tinha aparecido. Escreva `primeiroDuplicado(codigos)`, que devolve o primeiro código repetido na ordem em que a repetição acontece, ou `null` quando não há repetição.\n\nA pergunta que escolhe a estrutura aqui é \"já vi este antes?\". Resolva em uma passada pela lista.",
+          "language": "javascript",
+          "starter": "function primeiroDuplicado(codigos) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "lista vazia", "expression": "primeiroDuplicado([])", "expected": null },
+            { "name": "sem repetição", "expression": "primeiroDuplicado(['a', 'b', 'c'])", "expected": null },
+            { "name": "repetição no fim", "expression": "primeiroDuplicado(['a', 'b', 'a'])", "expected": "a" },
+            { "name": "devolve a primeira repetição, não o primeiro item", "expression": "primeiroDuplicado(['a', 'b', 'c', 'b', 'a'])", "expected": "b" },
+            { "name": "repetição imediata", "expression": "primeiroDuplicado(['x', 'x'])", "expected": "x" },
+            { "name": "um item só", "expression": "primeiroDuplicado(['unico'])", "expected": null },
+            { "name": "funciona com números", "expression": "primeiroDuplicado([3, 1, 4, 1, 5])", "expected": 1, "hidden": true },
+            {
+              "name": "lista grande ainda responde",
+              "expression": "primeiroDuplicado([...Array.from({ length: 50000 }, (_, i) => i), 7])",
+              "expected": 7,
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "A pergunta repetida é \"já vi este?\". Qual estrutura responde isso sem percorrer o que já passou?",
+            "Percorra uma vez, guardando o que já viu, e devolva no primeiro reencontro.",
+            "O último teste tem 50 mil itens: uma busca dentro do laço faria bilhões de comparações."
+          ],
+          "criteria": [
+            "Lista vazia e lista sem repetição devolvem null",
+            "Devolve o código no momento em que ele repete",
+            "Uma única passada pela lista",
+            "Lista grande responde no tempo do exercício"
+          ],
+          "topics": ["escolha da estrutura", "custo"],
+          "solution": "function primeiroDuplicado(codigos) {\n  // Set responde \"já vi este?\" em tempo constante; com includes seria O(n²).\n  const vistos = new Set()\n\n  for (const codigo of codigos) {\n    if (vistos.has(codigo)) return codigo\n    vistos.add(codigo)\n  }\n\n  return null\n}\n"
+        }
+      ]
     }
   ]
 }

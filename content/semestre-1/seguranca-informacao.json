@@ -4,7 +4,7 @@
   "order": 5,
   "title": "Segurança da informação",
   "summary": "Senha, sessão, permissão e as falhas que aparecem em code review de verdade: injeção, XSS, CSRF e segredo vazado.",
-  "outcome": "Você consegue guardar senha corretamente, proteger rotas no servidor, reconhecer as falhas do OWASP Top 10 em código e explicar por que validação no frontend não é segurança.",
+  "outcome": "Você consegue guardar senha corretamente, proteger rotas no servidor, reconhecer em código os quatro padrões de falha mais frequentes — injeção, XSS, CSRF e segredo exposto e explicar por que validação no frontend não é segurança.",
   "tags": ["seguranca", "backend"],
   "stack": ["python", "javascript", "sql"],
   "items": [
@@ -173,25 +173,48 @@
         }
       ],
       "exercise": {
-        "id": "ex-seg-idor-01",
-        "title": "Fechar o IDOR",
-        "kind": "structural",
-        "language": "python",
-        "estimatedMinutes": 8,
-        "prompt": "Corrija este endpoint para que um usuário não consiga ler o ticket de outro. O usuário autenticado está em `usuario`. Use 404 para recurso que não é dele.\n\ndef obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n    return ticket",
-        "starter": "def obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n    return ticket\n",
-        "checks": [
-          { "name": "trata ticket inexistente", "type": "regex", "value": "is None|not ticket", "hint": "O que acontece quando o id não existe?" },
-          { "name": "compara o dono com o usuario da sessao", "type": "regex", "value": "usuario\\.id|usuario_id", "hint": "É preciso comparar o dono do ticket com quem está na sessão." },
-          { "name": "responde 404", "type": "contains", "value": "404", "hint": "O enunciado pede 404 para recurso de outra pessoa." },
-          { "name": "nao usa parametro do cliente como dono", "type": "notContains", "value": "request.args", "hint": "O usuário vem da sessão, não do parâmetro." }
-        ],
-        "hints": [
-          "Duas verificações: existe, e é do usuário atual.",
-          "As duas devolvem 404, de propósito: não revelar a existência do recurso."
-        ],
-        "solution": "def obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n\n    if ticket is None or ticket.usuario_id != usuario.id:\n        # mesma resposta para \"não existe\" e \"não é seu\": não revela a existência\n        raise HTTPException(status_code=404, detail=\"ticket não encontrado\")\n\n    return ticket\n"
-      },
+                    "id": "ex-seg-idor-01",
+                    "title": "Fechar o IDOR",
+                    "kind": "code",
+                    "language": "python",
+                    "estimatedMinutes": 8,
+                    "prompt": "Corrija `obter_ticket` para que uma pessoa não consiga ler o ticket de outra. O usuário autenticado chega em `usuario`; o dono do ticket está em `ticket.usuario_id`. Levante `HTTPException` com status 404 tanto para ticket inexistente quanto para ticket de outra pessoa — a mesma resposta nos dois casos, porque 403 contaria que o ticket existe.",
+                    "starter": "# --- cenario do exercicio: nao precisa mudar nada aqui ---\nclass HTTPException(Exception):\n    def __init__(self, status_code, detail=\"\"):\n        self.status_code = status_code\n        self.detail = detail\n        super().__init__(detail)\n\n\nclass Ticket:\n    def __init__(self, id, usuario_id, titulo):\n        self.id = id\n        self.usuario_id = usuario_id\n        self.titulo = titulo\n\n\nclass Usuario:\n    def __init__(self, id):\n        self.id = id\n\n\nclass Repositorio:\n    def __init__(self, tickets):\n        self._tickets = {t.id: t for t in tickets}\n\n    def buscar(self, ticket_id):\n        return self._tickets.get(ticket_id)\n\n\nrepo = Repositorio([Ticket(1, \"ana\", \"impressora sem toner\"), Ticket(2, \"bruno\", \"vpn caiu\")])\nana = Usuario(\"ana\")\nbruno = Usuario(\"bruno\")\n\n\ndef status_ao_chamar(ticket_id, usuario):\n    \"\"\"Status da HTTPException levantada, ou None se nao levantou.\"\"\"\n    try:\n        obter_ticket(ticket_id, usuario)\n        return None\n    except HTTPException as erro:\n        return erro.status_code\n\n\n# --- daqui para baixo e com voce ---\ndef obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n    return ticket\n",
+                    "tests": [
+                      { "name": "o dono lê o próprio ticket", "expression": "obter_ticket(1, ana).titulo", "expected": "impressora sem toner" },
+                      { "name": "ticket de outra pessoa é recusado", "expression": "obter_ticket(2, ana)", "expected": null, "expectThrows": true },
+                      { "name": "ticket inexistente é recusado", "expression": "obter_ticket(99, ana)", "expected": null, "expectThrows": true },
+                      { "name": "a recusa é 404, não 403", "expression": "status_ao_chamar(2, ana)", "expected": 404 },
+                      { "name": "inexistente responde o mesmo 404", "expression": "status_ao_chamar(99, ana)", "expected": 404, "hidden": true },
+                      {
+                        "name": "o outro dono continua acessando o dele",
+                        "expression": "obter_ticket(2, bruno).titulo",
+                        "expected": "vpn caiu",
+                        "hidden": true
+                      }
+                    ],
+                    "checks": [
+                      {
+                        "name": "o usuário vem da sessão, não do parâmetro da requisição",
+                        "type": "notContains",
+                        "value": "request.args",
+                        "hint": "Identificador de usuário enviado pelo cliente não autoriza nada."
+                      },
+                      {
+                        "name": "a mensagem não revela que o ticket existe",
+                        "type": "notContains",
+                        "value": "permissão",
+                        "hint": "Dizer \"sem permissão\" conta que o recurso existe. A mensagem precisa ser a mesma nos dois casos."
+                      }
+                    ],
+                    "hints": [
+                      "São duas condições de recusa, e as duas levam à mesma resposta.",
+                      "`repo.buscar` devolve None quando o id não existe.",
+                      "Compare o dono do ticket com o id de quem está na sessão."
+                    ],
+                    "solution": "# --- cenario do exercicio: nao precisa mudar nada aqui ---\nclass HTTPException(Exception):\n    def __init__(self, status_code, detail=\"\"):\n        self.status_code = status_code\n        self.detail = detail\n        super().__init__(detail)\n\n\nclass Ticket:\n    def __init__(self, id, usuario_id, titulo):\n        self.id = id\n        self.usuario_id = usuario_id\n        self.titulo = titulo\n\n\nclass Usuario:\n    def __init__(self, id):\n        self.id = id\n\n\nclass Repositorio:\n    def __init__(self, tickets):\n        self._tickets = {t.id: t for t in tickets}\n\n    def buscar(self, ticket_id):\n        return self._tickets.get(ticket_id)\n\n\nrepo = Repositorio([Ticket(1, \"ana\", \"impressora sem toner\"), Ticket(2, \"bruno\", \"vpn caiu\")])\nana = Usuario(\"ana\")\nbruno = Usuario(\"bruno\")\n\n\ndef status_ao_chamar(ticket_id, usuario):\n    \"\"\"Status da HTTPException levantada, ou None se nao levantou.\"\"\"\n    try:\n        obter_ticket(ticket_id, usuario)\n        return None\n    except HTTPException as erro:\n        return erro.status_code\n\n\n# --- daqui para baixo e com voce ---\ndef obter_ticket(ticket_id, usuario):\n    ticket = repo.buscar(ticket_id)\n\n    # Mesma resposta para \"não existe\" e \"não é seu\": 403 revelaria a existência.\n    if ticket is None or ticket.usuario_id != usuario.id:\n        raise HTTPException(status_code=404, detail=\"ticket não encontrado\")\n\n    return ticket\n",
+                    "solutionNotes": "Os testes rodam de verdade: o caso do dono, o de outra pessoa, o inexistente e o status dos dois últimos. As duas verificações restantes leem o código, porque \"o usuário vem da sessão\" e \"a mensagem não revela existência\" não aparecem no valor de retorno."
+                  },
       "glossary": ["sessao", "autorizacao", "cookie", "status-code", "middleware"]
     },
     {
@@ -411,6 +434,76 @@
           "answerIndex": 1,
           "explanation": "Esconder o botão é boa experiência. Quem quiser excluir chama o endpoint direto. A decisão de permitir tem de acontecer no servidor.",
           "topics": ["autorização"]
+        }
+      ]
+    },
+    {
+      "id": "aval-seg-pratica",
+      "title": "Segurança da informação — prática",
+      "format": "pratica",
+      "summary": "Filtrar por dono no servidor, com o papel vindo da sessão e nada vindo do cliente.",
+      "estimatedMinutes": 15,
+      "topics": ["autorização", "sessão"],
+      "afterItemId": "seg-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-seg-pratica-visiveis-01",
+          "kind": "pratica",
+          "prompt": "Escreva `tickets_visiveis(usuario, tickets)`, que devolve a lista de tickets que essa pessoa pode ver, na ordem original.\n\nQuem tem `papel == \"suporte\"` vê todos. Qualquer outra pessoa vê apenas os tickets em que `ticket[\"usuario_id\"]` é igual ao `usuario[\"id\"]`. Papel ausente ou desconhecido não ganha privilégio nenhum — o padrão é ver só o que é seu.\n\nO filtro acontece aqui, no servidor. Esconder na tela não é autorização.",
+          "language": "python",
+          "starter": "TICKETS = [\n    {\"id\": 1, \"usuario_id\": \"ana\", \"titulo\": \"impressora\"},\n    {\"id\": 2, \"usuario_id\": \"bruno\", \"titulo\": \"vpn\"},\n    {\"id\": 3, \"usuario_id\": \"ana\", \"titulo\": \"acesso\"},\n]\n\nana = {\"id\": \"ana\", \"papel\": \"cliente\"}\nbruno = {\"id\": \"bruno\", \"papel\": \"cliente\"}\nsuporte = {\"id\": \"carla\", \"papel\": \"suporte\"}\nsem_papel = {\"id\": \"ana\"}\n\n\ndef tickets_visiveis(usuario, tickets):\n    # escreva aqui\n    pass\n",
+          "tests": [
+            {
+              "name": "cliente vê só os seus",
+              "expression": "[t[\"id\"] for t in tickets_visiveis(ana, TICKETS)]",
+              "expected": [1, 3]
+            },
+            {
+              "name": "outro cliente vê os dele",
+              "expression": "[t[\"id\"] for t in tickets_visiveis(bruno, TICKETS)]",
+              "expected": [2]
+            },
+            {
+              "name": "suporte vê todos",
+              "expression": "[t[\"id\"] for t in tickets_visiveis(suporte, TICKETS)]",
+              "expected": [1, 2, 3]
+            },
+            {
+              "name": "papel ausente não dá privilégio",
+              "expression": "[t[\"id\"] for t in tickets_visiveis(sem_papel, TICKETS)]",
+              "expected": [1, 3]
+            },
+            {
+              "name": "lista vazia devolve vazia",
+              "expression": "tickets_visiveis(ana, [])",
+              "expected": []
+            },
+            {
+              "name": "papel desconhecido não dá privilégio",
+              "expression": "[t[\"id\"] for t in tickets_visiveis({\"id\": \"ana\", \"papel\": \"chefe\"}, TICKETS)]",
+              "expected": [1, 3],
+              "hidden": true
+            },
+            {
+              "name": "usuário sem ticket nenhum",
+              "expression": "tickets_visiveis({\"id\": \"zelia\", \"papel\": \"cliente\"}, TICKETS)",
+              "expected": [],
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "São dois caminhos: suporte e todo o resto. O padrão precisa ser o mais restrito.",
+            "Comparar com `usuario.get(\"papel\") == \"suporte\"` evita erro quando o campo não existe.",
+            "Uma compreensão de lista resolve o filtro e preserva a ordem."
+          ],
+          "criteria": [
+            "Cliente vê apenas os próprios tickets",
+            "Suporte vê todos",
+            "Papel ausente ou desconhecido cai no caminho restrito",
+            "A ordem original é preservada"
+          ],
+          "topics": ["autorização", "sessão"],
+          "solution": "TICKETS = [\n    {\"id\": 1, \"usuario_id\": \"ana\", \"titulo\": \"impressora\"},\n    {\"id\": 2, \"usuario_id\": \"bruno\", \"titulo\": \"vpn\"},\n    {\"id\": 3, \"usuario_id\": \"ana\", \"titulo\": \"acesso\"},\n]\n\nana = {\"id\": \"ana\", \"papel\": \"cliente\"}\nbruno = {\"id\": \"bruno\", \"papel\": \"cliente\"}\nsuporte = {\"id\": \"carla\", \"papel\": \"suporte\"}\nsem_papel = {\"id\": \"ana\"}\n\n\n# O papel vem do usuário da sessão; nada aqui aceita parâmetro do cliente.\ndef tickets_visiveis(usuario, tickets):\n    if usuario.get(\"papel\") == \"suporte\":\n        return list(tickets)\n\n    # Padrão restrito: qualquer papel que não seja suporte vê só o que é seu.\n    return [t for t in tickets if t.get(\"usuario_id\") == usuario.get(\"id\")]\n"
         }
       ]
     }

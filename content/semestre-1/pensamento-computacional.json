@@ -579,6 +579,84 @@
           "topics": ["casos de borda", "investigação"]
         }
       ]
+    },
+    {
+      "id": "aval-pc-pratica",
+      "title": "Pensamento computacional — prática",
+      "format": "pratica",
+      "summary": "Uma regra de negócio em quatro verificações, na ordem certa, com os casos de borda que decidem.",
+      "estimatedMinutes": 15,
+      "topics": ["decomposição", "casos de borda"],
+      "afterItemId": "pc-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-pc-pratica-primeiro-problema-01",
+          "kind": "pratica",
+          "prompt": "Escreva `primeiroProblema(pedido)`, que devolve o texto do primeiro motivo pelo qual um pedido não pode ser enviado, ou `null` quando pode. As regras são verificadas nesta ordem:\n\n1. sem nenhum item → \"pedido vazio\"\n2. endereço ausente ou só espaços → \"endereço ausente\"\n3. algum item com quantidade que não seja maior que zero → \"quantidade inválida\"\n4. total ACIMA de 5000 sem `aprovado: true` → \"precisa de aprovação\"\n\nA ordem importa: um pedido que viola duas regras devolve a primeira. Note que 5000 exatos passam.",
+          "language": "javascript",
+          "starter": "function primeiroProblema(pedido) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "pedido sem itens", "expression": "primeiroProblema({ itens: [], endereco: 'Rua A', total: 10 })", "expected": "pedido vazio" },
+            {
+              "name": "endereço em branco",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 1 }], endereco: '   ', total: 10 })",
+              "expected": "endereço ausente"
+            },
+            { "name": "endereço ausente de todo", "expression": "primeiroProblema({ itens: [{ quantidade: 1 }], total: 10 })", "expected": "endereço ausente" },
+            {
+              "name": "quantidade zero",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 0 }], endereco: 'Rua A', total: 10 })",
+              "expected": "quantidade inválida"
+            },
+            {
+              "name": "pedido válido devolve null",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 2 }], endereco: 'Rua A', total: 10 })",
+              "expected": null
+            },
+            {
+              "name": "5000 exatos não precisam de aprovação",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 1 }], endereco: 'Rua A', total: 5000 })",
+              "expected": null
+            },
+            {
+              "name": "acima de 5000 precisa de aprovação",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 1 }], endereco: 'Rua A', total: 5000.01 })",
+              "expected": "precisa de aprovação"
+            },
+            {
+              "name": "a ordem das regras é respeitada",
+              "expression": "primeiroProblema({ itens: [], endereco: '', total: 99999 })",
+              "expected": "pedido vazio",
+              "hidden": true
+            },
+            {
+              "name": "aprovado libera o total alto",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 1 }], endereco: 'Rua A', total: 9000, aprovado: true })",
+              "expected": null,
+              "hidden": true
+            },
+            {
+              "name": "quantidade negativa também é inválida",
+              "expression": "primeiroProblema({ itens: [{ quantidade: 3 }, { quantidade: -1 }], endereco: 'Rua A', total: 10 })",
+              "expected": "quantidade inválida",
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Quatro verificações, cada uma devolvendo na hora. A primeira que falhar encerra a função.",
+            "Endereço \"só espaços\" não é endereço: compare depois de remover os espaços das pontas.",
+            "\"Acima de 5000\" não inclui 5000. Esse é o caso de borda que a maioria erra."
+          ],
+          "criteria": [
+            "As quatro regras são verificadas na ordem dada",
+            "Pedido sem problema devolve null",
+            "O limite de 5000 é tratado como \"acima\", não \"a partir de\"",
+            "Quantidade ausente ou negativa é recusada"
+          ],
+          "topics": ["decomposição", "casos de borda"],
+          "solution": "function primeiroProblema(pedido) {\n  const itens = pedido.itens ?? []\n\n  if (itens.length === 0) return 'pedido vazio'\n\n  const endereco = (pedido.endereco ?? '').trim()\n  if (endereco === '') return 'endereço ausente'\n\n  // !(q > 0) pega ausente, zero, negativo e valor que não é número.\n  if (itens.some((item) => !(item.quantidade > 0))) return 'quantidade inválida'\n\n  if (pedido.total > 5000 && pedido.aprovado !== true) return 'precisa de aprovação'\n\n  return null\n}\n"
+        }
+      ]
     }
   ]
 }

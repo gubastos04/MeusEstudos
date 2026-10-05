@@ -805,6 +805,78 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-pyapp-pratica",
+      "title": "Desenvolvimento rápido em Python — prática",
+      "format": "pratica",
+      "summary": "Rota que valida a entrada e devolve erro sempre no mesmo formato, com a regra separada do transporte.",
+      "estimatedMinutes": 20,
+      "topics": ["validação", "formato de erro"],
+      "afterItemId": "pyapp-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-pyapp-pratica-rota-01",
+          "kind": "pratica",
+          "prompt": "Erro em formato diferente em cada rota obriga quem integra a tratar cada caso. Escreva `criar_ticket(payload)` devolvendo a tupla `(status, corpo)`:\n\n- `titulo` ausente, vazio ou só espaços → `(422, {\"erro\": \"titulo é obrigatório\", \"codigo\": \"validacao\"})`\n- `titulo` com mais de 140 caracteres → `(422, {\"erro\": \"titulo tem no máximo 140 caracteres\", \"codigo\": \"validacao\"})`\n- `prioridade` fora de `baixa`, `media`, `alta` → `(422, {\"erro\": \"prioridade inválida\", \"codigo\": \"validacao\"})`. Ausente vale `media`.\n- Tudo válido → `(201, {\"titulo\": <titulo sem espaços nas pontas>, \"prioridade\": <prioridade>})`\n\nA primeira regra que falhar encerra: um payload com dois problemas devolve o primeiro.",
+          "language": "python",
+          "starter": "def criar_ticket(payload):\n    # escreva aqui\n    pass\n",
+          "tests": [
+            {
+              "name": "ticket válido",
+              "expression": "criar_ticket({\"titulo\": \"impressora sem toner\"})",
+              "expected": [
+                201,
+                { "titulo": "impressora sem toner", "prioridade": "media" }
+              ]
+            },
+            { "name": "título ausente", "expression": "criar_ticket({})[0]", "expected": 422 },
+            { "name": "o código do erro é o mesmo", "expression": "criar_ticket({})[1][\"codigo\"]", "expected": "validacao" },
+            { "name": "título só com espaços", "expression": "criar_ticket({\"titulo\": \"   \"})[1][\"erro\"]", "expected": "titulo é obrigatório" },
+            {
+              "name": "título longo demais",
+              "expression": "criar_ticket({\"titulo\": \"x\" * 141})[1][\"erro\"]",
+              "expected": "titulo tem no máximo 140 caracteres"
+            },
+            { "name": "140 exatos passam", "expression": "criar_ticket({\"titulo\": \"x\" * 140})[0]", "expected": 201 },
+            {
+              "name": "prioridade inválida",
+              "expression": "criar_ticket({\"titulo\": \"ok\", \"prioridade\": \"urgentissima\"})[1][\"erro\"]",
+              "expected": "prioridade inválida"
+            },
+            {
+              "name": "prioridade válida é mantida",
+              "expression": "criar_ticket({\"titulo\": \"ok\", \"prioridade\": \"alta\"})[1][\"prioridade\"]",
+              "expected": "alta"
+            },
+            {
+              "name": "título volta sem espaços nas pontas",
+              "expression": "criar_ticket({\"titulo\": \"  vpn caiu  \"})[1][\"titulo\"]",
+              "expected": "vpn caiu",
+              "hidden": true
+            },
+            {
+              "name": "a primeira regra que falha encerra",
+              "expression": "criar_ticket({\"titulo\": \"\", \"prioridade\": \"zzz\"})[1][\"erro\"]",
+              "expected": "titulo é obrigatório",
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Valide e devolva na hora; não acumule erros, porque o enunciado pede o primeiro.",
+            "O corpo de erro tem sempre as mesmas duas chaves. Uma função que monta esse corpo evita divergência.",
+            "\"Mais de 140\" significa que 140 passa."
+          ],
+          "criteria": [
+            "Todo erro sai no mesmo formato, com erro e codigo",
+            "A validação acontece na ordem do enunciado",
+            "O limite de 140 inclui 140",
+            "Prioridade ausente recebe o padrão"
+          ],
+          "topics": ["validação", "formato de erro"],
+          "solution": "PRIORIDADES = (\"baixa\", \"media\", \"alta\")\n\n\ndef _erro(mensagem):\n    \"\"\"Um lugar só monta o corpo de erro: é o que mantém o formato igual.\"\"\"\n    return 422, {\"erro\": mensagem, \"codigo\": \"validacao\"}\n\n\ndef criar_ticket(payload):\n    titulo = (payload.get(\"titulo\") or \"\").strip()\n    if titulo == \"\":\n        return _erro(\"titulo é obrigatório\")\n    if len(titulo) > 140:\n        return _erro(\"titulo tem no máximo 140 caracteres\")\n\n    prioridade = payload.get(\"prioridade\") or \"media\"\n    if prioridade not in PRIORIDADES:\n        return _erro(\"prioridade inválida\")\n\n    return 201, {\"titulo\": titulo, \"prioridade\": prioridade}\n"
+        }
+      ]
     }
   ]
 }

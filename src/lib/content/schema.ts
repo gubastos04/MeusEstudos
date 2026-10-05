@@ -337,6 +337,15 @@ export const demandSchema = z.object({
   request: z.string().min(10).max(900),
   stack: z.array(z.string().min(1).max(40)).min(1).max(10),
   moduleIds: z.array(z.string().min(2).max(80)).max(8).default([]),
+  /**
+   * Projeto sobre o qual esta demanda chega.
+   *
+   * E a unica forma de manutencao do acervo: os cinco projetos sao greenfield
+   * e terminam em publicacao, enquanto a tarefa que todo junior recebe e
+   * alterar algo que ja existe. Ligar a demanda ao projeto que criou o sistema
+   * transforma as duas coisas numa so experiencia, sem conteudo novo.
+   */
+  continuesProjectId: z.string().min(2).max(80).optional(),
   system: z
     .object({
       description: z.string().max(1200).optional(),

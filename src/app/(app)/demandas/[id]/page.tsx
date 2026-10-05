@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { requireOnboardedUser } from '@/lib/auth'
 import { statusIaParaCliente } from '@/lib/ai/status-ui'
-import { getModule } from '@/lib/content/loader'
+import { getModule, getProject } from '@/lib/content/loader'
 import { db } from '@/lib/db'
 import { getDemandForUser } from '@/lib/demands'
 import { parseBooleanArray } from '@/lib/json'
@@ -28,12 +28,24 @@ export default async function PaginaDemanda({ params }: Props) {
   const demanda = await getDemandForUser(usuario.id, id)
   if (!demanda) notFound()
 
-  const [submissao, statusIa] = await Promise.all([
+  // Demanda de manutencao: o codigo a alterar e o de um projeto que a propria
+  // pessoa construiu. Sem olhar o progresso dela, a tela prometeria "o sistema
+  // que voce construiu" para quem nem comecou o projeto.
+  const projetoDeOrigem = demanda.continuesProjectId ? getProject(demanda.continuesProjectId) : null
+
+  const [submissao, progressoDoProjeto, statusIa] = await Promise.all([
     db.demandSubmission.findUnique({
       where: { userId_demandId: { userId: usuario.id, demandId: demanda.id } },
     }),
+    projetoDeOrigem
+      ? db.projectProgress.findUnique({
+          where: { userId_projectId: { userId: usuario.id, projectId: projetoDeOrigem.id } },
+        })
+      : null,
     statusIaParaCliente(usuario.id),
   ])
+
+  const projetoPublicado = Boolean(progressoDoProjeto?.publishedAt)
 
   const modulos = demanda.moduleIds
     .map((moduleId) => getModule(moduleId))
@@ -84,6 +96,29 @@ export default async function PaginaDemanda({ params }: Props) {
         <Nota titulo="Este pedido não vem pronto">
           Como no trabalho real, o problema não está definido. Antes de implementar, descubra o que está
           acontecendo: o material de investigação está mais abaixo.
+        </Nota>
+      ) : null}
+
+      {projetoDeOrigem ? (
+        <Nota titulo="O código a alterar é o seu">
+          <p>
+            Esta demanda chega sobre o sistema do projeto{' '}
+            <Link
+              href={`/projetos/${projetoDeOrigem.id}`}
+              className="text-accent-ink underline underline-offset-2"
+            >
+              {projetoDeOrigem.title}
+            </Link>
+            . Abra o seu repositório: o trabalho é acrescentar regra a código que já existe, sem quebrar o
+            que funcionava. É a tarefa mais comum de quem entra num time.
+          </p>
+          {projetoPublicado ? null : (
+            <p className="mt-2">
+              {progressoDoProjeto
+                ? `Você está na etapa ${progressoDoProjeto.currentStep} de ${projetoDeOrigem.steps.length} desse projeto. A demanda continua aqui quando o sistema estiver no ar.`
+                : 'Esse projeto ainda não foi começado. Sem o sistema construído, não há onde aplicar a mudança.'}
+            </p>
+          )}
         </Nota>
       ) : null}
 

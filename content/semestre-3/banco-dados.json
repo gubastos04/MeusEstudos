@@ -4,7 +4,7 @@
   "order": 3,
   "title": "Banco de dados",
   "summary": "SQL de verdade: consulta, junção, agregação, índice, transação e migration. Com PostgreSQL como referência.",
-  "outcome": "Você escreve consultas com junção e agregação, entende por que uma consulta está lenta, cria índice com critério e altera o esquema com migration.",
+  "outcome": "Você lê e escreve consultas com junção e agregação, explica por que uma consulta está lenta, cria índice com critério e altera o esquema com migration.",
   "tags": ["banco", "sql", "performance"],
   "stack": ["sql", "python"],
   "items": [
@@ -206,16 +206,13 @@
     {
       "id": "bd-indice-transacao-01",
       "type": "lesson",
-      "title": "Índice e transação",
-      "estimatedMinutes": 10,
+      "title": "Índice: a partir da consulta, não por precaução",
+      "estimatedMinutes": 9,
       "tags": ["banco", "performance"],
-      "why": "Índice resolve quase toda lentidão de consulta. Transação evita quase toda inconsistência de dado. São as duas ferramentas de maior retorno.",
-      "goal": "Criar índice com base na consulta real e envolver operações relacionadas numa transação.",
+      "why": "Índice resolve quase toda lentidão de consulta. O que separa o índice que ajuda do que só custa é partir da consulta real, e não do palpite.",
+      "goal": "Criar índice a partir da consulta real e conferir o ganho com EXPLAIN.",
       "blocks": [
-        {
-          "kind": "text",
-          "text": "Índice serve às colunas que aparecem em WHERE, JOIN e ORDER BY. A ordem das colunas no índice composto importa."
-        },
+        { "kind": "text", "text": "Índice serve às colunas que aparecem em WHERE, JOIN e ORDER BY. A ordem das colunas no índice composto importa." },
         {
           "kind": "code",
           "language": "sql",
@@ -230,30 +227,6 @@
           "tone": "warn",
           "title": "Índice não é grátis",
           "text": "Cada índice ocupa espaço e precisa ser atualizado em toda escrita. Índice que nenhuma consulta usa é só custo. Crie a partir da consulta, não por precaução."
-        },
-        {
-          "kind": "text",
-          "text": "Transação: um conjunto de operações que acontece por inteiro ou não acontece."
-        },
-        {
-          "kind": "code",
-          "language": "sql",
-          "code": "BEGIN;\n  UPDATE estoque SET quantidade = quantidade - 2 WHERE produto_id = 9;\n  INSERT INTO movimentacao (produto_id, quantidade, tipo) VALUES (9, 2, 'saida');\nCOMMIT;"
-        },
-        {
-          "kind": "text",
-          "text": "Sem transação, uma falha no meio deixa o estoque debitado sem registro de movimentação — e o saldo passa a divergir do histórico, sem nenhuma pista do motivo."
-        },
-        {
-          "kind": "code",
-          "language": "python",
-          "code": "# em código, o padrão é um bloco que confirma no fim e desfaz em caso de erro\nwith conexao.transaction():\n    repo.debitar_estoque(produto_id, quantidade)\n    repo.registrar_movimentacao(produto_id, quantidade, \"saida\")"
-        },
-        {
-          "kind": "callout",
-          "tone": "danger",
-          "title": "Não chame serviço externo dentro de transação",
-          "text": "A transação mantém a conexão e os bloqueios presos durante a espera de rede. E se ela for revertida, a chamada externa já aconteceu."
         },
         {
           "kind": "quiz",
@@ -281,7 +254,67 @@
           "fix": "Índice a partir da consulta observada, verificando o ganho com EXPLAIN."
         }
       ],
-      "glossary": ["indice", "transacao", "migration", "orm", "Query"]
+      "glossary": ["indice", "Query", "migration"]
+    },
+    {
+      "id": "bd-transacao-01",
+      "type": "lesson",
+      "title": "Transação: por inteiro ou não acontece",
+      "estimatedMinutes": 9,
+      "tags": ["banco", "integridade"],
+      "why": "Sem transação, uma falha no meio deixa metade da operação gravada — e o saldo passa a divergir do histórico sem nenhuma pista do motivo.",
+      "goal": "Envolver numa transação as operações que precisam acontecer juntas, e saber o que não colocar dentro dela.",
+      "blocks": [
+        { "kind": "text", "text": "Transação: um conjunto de operações que acontece por inteiro ou não acontece." },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "BEGIN;\n  UPDATE estoque SET quantidade = quantidade - 2 WHERE produto_id = 9;\n  INSERT INTO movimentacao (produto_id, quantidade, tipo) VALUES (9, 2, 'saida');\nCOMMIT;"
+        },
+        {
+          "kind": "text",
+          "text": "Sem transação, uma falha no meio deixa o estoque debitado sem registro de movimentação — e o saldo passa a divergir do histórico, sem nenhuma pista do motivo."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# em código, o padrão é um bloco que confirma no fim e desfaz em caso de erro\nwith conexao.transaction():\n    repo.debitar_estoque(produto_id, quantidade)\n    repo.registrar_movimentacao(produto_id, quantidade, \"saida\")"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Não chame serviço externo dentro de transação",
+          "text": "A transação mantém a conexão e os bloqueios presos durante a espera de rede. E se ela for revertida, a chamada externa já aconteceu."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma rota debita o estoque, grava a movimentação e envia o email de confirmação. O que deve ficar dentro da transação?",
+          "choices": [
+            "As três operações, para que tudo aconteça junto",
+            "O débito e a movimentação; o email fica fora",
+            "Apenas o débito, que é o que altera o saldo",
+            "Nenhuma: transação serve só quando há mais de uma tabela"
+          ],
+          "answerIndex": 1,
+          "explanation": "Débito e movimentação são a mesma verdade sobre o estoque escrita em duas tabelas: ou as duas, ou nenhuma. O email não entra — ele depende de rede, prenderia os bloqueios durante a espera, e numa reversão ele já teria sido enviado.",
+          "topics": ["banco"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Ache no seu projeto uma rota que escreve em duas tabelas. Escreva o que fica inconsistente se o processo morrer entre as duas escritas, e depois envolva as duas numa transação.",
+        "expected": "Você consegue nomear o estado inconsistente concreto que a transação evita — não a definição de transação."
+      },
+      "ifStuck": [
+        "A pergunta que decide é: se só a primeira escrita acontecer, o dado fica errado? Se sim, as duas são uma transação."
+      ],
+      "commonErrors": [
+        {
+          "error": "Abrir a transação no começo da requisição e fechar no fim.",
+          "why": "Os bloqueios ficam presos por todo o tempo da requisição, inclusive durante chamada de rede e processamento.",
+          "fix": "Abrir a transação em volta das escritas que precisam acontecer juntas, e só delas."
+        }
+      ],
+      "glossary": ["transacao", "condicao-de-corrida"]
     },
     {
       "id": "bd-null-tres-valores-01",
@@ -678,6 +711,58 @@
           "answerIndex": 1,
           "explanation": "Migration é o histórico da estrutura. Sem ela, ninguém consegue recriar o banco nem saber o que mudou e quando.",
           "topics": ["sql"]
+        }
+      ]
+    },
+    {
+      "id": "aval-bd-pratica",
+      "title": "Banco de dados — prática",
+      "format": "pratica",
+      "summary": "Uma consulta com junção, agregação, período e NULL tratado — mais o índice que a atende.",
+      "estimatedMinutes": 20,
+      "topics": ["join", "agregação", "índice"],
+      "afterItemId": "bd-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-bd-pratica-relatorio-01",
+          "kind": "pratica",
+          "prompt": "O suporte precisa de um relatório: quantos tickets cada atendente fechou no período, incluindo os atendentes que não fecharam nenhum.\n\nAs tabelas são `ticket (id, atendente_id, status, fechado_em)` e `usuario (id, nome)`. `atendente_id` é nulo quando ninguém assumiu o ticket.\n\nEscreva a consulta e, depois dela, o `CREATE INDEX` que a atende. A consulta precisa: juntar as duas tabelas de forma que atendente sem ticket apareça com zero, filtrar `fechado_em` por um período, agrupar por atendente, e ordenar do maior para o menor.",
+          "language": "sql",
+          "starter": "-- relatorio\n\n\n-- indice que atende a consulta\n\n",
+          "checks": [
+            { "name": "junta as duas tabelas", "type": "regex", "value": "join", "hint": "O nome do atendente está na outra tabela." },
+            {
+              "name": "inclui quem não fechou nenhum",
+              "type": "regex",
+              "value": "left\\s+join|right\\s+join",
+              "hint": "JOIN comum descarta a linha sem par. Qual variação mantém todos os atendentes?"
+            },
+            { "name": "agrega", "type": "regex", "value": "count\\s*\\(", "hint": "A pergunta é \"quantos\"." },
+            { "name": "agrupa", "type": "regex", "value": "group\\s+by", "hint": "Contagem por atendente precisa de agrupamento." },
+            { "name": "filtra o período", "type": "regex", "value": "fechado_em\\s*(>=|between|>)", "hint": "O relatório é \"no período\"." },
+            { "name": "ordena do maior para o menor", "type": "regex", "value": "order\\s+by[\\s\\S]*desc", "hint": "O enunciado pede a ordem." },
+            { "name": "cria o índice", "type": "regex", "value": "create\\s+index", "hint": "A consulta roda a cada abertura da tela." },
+            {
+              "name": "o índice cobre as colunas da consulta",
+              "type": "regex",
+              "value": "create\\s+index[\\s\\S]*ticket[\\s\\S]*\\((atendente_id|fechado_em)",
+              "hint": "Igualdade e agrupamento primeiro, faixa depois."
+            }
+          ],
+          "hints": [
+            "\"Incluindo os atendentes que não fecharam nenhum\" é a dica do tipo de JOIN.",
+            "Cuidado: filtro de período no WHERE descarta o atendente sem ticket. Pense em onde a condição precisa ficar.",
+            "COUNT de uma coluna da tabela da direita conta zero para quem não tem par; COUNT(*) contaria 1."
+          ],
+          "criteria": [
+            "Atendente sem ticket aparece com zero",
+            "O período é filtrado sem anular o efeito do LEFT JOIN",
+            "A contagem é por atendente",
+            "Existe índice que atende a consulta"
+          ],
+          "topics": ["join", "agregação", "índice"],
+          "solution": "-- A condicao de periodo fica no ON: no WHERE ela descartaria o atendente sem ticket.\nSELECT u.id, u.nome, COUNT(t.id) AS fechados\nFROM usuario u\nLEFT JOIN ticket t\n  ON t.atendente_id = u.id\n  AND t.status = 'fechado'\n  AND t.fechado_em >= '2026-03-01'\n  AND t.fechado_em < '2026-04-01'\nGROUP BY u.id, u.nome\nORDER BY fechados DESC;\n\n-- Igualdade primeiro, faixa depois: atende o ON inteiro.\nCREATE INDEX idx_ticket_atendente_fechado ON ticket (atendente_id, status, fechado_em);\n",
+          "solutionNotes": "Esta verificação lê o SQL e confere padrões. Ela não executa a consulta: não prova que o LEFT JOIN está do lado certo nem que o índice é usado. Para isso, rode num banco com dados e compare EXPLAIN antes e depois."
         }
       ]
     }

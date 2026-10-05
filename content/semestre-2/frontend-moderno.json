@@ -654,6 +654,47 @@
           "topics": ["react"]
         }
       ]
+    },
+    {
+      "id": "aval-front-pratica",
+      "title": "Frontend moderno — prática",
+      "format": "pratica",
+      "summary": "Montar a query string dos filtros com tipos, descartando o que está vazio e escapando o resto.",
+      "estimatedMinutes": 15,
+      "topics": ["typescript", "fetch"],
+      "afterItemId": "front-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-front-pratica-query-01",
+          "kind": "pratica",
+          "prompt": "A tela de tickets tem filtros combináveis e precisa transformá-los em query string antes do `fetch`. Escreva `montarQuery(filtros: Filtros): string`, com a interface `Filtros` declarando os campos opcionais `status`, `busca` e `pagina`.\n\nRegras: campo ausente, texto vazio ou `undefined` não entram na query. Os valores são escapados com `encodeURIComponent`. A ordem de saída é a ordem em que os campos aparecem no objeto. Nenhum filtro devolve texto vazio, sem o \"?\".",
+          "language": "typescript",
+          "starter": "interface Filtros {\n  status?: string\n  busca?: string\n  pagina?: number\n}\n\nfunction montarQuery(filtros: Filtros): string {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "sem filtro devolve vazio", "expression": "montarQuery({})", "expected": "" },
+            { "name": "um filtro", "expression": "montarQuery({ status: 'pending' })", "expected": "status=pending" },
+            { "name": "dois filtros na ordem do objeto", "expression": "montarQuery({ status: 'pending', pagina: 2 })", "expected": "status=pending&pagina=2" },
+            { "name": "escapa espaço", "expression": "montarQuery({ busca: 'nota fiscal' })", "expected": "busca=nota%20fiscal" },
+            { "name": "texto vazio não entra", "expression": "montarQuery({ status: '', pagina: 1 })", "expected": "pagina=1" },
+            { "name": "undefined não entra", "expression": "montarQuery({ status: undefined, busca: 'erro' })", "expected": "busca=erro" },
+            { "name": "escapa caractere especial", "expression": "montarQuery({ busca: 'a&b=c' })", "expected": "busca=a%26b%3Dc", "hidden": true },
+            { "name": "página zero entra", "expression": "montarQuery({ pagina: 0 })", "expected": "pagina=0", "hidden": true }
+          ],
+          "hints": [
+            "`Object.entries` preserva a ordem de inserção das chaves.",
+            "Descartar \"vazio\" não é o mesmo que descartar falsy: página 0 precisa entrar.",
+            "`encodeURIComponent` escapa o valor; a chave aqui você controla."
+          ],
+          "criteria": [
+            "Objeto sem filtro devolve texto vazio",
+            "Campo ausente, undefined ou texto vazio é descartado",
+            "Página zero não é descartada",
+            "Os valores são escapados"
+          ],
+          "topics": ["typescript", "fetch"],
+          "solution": "interface Filtros {\n  status?: string\n  busca?: string\n  pagina?: number\n}\n\nfunction montarQuery(filtros: Filtros): string {\n  return Object.entries(filtros)\n    // Vazio é undefined ou texto em branco. Zero é um valor, e entra.\n    .filter(([, valor]) => valor !== undefined && valor !== '')\n    .map(([chave, valor]) => `${chave}=${encodeURIComponent(String(valor))}`)\n    .join('&')\n}\n"
+        }
+      ]
     }
   ]
 }

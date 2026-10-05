@@ -493,6 +493,66 @@
           "topics": ["integridade"]
         }
       ]
+    },
+    {
+      "id": "aval-uml-pratica",
+      "title": "Modelagem e UML — prática",
+      "format": "pratica",
+      "summary": "Transformar um requisito de prazo em modelo de dados, com integridade declarada no banco.",
+      "estimatedMinutes": 15,
+      "topics": ["modelo de dados", "requisito"],
+      "afterItemId": "uml-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-uml-pratica-modelo-sla-01",
+          "kind": "pratica",
+          "prompt": "O requisito chegou assim: \"cada categoria de ticket tem um prazo de resposta em horas, e o prazo de um ticket é registrado quando ele é aberto, para que mudar a categoria depois não reescreva o histórico\".\n\nEscreva o `CREATE TABLE` das duas tabelas que isso pede: a de prazo por categoria e a que guarda o prazo aplicado a cada ticket. Declare chave primária, chave estrangeira para `ticket`, as colunas que não podem ser nulas, e a restrição que impede dois prazos registrados para o mesmo ticket.",
+          "language": "sql",
+          "starter": "-- prazo por categoria\n\n\n-- prazo registrado no ticket\n\n",
+          "checks": [
+            {
+              "name": "cria as duas tabelas",
+              "type": "regex",
+              "value": "(create\\s+table[\\s\\S]*){2}",
+              "hint": "O requisito fala de duas coisas diferentes: a regra da categoria e o registro no ticket."
+            },
+            { "name": "declara chave primária", "type": "regex", "value": "primary\\s+key", "hint": "Toda tabela precisa de identificador." },
+            {
+              "name": "liga ao ticket por chave estrangeira",
+              "type": "regex",
+              "value": "references\\s+ticket",
+              "hint": "O prazo registrado pertence a um ticket que já existe."
+            },
+            { "name": "guarda o prazo em horas", "type": "regex", "value": "horas", "hint": "O requisito diz \"prazo de resposta em horas\"." },
+            {
+              "name": "marca colunas obrigatórias",
+              "type": "regex",
+              "value": "not\\s+null",
+              "hint": "Prazo nulo faria a regra de SLA não valer para aquele ticket."
+            },
+            {
+              "name": "impede dois prazos para o mesmo ticket",
+              "type": "regex",
+              "value": "unique",
+              "hint": "A restrição vive no banco, não só no código que insere."
+            }
+          ],
+          "hints": [
+            "Duas tabelas: uma guarda a regra por categoria, a outra guarda o valor aplicado àquele ticket.",
+            "Registrar o prazo no ticket é o que faz mudar a categoria depois não reescrever o histórico.",
+            "A restrição de \"um prazo por ticket\" é UNIQUE na coluna do ticket."
+          ],
+          "criteria": [
+            "As duas tabelas do requisito existem",
+            "O prazo aplicado aponta para o ticket por chave estrangeira",
+            "As colunas que a regra precisa são NOT NULL",
+            "Existe restrição de unicidade por ticket"
+          ],
+          "topics": ["modelo de dados", "requisito"],
+          "solution": "CREATE TABLE prazo_categoria (\n  id SERIAL PRIMARY KEY,\n  categoria TEXT NOT NULL UNIQUE,\n  horas INTEGER NOT NULL\n);\n\n-- O prazo aplicado fica no ticket: mudar a categoria depois nao reescreve o historico.\nCREATE TABLE prazo_ticket (\n  id SERIAL PRIMARY KEY,\n  ticket_id INTEGER NOT NULL UNIQUE REFERENCES ticket (id),\n  horas INTEGER NOT NULL,\n  registrado_em TIMESTAMP NOT NULL DEFAULT now()\n);\n",
+          "solutionNotes": "Esta verificação lê o SQL e confere padrões. Ela não cria as tabelas nem prova que o modelo funciona: para isso, rode o CREATE TABLE num banco de verdade e tente inserir dois prazos para o mesmo ticket."
+        }
+      ]
     }
   ]
 }

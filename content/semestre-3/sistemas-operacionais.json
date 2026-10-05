@@ -664,6 +664,61 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-so-pratica",
+      "title": "Sistemas operacionais e Linux — prática",
+      "format": "pratica",
+      "summary": "Ler um log de produção e sair com um resumo que aponta onde investigar.",
+      "estimatedMinutes": 15,
+      "topics": ["log", "investigação"],
+      "afterItemId": "so-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-so-pratica-resumir-log-01",
+          "kind": "pratica",
+          "prompt": "Você recebeu 4 mil linhas de log e a pergunta \"o que aconteceu ontem?\". Antes de ler linha a linha, resuma.\n\nCada linha tem o formato `<data> <NÍVEL> <mensagem>`, separado por espaço. Escreva duas funções:\n\n- `contarPorNivel(linhas)`: devolve um objeto com a contagem de cada nível encontrado. Linha vazia ou sem nível reconhecível (`INFO`, `WARN`, `ERROR`) é ignorada, sem quebrar.\n- `primeiroErro(linhas)`: a primeira linha de nível `ERROR`, inteira, ou `null` se não houver.",
+          "language": "javascript",
+          "starter": "const LOG = [\n  '2026-03-10T08:00:12Z INFO webhook recebido pedido=90412',\n  '2026-03-10T08:00:13Z WARN tentativa 2 de 3',\n  '2026-03-10T08:00:14Z ERROR falha ao gravar movimentacao',\n  '',\n  'linha corrompida sem nivel',\n  '2026-03-10T08:00:20Z ERROR timeout no provedor',\n]\n\nfunction contarPorNivel(linhas) {\n  // escreva aqui\n}\n\nfunction primeiroErro(linhas) {\n  // escreva aqui\n}\n",
+          "tests": [
+            {
+              "name": "conta os três níveis",
+              "expression": "contarPorNivel(LOG)",
+              "expected": { "INFO": 1, "WARN": 1, "ERROR": 2 }
+            },
+            { "name": "log vazio devolve objeto vazio", "expression": "Object.keys(contarPorNivel([])).length", "expected": 0 },
+            { "name": "linha corrompida é ignorada", "expression": "Object.values(contarPorNivel(LOG)).reduce((a, b) => a + b, 0)", "expected": 4 },
+            { "name": "primeiro erro", "expression": "primeiroErro(LOG)", "expected": "2026-03-10T08:00:14Z ERROR falha ao gravar movimentacao" },
+            { "name": "sem erro devolve null", "expression": "primeiroErro(['2026-03-10T08:00:12Z INFO tudo bem'])", "expected": null },
+            { "name": "log vazio não tem erro", "expression": "primeiroErro([])", "expected": null },
+            {
+              "name": "nível desconhecido não entra na conta",
+              "expression": "Object.keys(contarPorNivel(['2026-03-10T08:00:12Z DEBUG x'])).length",
+              "expected": 0,
+              "hidden": true
+            },
+            {
+              "name": "só erros",
+              "expression": "contarPorNivel(['a ERROR x', 'b ERROR y'])",
+              "expected": { "ERROR": 2 },
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "O nível é a segunda palavra da linha. `split(\" \")` resolve.",
+            "Linha vazia e linha sem nível reconhecível caem no mesmo caminho: ignorar.",
+            "`primeiroErro` pode parar na primeira que encontrar — não precisa percorrer tudo."
+          ],
+          "criteria": [
+            "Conta apenas os três níveis conhecidos",
+            "Linha vazia ou corrompida não quebra nem entra na conta",
+            "Log vazio devolve objeto vazio e erro nulo",
+            "O primeiro erro volta com a linha inteira"
+          ],
+          "topics": ["log", "investigação"],
+          "solution": "const LOG = [\n  '2026-03-10T08:00:12Z INFO webhook recebido pedido=90412',\n  '2026-03-10T08:00:13Z WARN tentativa 2 de 3',\n  '2026-03-10T08:00:14Z ERROR falha ao gravar movimentacao',\n  '',\n  'linha corrompida sem nivel',\n  '2026-03-10T08:00:20Z ERROR timeout no provedor',\n]\n\nconst NIVEIS = ['INFO', 'WARN', 'ERROR']\n\nfunction nivelDaLinha(linha) {\n  const nivel = String(linha).split(' ')[1]\n  return NIVEIS.includes(nivel) ? nivel : null\n}\n\nfunction contarPorNivel(linhas) {\n  const contagem = {}\n\n  for (const linha of linhas) {\n    const nivel = nivelDaLinha(linha)\n    // Linha sem nível conhecido é ruído, não erro: ignora sem quebrar.\n    if (!nivel) continue\n    contagem[nivel] = (contagem[nivel] ?? 0) + 1\n  }\n\n  return contagem\n}\n\nfunction primeiroErro(linhas) {\n  return linhas.find((linha) => nivelDaLinha(linha) === 'ERROR') ?? null\n}\n"
+        }
+      ]
     }
   ]
 }

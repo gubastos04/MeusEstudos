@@ -628,6 +628,82 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-java-pratica",
+      "title": "Java e orientação a objetos — prática",
+      "format": "pratica",
+      "summary": "Acrescentar um canal de notificação por composição, sem herdar e sem tocar no que já existe.",
+      "estimatedMinutes": 20,
+      "topics": ["interface", "composição"],
+      "afterItemId": "java-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-java-pratica-canal-01",
+          "kind": "pratica",
+          "prompt": "O sistema já tem a interface `Canal` com o método `void enviar(String destino, String mensagem)`, e uma implementação `CanalEmail`. Entrou o pedido de notificar por SMS.\n\nEscreva `CanalSms`, que implementa `Canal` e usa um `ClienteSms` recebido no construtor — composição, não herança de `CanalEmail`. E escreva `Notificador`, que recebe um `Canal` no construtor e o usa, sem conhecer qual canal é.\n\nO ponto é que acrescentar o terceiro canal depois não deve exigir mudança no `Notificador`.",
+          "language": "java",
+          "starter": "interface Canal {\n    void enviar(String destino, String mensagem);\n}\n\n// Ja existe, nao mexa:\nclass CanalEmail implements Canal {\n    @Override\n    public void enviar(String destino, String mensagem) {\n        // envia email\n    }\n}\n\n// escreva CanalSms e Notificador aqui\n",
+          "checks": [
+            {
+              "name": "CanalSms implementa a interface",
+              "type": "regex",
+              "value": "class\\s+CanalSms\\s+implements\\s+Canal",
+              "hint": "O contrato é a interface, não a classe que já existe."
+            },
+            {
+              "name": "não herda de CanalEmail",
+              "type": "notContains",
+              "value": "extends CanalEmail",
+              "hint": "Herdar traria o comportamento de email para dentro do SMS."
+            },
+            {
+              "name": "marca o método sobrescrito",
+              "type": "contains",
+              "value": "@Override",
+              "hint": "@Override faz o compilador conferir que a assinatura casa com a da interface."
+            },
+            {
+              "name": "recebe o ClienteSms no construtor",
+              "type": "regex",
+              "value": "CanalSms\\s*\\(\\s*ClienteSms",
+              "hint": "A dependência entra por fora: é o que permite testar com um dublê."
+            },
+            {
+              "name": "guarda a dependência como final",
+              "type": "regex",
+              "value": "private\\s+final\\s+ClienteSms",
+              "hint": "final deixa explícito que a dependência não troca depois de construída."
+            },
+            {
+              "name": "Notificador depende da interface",
+              "type": "regex",
+              "value": "Notificador\\s*\\(\\s*Canal",
+              "hint": "Depender de Canal é o que faz o terceiro canal não exigir mudança aqui."
+            },
+            {
+              "name": "Notificador não instancia canal",
+              "type": "notContains",
+              "value": "new CanalSms",
+              "hint": "Quem constrói o Notificador escolhe o canal; ele não escolhe por conta."
+            }
+          ],
+          "hints": [
+            "A interface já diz a assinatura exata do método. Copie dela.",
+            "Composição aqui significa: o CanalSms TEM um ClienteSms, não É um ClienteSms.",
+            "Se o Notificador mencionar CanalSms em algum lugar, o próximo canal vai obrigar a mexer nele."
+          ],
+          "criteria": [
+            "CanalSms implementa Canal e não herda de outra implementação",
+            "A dependência entra pelo construtor e é final",
+            "Notificador depende da interface, não de uma implementação",
+            "Acrescentar um terceiro canal não exige mudar o Notificador"
+          ],
+          "topics": ["interface", "composição"],
+          "solution": "class CanalSms implements Canal {\n    private final ClienteSms cliente;\n\n    CanalSms(ClienteSms cliente) {\n        this.cliente = cliente;\n    }\n\n    @Override\n    public void enviar(String destino, String mensagem) {\n        cliente.publicar(destino, mensagem);\n    }\n}\n\nclass Notificador {\n    private final Canal canal;\n\n    // Depende do contrato: o terceiro canal nao muda nada aqui.\n    Notificador(Canal canal) {\n        this.canal = canal;\n    }\n\n    void avisarTicketFechado(String destino, String ticket) {\n        canal.enviar(destino, \"Ticket \" + ticket + \" foi fechado.\");\n    }\n}\n",
+          "solutionNotes": "Esta verificação lê o código e confere padrões: Java não executa no navegador. Ela não prova que compila. Para isso, cole num projeto Java e rode — e o @Override é justamente o que faz o compilador reclamar se a assinatura não casar."
+        }
+      ]
     }
   ]
 }

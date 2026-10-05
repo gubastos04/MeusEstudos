@@ -769,6 +769,50 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-com-pratica",
+      "title": "Comunicação entre aplicações — prática",
+      "format": "pratica",
+      "summary": "Traduzir erro de domínio em status HTTP e decidir o que vale repetir.",
+      "estimatedMinutes": 15,
+      "topics": ["status code", "retentativa"],
+      "afterItemId": "com-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-com-pratica-status-01",
+          "kind": "pratica",
+          "prompt": "Status errado faz quem integra tomar a decisão errada: 200 com corpo de erro leva a retentativa nenhuma, e 500 em erro de validação leva a retentativa infinita.\n\nEscreva duas funções:\n\n- `statusDoErro(codigo)`: \"nao_encontrado\" → 404, \"nao_autenticado\" → 401, \"sem_permissao\" → 403, \"validacao\" → 422, \"limite_excedido\" → 429. Qualquer outro código → 500, porque erro que o servidor não classificou é erro do servidor.\n- `deveRepetir(status)`: true para 429 e para 500, 502, 503 e 504. False para o resto, incluindo 501 — \"não implementado\" não melhora na segunda tentativa.",
+          "language": "javascript",
+          "starter": "function statusDoErro(codigo) {\n  // escreva aqui\n}\n\nfunction deveRepetir(status) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "não encontrado", "expression": "statusDoErro('nao_encontrado')", "expected": 404 },
+            { "name": "sem permissão", "expression": "statusDoErro('sem_permissao')", "expected": 403 },
+            { "name": "validação", "expression": "statusDoErro('validacao')", "expected": 422 },
+            { "name": "código desconhecido vira 500", "expression": "statusDoErro('explodiu_sem_motivo')", "expected": 500 },
+            { "name": "código ausente vira 500", "expression": "statusDoErro(undefined)", "expected": 500 },
+            { "name": "vale repetir em 503", "expression": "deveRepetir(503)", "expected": true },
+            { "name": "não vale repetir em 404", "expression": "deveRepetir(404)", "expected": false },
+            { "name": "vale repetir em 429", "expression": "deveRepetir(429)", "expected": true },
+            { "name": "501 não se repete", "expression": "deveRepetir(501)", "expected": false, "hidden": true },
+            { "name": "validação não se repete", "expression": "deveRepetir(statusDoErro('validacao'))", "expected": false, "hidden": true },
+            { "name": "não autenticado", "expression": "statusDoErro('nao_autenticado')", "expected": 401, "hidden": true }
+          ],
+          "hints": [
+            "Um objeto de mapeamento resolve a primeira função, e o padrão entra no `??`.",
+            "501 está no meio da faixa 5xx e é a exceção: trate-o antes da faixa.",
+            "A segunda função decide por lista, não por faixa — é mais fácil de ler e de revisar."
+          ],
+          "criteria": [
+            "Cada código de domínio tem o status correspondente",
+            "Código desconhecido ou ausente resulta em 500",
+            "Erro de cliente não é marcado como repetível",
+            "501 é tratado como não repetível"
+          ],
+          "topics": ["status code", "retentativa"],
+          "solution": "const STATUS_POR_CODIGO = {\n  nao_encontrado: 404,\n  nao_autenticado: 401,\n  sem_permissao: 403,\n  validacao: 422,\n  limite_excedido: 429,\n}\n\nfunction statusDoErro(codigo) {\n  // Erro que o servidor não classificou é erro do servidor.\n  return STATUS_POR_CODIGO[codigo] ?? 500\n}\n\nfunction deveRepetir(status) {\n  // Lista explícita em vez de faixa: 501 ficaria dentro de \"5xx\" e não se repete.\n  return [429, 500, 502, 503, 504].includes(status)\n}\n"
+        }
+      ]
     }
   ]
 }

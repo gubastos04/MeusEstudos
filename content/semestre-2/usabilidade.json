@@ -339,6 +339,78 @@
           "topics": ["acessibilidade"]
         }
       ]
+    },
+    {
+      "id": "aval-ux-pratica",
+      "title": "Engenharia de usabilidade — prática",
+      "format": "pratica",
+      "summary": "Validação que aponta o campo errado e devolve o que a pessoa já tinha digitado.",
+      "estimatedMinutes": 15,
+      "topics": ["formulário", "mensagem de erro"],
+      "afterItemId": "ux-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-ux-pratica-formulario-01",
+          "kind": "pratica",
+          "prompt": "Formulário que limpa os campos no erro faz a pessoa digitar tudo de novo. Escreva `validarCadastro(campos)` devolvendo `{ ok, erros, valores }`:\n\n- `erros`: objeto com uma mensagem por campo inválido. `nome` vazio ou só espaços → \"Informe seu nome\". `email` sem \"@\" → \"O email precisa ter @\". `senha` com menos de 8 caracteres → \"A senha precisa de 8 caracteres ou mais\".\n- `valores`: o que foi digitado, exatamente como veio, para o formulário repreencher.\n- `ok`: true somente quando não há nenhum erro.\n\nCampo ausente conta como vazio e não pode quebrar a função.",
+          "language": "javascript",
+          "starter": "function validarCadastro(campos) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "cadastro válido", "expression": "validarCadastro({ nome: 'Ana', email: 'ana@exemplo.com', senha: 'senha1234' }).ok", "expected": true },
+            {
+              "name": "válido não tem erros",
+              "expression": "Object.keys(validarCadastro({ nome: 'Ana', email: 'ana@exemplo.com', senha: 'senha1234' }).erros).length",
+              "expected": 0
+            },
+            {
+              "name": "os três campos inválidos aparecem",
+              "expression": "Object.keys(validarCadastro({ nome: '', email: 'ana', senha: '123' }).erros).sort()",
+              "expected": ["email", "nome", "senha"]
+            },
+            {
+              "name": "o que foi digitado volta intacto",
+              "expression": "validarCadastro({ nome: '', email: 'ana@exemplo.com', senha: 'senha1234' }).valores.email",
+              "expected": "ana@exemplo.com"
+            },
+            {
+              "name": "nome só com espaços é vazio",
+              "expression": "validarCadastro({ nome: '   ', email: 'ana@exemplo.com', senha: 'senha1234' }).erros.nome",
+              "expected": "Informe seu nome"
+            },
+            {
+              "name": "senha com 8 exatos passa",
+              "expression": "validarCadastro({ nome: 'Ana', email: 'ana@exemplo.com', senha: '12345678' }).ok",
+              "expected": true
+            },
+            { "name": "objeto vazio não quebra", "expression": "validarCadastro({}).ok", "expected": false },
+            {
+              "name": "campo ausente ainda volta em valores",
+              "expression": "typeof validarCadastro({ nome: 'Ana' }).valores",
+              "expected": "object",
+              "hidden": true
+            },
+            {
+              "name": "senha com 7 não passa",
+              "expression": "validarCadastro({ nome: 'Ana', email: 'ana@exemplo.com', senha: '1234567' }).erros.senha",
+              "expected": "A senha precisa de 8 caracteres ou mais",
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Monte o objeto de erros primeiro; `ok` é só \"nenhuma chave em erros\".",
+            "Não normalize o que vai em `valores`: a pessoa precisa ver o que digitou, inclusive os espaços.",
+            "\"8 caracteres ou mais\" significa que 8 passa. O erro é usar > 8."
+          ],
+          "criteria": [
+            "Cada campo inválido tem a sua própria mensagem",
+            "Os valores digitados voltam sem alteração",
+            "Campo ausente não quebra a função",
+            "O limite de 8 caracteres inclui 8"
+          ],
+          "topics": ["formulário", "mensagem de erro"],
+          "solution": "function validarCadastro(campos) {\n  const erros = {}\n\n  const nome = (campos.nome ?? '').trim()\n  if (nome === '') erros.nome = 'Informe seu nome'\n\n  const email = campos.email ?? ''\n  if (!email.includes('@')) erros.email = 'O email precisa ter @'\n\n  const senha = campos.senha ?? ''\n  if (senha.length < 8) erros.senha = 'A senha precisa de 8 caracteres ou mais'\n\n  return {\n    ok: Object.keys(erros).length === 0,\n    erros,\n    // Devolve o que veio, sem trim: o formulário repreenche com o que a pessoa digitou.\n    valores: { ...campos },\n  }\n}\n"
+        }
+      ]
     }
   ]
 }

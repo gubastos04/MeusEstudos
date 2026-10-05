@@ -709,6 +709,71 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-mat-pratica",
+      "title": "Matemática e lógica aplicada — prática",
+      "format": "pratica",
+      "summary": "Uma condição composta com exceção, coberta nas oito combinações possíveis.",
+      "estimatedMinutes": 12,
+      "topics": ["lógica booleana", "casos de borda"],
+      "afterItemId": "mat-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-mat-pratica-reabrir-01",
+          "kind": "pratica",
+          "prompt": "A regra chegou escrita na negativa, que é como ela costuma chegar: \"um ticket NÃO pode ser reaberto se ele ainda está aberto, ou se já passou de 30 dias do fechamento — a não ser que quem pede seja do suporte\".\n\nEscreva `podeReabrir(ticket, usuario)` devolvendo true ou false. `ticket` tem `fechado` (booleano) e `diasDesdeFechamento` (número). `usuario` tem `papel`.\n\nAtenção ao limite: \"passou de 30 dias\" não inclui o dia 30.",
+          "language": "javascript",
+          "starter": "function podeReabrir(ticket, usuario) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "fechado e no prazo", "expression": "podeReabrir({ fechado: true, diasDesdeFechamento: 5 }, { papel: 'cliente' })", "expected": true },
+            { "name": "ainda aberto", "expression": "podeReabrir({ fechado: false, diasDesdeFechamento: 5 }, { papel: 'cliente' })", "expected": false },
+            { "name": "fora do prazo", "expression": "podeReabrir({ fechado: true, diasDesdeFechamento: 31 }, { papel: 'cliente' })", "expected": false },
+            { "name": "dia 30 ainda vale", "expression": "podeReabrir({ fechado: true, diasDesdeFechamento: 30 }, { papel: 'cliente' })", "expected": true },
+            {
+              "name": "suporte reabre fora do prazo",
+              "expression": "podeReabrir({ fechado: true, diasDesdeFechamento: 90 }, { papel: 'suporte' })",
+              "expected": true
+            },
+            {
+              "name": "suporte reabre o que está aberto",
+              "expression": "podeReabrir({ fechado: false, diasDesdeFechamento: 0 }, { papel: 'suporte' })",
+              "expected": true
+            },
+            {
+              "name": "aberto e fora do prazo, cliente",
+              "expression": "podeReabrir({ fechado: false, diasDesdeFechamento: 99 }, { papel: 'cliente' })",
+              "expected": false,
+              "hidden": true
+            },
+            {
+              "name": "papel ausente é tratado como cliente",
+              "expression": "podeReabrir({ fechado: false, diasDesdeFechamento: 1 }, {})",
+              "expected": false,
+              "hidden": true
+            },
+            {
+              "name": "dia 31 já não vale",
+              "expression": "podeReabrir({ fechado: true, diasDesdeFechamento: 30.5 }, { papel: 'cliente' })",
+              "expected": false,
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "A exceção do suporte vem primeiro: ela ignora as duas outras condições.",
+            "Negar \"A ou B\" dá \"não A e não B\". Escrever a versão positiva costuma ficar mais legível que negar a composta.",
+            "\"Passou de 30\" é `> 30`. O erro clássico é usar `>= 30`."
+          ],
+          "criteria": [
+            "A exceção do suporte vale em qualquer situação",
+            "Ticket aberto não é reaberto por cliente",
+            "O limite de 30 dias é inclusivo",
+            "Papel ausente não ganha privilégio"
+          ],
+          "topics": ["lógica booleana", "casos de borda"],
+          "solution": "function podeReabrir(ticket, usuario) {\n  // A exceção ignora as duas condições, então ela decide antes.\n  if (usuario.papel === 'suporte') return true\n\n  // Versão positiva da regra negativa: mais fácil de ler e de revisar.\n  return ticket.fechado === true && ticket.diasDesdeFechamento <= 30\n}\n"
+        }
+      ]
     }
   ]
 }

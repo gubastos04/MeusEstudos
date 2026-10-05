@@ -691,6 +691,81 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-iot-pratica",
+      "title": "Cloud, IoT e eventos — prática",
+      "format": "pratica",
+      "summary": "Processar evento repetido uma vez só, registrando o que foi ignorado.",
+      "estimatedMinutes": 15,
+      "topics": ["idempotência", "eventos"],
+      "afterItemId": "iot-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-iot-pratica-idempotente-01",
+          "kind": "pratica",
+          "prompt": "Entrega repetida é comportamento normal de quem envia evento, não defeito. Quem recebe precisa aguentar.\n\nEscreva `processarEventos(eventos)` devolvendo `{ processados, ignorados }`. Cada evento tem `eventoId` e `pedidoId`. Um `eventoId` que já apareceu é ignorado — não reprocessado — e o `eventoId` entra em `ignorados`, na ordem em que a repetição chegou. `processados` recebe o `pedidoId` de cada evento efetivamente processado, na ordem de chegada.\n\nIgnorar em silêncio não serve: a lista de ignorados é o que permite investigar depois.",
+          "language": "javascript",
+          "starter": "function processarEventos(eventos) {\n  // escreva aqui\n}\n",
+          "tests": [
+            {
+              "name": "nenhum evento",
+              "expression": "processarEventos([]).processados",
+              "expected": []
+            },
+            {
+              "name": "eventos distintos passam todos",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }, { eventoId: 'b', pedidoId: 2 }]).processados",
+              "expected": [1, 2]
+            },
+            {
+              "name": "o mesmo evento três vezes processa uma",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }]).processados",
+              "expected": [1]
+            },
+            {
+              "name": "a repetição é registrada",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }]).ignorados",
+              "expected": ["a"]
+            },
+            {
+              "name": "duas repetições, dois registros",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }]).ignorados",
+              "expected": ["a", "a"]
+            },
+            {
+              "name": "sem repetição não há ignorados",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }]).ignorados",
+              "expected": []
+            },
+            {
+              "name": "repetição no meio não atrapalha o resto",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 1 }, { eventoId: 'a', pedidoId: 1 }, { eventoId: 'b', pedidoId: 2 }]).processados",
+              "expected": [1, 2],
+              "hidden": true
+            },
+            {
+              "name": "pedido igual com evento diferente processa duas vezes",
+              "expression": "processarEventos([{ eventoId: 'a', pedidoId: 9 }, { eventoId: 'b', pedidoId: 9 }]).processados",
+              "expected": [9, 9],
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "O que identifica a repetição é o eventoId, não o pedidoId.",
+            "Guarde os eventoId já vistos e consulte antes de processar.",
+            "O último teste escondido é o caso que separa as duas chaves: dois eventos diferentes sobre o mesmo pedido são dois trabalhos."
+          ],
+          "criteria": [
+            "Evento repetido é processado uma única vez",
+            "Cada repetição é registrada em ignorados",
+            "A ordem de chegada é preservada nas duas listas",
+            "A identidade é o eventoId, não o pedidoId"
+          ],
+          "topics": ["idempotência", "eventos"],
+          "solution": "function processarEventos(eventos) {\n  const vistos = new Set()\n  const processados = []\n  const ignorados = []\n\n  for (const evento of eventos) {\n    // A identidade é o eventoId: dois eventos sobre o mesmo pedido são dois trabalhos.\n    if (vistos.has(evento.eventoId)) {\n      ignorados.push(evento.eventoId)\n      continue\n    }\n\n    vistos.add(evento.eventoId)\n    processados.push(evento.pedidoId)\n  }\n\n  return { processados, ignorados }\n}\n"
+        }
+      ]
     }
   ]
 }

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { requireOnboardedUser } from '@/lib/auth'
 import { statusIaParaCliente } from '@/lib/ai/status-ui'
-import { getModule, getProject } from '@/lib/content/loader'
+import { getDemands, getModule, getProject } from '@/lib/content/loader'
 import { db } from '@/lib/db'
 import { parseRecord, parseStringArray } from '@/lib/json'
 import { FerramentasIa } from '@/components/ferramentas-ia'
@@ -36,6 +36,9 @@ export default async function PaginaProjeto({ params }: Props) {
   const modulosRelacionados = [...new Set(projeto.steps.flatMap((etapa) => etapa.moduleIds))]
     .map((moduleId) => getModule(moduleId))
     .filter((modulo): modulo is NonNullable<typeof modulo> => modulo !== null)
+
+  // Demandas que chegam sobre este sistema depois de ele estar no ar.
+  const demandasDeManutencao = getDemands().filter((demanda) => demanda.continuesProjectId === projeto.id)
 
   const inicial = progresso
     ? {
@@ -128,6 +131,30 @@ export default async function PaginaProjeto({ params }: Props) {
           inicial={inicial}
         />
       </section>
+
+      {demandasDeManutencao.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg">Depois de publicar</h2>
+          <Nota titulo="O sistema volta como demanda">
+            <p>
+              Publicar não é o fim do trabalho num sistema real. Estas demandas chegam sobre o código que
+              você escreveu aqui, e pedem mudança sem quebrar o que já funcionava:
+            </p>
+            <ul className="mt-2 space-y-1">
+              {demandasDeManutencao.map((demanda) => (
+                <li key={demanda.id}>
+                  <Link
+                    href={`/demandas/${demanda.id}`}
+                    className="text-accent-ink underline underline-offset-2"
+                  >
+                    {demanda.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Nota>
+        </section>
+      ) : null}
 
       <FerramentasIa
         status={statusIa}

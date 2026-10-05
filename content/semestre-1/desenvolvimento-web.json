@@ -608,6 +608,47 @@
           "topics": ["javascript"]
         }
       ]
+    },
+    {
+      "id": "aval-web-pratica",
+      "title": "Desenvolvimento web — prática",
+      "format": "pratica",
+      "summary": "A função que decide o que a tela mostra depois de um fetch, incluindo os estados que costumam faltar.",
+      "estimatedMinutes": 12,
+      "topics": ["estados da tela", "fetch"],
+      "afterItemId": "web-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-web-pratica-estado-tela-01",
+          "kind": "pratica",
+          "prompt": "Toda tela que busca dados tem mais de dois estados, e os que faltam são os que quebram a experiência. Escreva `estadoDaTela(resposta)` devolvendo exatamente um destes textos: \"carregando\", \"erro\", \"vazio\" ou \"lista\".\n\nA precedência é esta: se `carregando` for verdadeiro, o estado é \"carregando\", mesmo que haja erro de uma busca anterior. Depois, se `erro` tiver qualquer valor, é \"erro\". Depois, lista ausente ou sem itens é \"vazio\". Caso contrário, \"lista\".",
+          "language": "javascript",
+          "starter": "function estadoDaTela(resposta) {\n  // escreva aqui\n}\n",
+          "tests": [
+            { "name": "carregando", "expression": "estadoDaTela({ carregando: true })", "expected": "carregando" },
+            { "name": "carregando vence erro antigo", "expression": "estadoDaTela({ carregando: true, erro: 'falhou' })", "expected": "carregando" },
+            { "name": "erro", "expression": "estadoDaTela({ carregando: false, erro: 'HTTP 500' })", "expected": "erro" },
+            { "name": "lista vazia", "expression": "estadoDaTela({ carregando: false, itens: [] })", "expected": "vazio" },
+            { "name": "lista ausente não quebra", "expression": "estadoDaTela({ carregando: false })", "expected": "vazio" },
+            { "name": "lista com itens", "expression": "estadoDaTela({ carregando: false, itens: [{ id: 1 }] })", "expected": "lista" },
+            { "name": "objeto vazio é tratado como vazio", "expression": "estadoDaTela({})", "expected": "vazio", "hidden": true },
+            { "name": "erro vazio não conta como erro", "expression": "estadoDaTela({ erro: '', itens: [{ id: 1 }] })", "expected": "lista", "hidden": true }
+          ],
+          "hints": [
+            "São quatro saídas e a ordem de verificação é o enunciado inteiro.",
+            "Lista ausente e lista vazia levam ao mesmo estado: não trate os dois casos separado.",
+            "Texto vazio é um valor falsy — e o enunciado diz \"qualquer valor\" para erro."
+          ],
+          "criteria": [
+            "Os quatro estados são devolvidos",
+            "Carregando tem precedência sobre erro",
+            "Lista ausente não lança erro",
+            "Erro vazio não é tratado como erro"
+          ],
+          "topics": ["estados da tela", "fetch"],
+          "solution": "function estadoDaTela(resposta) {\n  if (resposta.carregando) return 'carregando'\n  if (resposta.erro) return 'erro'\n\n  const itens = resposta.itens ?? []\n  // Ausente e vazia são o mesmo estado para quem olha a tela.\n  if (itens.length === 0) return 'vazio'\n\n  return 'lista'\n}\n"
+        }
+      ]
     }
   ]
 }

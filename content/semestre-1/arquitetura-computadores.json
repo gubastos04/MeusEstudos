@@ -546,6 +546,80 @@
           "topics": ["memória"]
         }
       ]
+    },
+    {
+      "id": "aval-arq-pratica",
+      "title": "Arquitetura de computadores — prática",
+      "format": "pratica",
+      "summary": "Reduzir o número de idas à rede em vez de otimizar o código entre elas, e estimar o ganho.",
+      "estimatedMinutes": 15,
+      "topics": ["custo de rede", "estimativa"],
+      "afterItemId": "arq-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-arq-pratica-lotes-01",
+          "kind": "pratica",
+          "prompt": "Uma tela busca 50 produtos fazendo uma chamada por id: 50 idas × 100 ms = 5 segundos. A API aceita vários ids por chamada, e a conclusão da aula vale aqui — reduzir o NÚMERO de idas à rede vale mais que otimizar o código entre elas.\n\nEscreva duas funções:\n\n- `planejarLotes(ids, tamanho)`: divide os ids em lotes de até `tamanho`, na ordem original. Lista vazia devolve `[]`. Tamanho que não seja maior que zero levanta erro.\n- `tempoEstimado(ids, tamanho, msPorIda)`: quantos milissegundos o plano leva, contando uma ida por lote.",
+          "language": "javascript",
+          "starter": "function planejarLotes(ids, tamanho) {\n  // escreva aqui\n}\n\nfunction tempoEstimado(ids, tamanho, msPorIda) {\n  // escreva aqui\n}\n",
+          "tests": [
+            {
+              "name": "lista vazia",
+              "expression": "planejarLotes([], 3)",
+              "expected": []
+            },
+            {
+              "name": "último lote incompleto",
+              "expression": "planejarLotes([1, 2, 3, 4, 5, 6, 7], 3)",
+              "expected": [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7]
+              ]
+            },
+            {
+              "name": "lote maior que a lista",
+              "expression": "planejarLotes([1, 2], 5)",
+              "expected": [
+                [1, 2]
+              ]
+            },
+            { "name": "tamanho inválido levanta erro", "expression": "planejarLotes([1, 2, 3], 0)", "expected": null, "expectThrows": true },
+            { "name": "50 ids em lotes de 25 levam 200 ms", "expression": "tempoEstimado(Array.from({ length: 50 }, (_, i) => i), 25, 100)", "expected": 200 },
+            { "name": "sem ids não há ida à rede", "expression": "tempoEstimado([], 10, 100)", "expected": 0 },
+            {
+              "name": "uma ida por id é o pior caso",
+              "expression": "tempoEstimado(Array.from({ length: 50 }, (_, i) => i), 1, 100)",
+              "expected": 5000,
+              "hidden": true
+            },
+            {
+              "name": "ordem preservada",
+              "expression": "planejarLotes(['a', 'b', 'c'], 2)",
+              "expected": [
+                ["a", "b"],
+                ["c"]
+              ],
+              "hidden": true
+            },
+            { "name": "tamanho negativo também levanta", "expression": "planejarLotes([1], -1)", "expected": null, "expectThrows": true, "hidden": true }
+          ],
+          "hints": [
+            "Um laço que anda de `tamanho` em `tamanho` resolve o plano.",
+            "O tempo não depende da quantidade de ids, e sim de quantos lotes existem.",
+            "Valide o tamanho antes de entrar no laço: tamanho zero faria um laço infinito."
+          ],
+          "criteria": [
+            "Lista vazia devolve lista vazia",
+            "O último lote pode ser menor",
+            "A ordem original é preservada",
+            "Tamanho inválido levanta erro em vez de travar",
+            "O tempo conta uma ida por lote"
+          ],
+          "topics": ["custo de rede", "estimativa"],
+          "solution": "function planejarLotes(ids, tamanho) {\n  if (!(tamanho > 0)) throw new Error('tamanho de lote precisa ser maior que zero')\n\n  const lotes = []\n  for (let inicio = 0; inicio < ids.length; inicio += tamanho) {\n    lotes.push(ids.slice(inicio, inicio + tamanho))\n  }\n  return lotes\n}\n\nfunction tempoEstimado(ids, tamanho, msPorIda) {\n  // O custo está no número de idas, não no tamanho de cada uma.\n  return planejarLotes(ids, tamanho).length * msPorIda\n}\n"
+        }
+      ]
     }
   ]
 }

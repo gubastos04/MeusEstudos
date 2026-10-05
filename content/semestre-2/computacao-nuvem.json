@@ -376,6 +376,74 @@
           "topics": ["ambiente"]
         }
       ]
+    },
+    {
+      "id": "aval-nuvem-pratica",
+      "title": "Computação em nuvem — prática",
+      "format": "pratica",
+      "summary": "Ler configuração do ambiente falhando cedo, com mensagem que nomeia a variável e não mostra o segredo.",
+      "estimatedMinutes": 15,
+      "topics": ["configuração", "variável de ambiente"],
+      "afterItemId": "nuvem-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-nuvem-pratica-config-01",
+          "kind": "pratica",
+          "prompt": "Aplicação que sobe sem configuração só descobre o problema na primeira requisição, em produção. Escreva `lerConfiguracao(env)` que valida na partida e devolve `{ bancoUrl, porta, segredo }`:\n\n- `DATABASE_URL` e `APP_SECRET` são obrigatórias. Faltando qualquer uma, levante erro cuja mensagem **nomeia a variável ausente**.\n- `PORT` é opcional e vale 3000 quando ausente. Deve voltar como número, não como texto.\n- A mensagem de erro **nunca** pode conter o valor de `APP_SECRET`: log de erro é copiado para mais lugares que o resto.",
+          "language": "javascript",
+          "starter": "function lerConfiguracao(env) {\n  // escreva aqui\n}\n",
+          "tests": [
+            {
+              "name": "configuração completa",
+              "expression": "lerConfiguracao({ DATABASE_URL: 'postgres://x', APP_SECRET: 'abc', PORT: '8080' }).porta",
+              "expected": 8080
+            },
+            {
+              "name": "porta vem como número",
+              "expression": "typeof lerConfiguracao({ DATABASE_URL: 'postgres://x', APP_SECRET: 'abc', PORT: '8080' }).porta",
+              "expected": "number"
+            },
+            { "name": "porta ausente vale 3000", "expression": "lerConfiguracao({ DATABASE_URL: 'postgres://x', APP_SECRET: 'abc' }).porta", "expected": 3000 },
+            { "name": "falta de configuração levanta erro", "expression": "lerConfiguracao({})", "expected": null, "expectThrows": true },
+            {
+              "name": "a mensagem nomeia a variável ausente",
+              "expression": "(() => { try { lerConfiguracao({ APP_SECRET: 'abc' }) } catch (erro) { return erro.message.includes('DATABASE_URL') } })()",
+              "expected": true
+            },
+            {
+              "name": "a mensagem não mostra o segredo",
+              "expression": "(() => { try { lerConfiguracao({ APP_SECRET: 'super-secreto-123' }) } catch (erro) { return erro.message.includes('super-secreto-123') } })()",
+              "expected": false
+            },
+            {
+              "name": "segredo ausente também é recusado",
+              "expression": "lerConfiguracao({ DATABASE_URL: 'postgres://x' })",
+              "expected": null,
+              "expectThrows": true,
+              "hidden": true
+            },
+            {
+              "name": "o segredo volta na configuração",
+              "expression": "lerConfiguracao({ DATABASE_URL: 'postgres://x', APP_SECRET: 'abc' }).segredo",
+              "expected": "abc",
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "Valide as duas obrigatórias antes de montar o objeto de retorno.",
+            "A mensagem precisa do NOME da variável. O valor não entra — nem o da que está presente.",
+            "`Number(\"8080\")` devolve número; `env.PORT ?? 3000` resolve o padrão."
+          ],
+          "criteria": [
+            "Variável obrigatória ausente levanta erro na partida",
+            "A mensagem nomeia qual variável falta",
+            "A mensagem nunca contém o valor do segredo",
+            "A porta volta como número, com padrão 3000"
+          ],
+          "topics": ["configuração", "variável de ambiente"],
+          "solution": "function lerConfiguracao(env) {\n  const faltando = ['DATABASE_URL', 'APP_SECRET'].filter((nome) => !env[nome])\n\n  // Nomeia o que falta e para aí: valor de variável nunca entra na mensagem.\n  if (faltando.length > 0) {\n    throw new Error(`configuração ausente: ${faltando.join(', ')}`)\n  }\n\n  return {\n    bancoUrl: env.DATABASE_URL,\n    porta: Number(env.PORT ?? 3000),\n    segredo: env.APP_SECRET,\n  }\n}\n"
+        }
+      ]
     }
   ]
 }

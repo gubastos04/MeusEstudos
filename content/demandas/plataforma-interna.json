@@ -95,6 +95,7 @@
       "request": "Refatorar antes de adicionar a regra, sem mudar comportamento nenhum.",
       "stack": ["python", "arquitetura", "testes"],
       "moduleIds": ["engenharia-software", "python-aplicado", "java-oo"],
+      "continuesProjectId": "proj-atendimento",
       "system": {
         "description": "Função atual, usada pela tela de fila de atendimento.",
         "files": [

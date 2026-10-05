@@ -729,6 +729,80 @@
           ]
         }
       ]
+    },
+    {
+      "id": "aval-alg-pratica",
+      "title": "Algoritmos e complexidade — prática",
+      "format": "pratica",
+      "summary": "Trocar o laço dentro do laço por uma passada, com um caso grande que recusa a versão lenta.",
+      "estimatedMinutes": 15,
+      "topics": ["complexidade", "otimização"],
+      "afterItemId": "alg-checkpoint-01",
+      "questions": [
+        {
+          "id": "q-alg-pratica-bloqueados-01",
+          "kind": "pratica",
+          "prompt": "A rotina abaixo cruza pedidos com a lista de clientes bloqueados. Funcionou por meses com 200 clientes e passou a demorar minutos quando a lista chegou a dezenas de milhares.\n\nO problema não é o código estar feio: `includes` percorre a lista de bloqueados para cada pedido, o que dá custo multiplicado. Reescreva `pedidosBloqueados(pedidos, bloqueados)` mantendo o mesmo retorno — os ids dos pedidos bloqueados, na ordem original.\n\nO último caso de teste tem 60 mil pedidos e 60 mil bloqueados. A versão atual não termina nele.",
+          "language": "javascript",
+          "starter": "function pedidosBloqueados(pedidos, bloqueados) {\n  // Para CADA pedido, percorre TODA a lista de bloqueados.\n  return pedidos.filter((pedido) => bloqueados.includes(pedido.clienteId)).map((pedido) => pedido.id)\n}\n",
+          "tests": [
+            {
+              "name": "listas vazias",
+              "expression": "pedidosBloqueados([], [])",
+              "expected": []
+            },
+            {
+              "name": "nenhum bloqueado",
+              "expression": "pedidosBloqueados([{ id: 1, clienteId: 'a' }], ['z'])",
+              "expected": []
+            },
+            {
+              "name": "um bloqueado",
+              "expression": "pedidosBloqueados([{ id: 1, clienteId: 'a' }, { id: 2, clienteId: 'b' }], ['b'])",
+              "expected": [2]
+            },
+            {
+              "name": "ordem original preservada",
+              "expression": "pedidosBloqueados([{ id: 7, clienteId: 'a' }, { id: 3, clienteId: 'b' }, { id: 5, clienteId: 'a' }], ['a'])",
+              "expected": [7, 5]
+            },
+            {
+              "name": "mesmo cliente em vários pedidos",
+              "expression": "pedidosBloqueados([{ id: 1, clienteId: 'a' }, { id: 2, clienteId: 'a' }], ['a'])",
+              "expected": [1, 2]
+            },
+            {
+              "name": "lista de bloqueados vazia",
+              "expression": "pedidosBloqueados([{ id: 1, clienteId: 'a' }], [])",
+              "expected": []
+            },
+            {
+              "name": "60 mil pedidos e 60 mil bloqueados",
+              "expression": "pedidosBloqueados(Array.from({ length: 60000 }, (_, i) => ({ id: i, clienteId: 'c' + i })), Array.from({ length: 60000 }, (_, i) => 'c' + i)).length",
+              "expected": 60000
+            },
+            {
+              "name": "bloqueado repetido não duplica o pedido",
+              "expression": "pedidosBloqueados([{ id: 1, clienteId: 'a' }], ['a', 'a'])",
+              "expected": [1],
+              "hidden": true
+            }
+          ],
+          "hints": [
+            "A pergunta repetida é \"este cliente está bloqueado?\". Qual estrutura responde isso sem percorrer a lista?",
+            "Construa a estrutura de consulta UMA vez, antes do laço dos pedidos.",
+            "O ganho não vem de otimizar o laço: vem de trocar o custo de cada consulta."
+          ],
+          "criteria": [
+            "O retorno é igual ao da versão original nos casos pequenos",
+            "A ordem dos pedidos é preservada",
+            "O caso de 60 mil itens termina dentro do tempo",
+            "A estrutura de consulta é construída fora do laço"
+          ],
+          "topics": ["complexidade", "otimização"],
+          "solution": "function pedidosBloqueados(pedidos, bloqueados) {\n  // Um Set construído uma vez troca a busca linear por consulta constante:\n  // o custo cai de pedidos × bloqueados para pedidos + bloqueados.\n  const bloqueadosRapido = new Set(bloqueados)\n\n  return pedidos.filter((pedido) => bloqueadosRapido.has(pedido.clienteId)).map((pedido) => pedido.id)\n}\n"
+        }
+      ]
     }
   ]
 }

@@ -65,7 +65,7 @@ npm run setup            # instala, gera o client, cria o banco, sincroniza cont
 npm run dev              # servidor de desenvolvimento
 npm run build            # build de produção (roda prisma generate antes)
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest (176 testes; cria prisma/test-vitest.db do zero)
+npm test                 # vitest (189 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
@@ -147,7 +147,7 @@ provedor de deploy. Não existe variável separada para produção.
 
 O `provider` do datasource não aceita `env()`, então ele é trocado por
 comando. O repositório versiona `sqlite`, porque é o que faz `npm run dev` e os
-176 testes funcionarem logo depois de um `git clone`. O build de produção roda
+189 testes funcionarem logo depois de um `git clone`. O build de produção roda
 `npm run db:provider postgresql` antes do `next build`.
 
 Ao trocar o provider à mão, rode `npx prisma generate` depois: o client gerado
@@ -208,6 +208,13 @@ Código de usuário **nunca** roda no servidor.
   conhecido é interface com objeto aninhado — coberto por
   `tests/typescript-runner.test.ts`, que executa o resultado em vez de comparar
   texto.
+
+  Segundo limite, descoberto escrevendo conteúdo: o regex de `type X = ...`
+  **para no fim da linha**, então alias de tipo em várias linhas deixa as
+  propriedades soltas e o código não carrega. Em conteúdo de TypeScript, declare
+  a forma de objeto com `interface`, que o `stripTypes` trata em várias linhas.
+  Isso vale principalmente para o `starter`: um starter com `type` multilinha
+  faz uma resposta correta falhar, e o erro parece ser de quem estuda.
 - Python: Pyodide em Worker, baixado sob demanda com confirmação explícita
   (são megabytes; a pessoa pode estar em rede móvel). Falha de download degrada
   para verificação estrutural com mensagem clara.
@@ -244,6 +251,36 @@ existe. Coberto em `tests/integracao.test.ts`, junto das guardas de tentativa
 finalizada, dupla finalização e tentativa de outra avaliação.
 
 Tentativas nunca são apagadas.
+
+**Cada módulo tem duas avaliações: uma `alternativa` e uma `pratica`.** Elas são
+separadas porque `content:validate` proíbe misturar questão prática em avaliação
+de alternativa — e a separação é melhor de todo jeito, já que as duas medem
+coisas diferentes e levam tempos diferentes.
+
+Isso existe porque a avaliação é a **única fonte automática de diagnóstico** da
+plataforma: o resultado calcula acerto por tópico e alimenta `reviewTopics`, que
+é o que o sistema de revisão usa. Enquanto as 22 avaliações eram 98 de 100
+questões de múltipla escolha, quem reconhecia bem e produzia mal era informado
+de que estava bem — e, sem professor que notasse, a lacuna nunca aparecia.
+
+Das 22 questões práticas, 19 rodam com teste executado. As três que não rodam
+(`uml`, `banco-dados`, `java-oo`) usam verificação estrutural e dizem isso na
+própria `solutionNotes`: SQL e Java não executam no navegador.
+
+### Demanda que chega sobre um projeto
+
+`continuesProjectId`, no schema de demanda, liga uma demanda ao projeto que
+construiu o sistema que ela pede para alterar. Hoje só
+`dem-refatorar-servico-tickets` → `proj-atendimento`.
+
+Por que existe: os cinco projetos são greenfield e terminam em publicação,
+enquanto a tarefa que todo júnior recebe na primeira semana é mudar algo que já
+existe. Ligar as duas coisas cria a única experiência de manutenção do acervo
+sem escrever conteúdo novo.
+
+A tela da demanda olha o `ProjectProgress` da pessoa antes de prometer "o
+sistema que você construiu": sem isso, quem não começou o projeto leria uma
+promessa vazia. A página do projeto mostra o caminho inverso, depois das etapas.
 
 ### IA
 

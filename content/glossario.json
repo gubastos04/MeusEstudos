@@ -1266,6 +1266,224 @@
       "tags": [
         "performance"
       ]
+    },
+    {
+      "id": "idempotencia",
+      "term": "Idempotência",
+      "short": "Repetir a mesma operação não muda o resultado além da primeira vez.",
+      "explanation": "Uma operação é idempotente quando executá-la duas vezes tem o mesmo efeito que executá-la uma vez. Isso importa porque entrega repetida é normal em sistema distribuído: o webhook do parceiro reenvia por instabilidade, a pessoa clica duas vezes, a retentativa dispara depois de um timeout. A saída não é impedir a repetição — é reconhecer o pedido repetido por um identificador e ignorá-lo, registrando que ignorou.",
+      "example": {
+        "language": "python",
+        "code": "# nao idempotente: cada chamada envia outro email\ndef receber(evento):\n    email.enviar(evento.pedido_id)\n\n# idempotente: o evento_id decide\ndef receber(evento):\n    if ja_processado(evento.evento_id):\n        log.info(\"evento repetido ignorado\", evento.evento_id)\n        return\n    marcar_processado(evento.evento_id)\n    email.enviar(evento.pedido_id)\n"
+      },
+      "whereItAppears": [
+        "Webhook que chega mais de uma vez",
+        "Retentativa depois de timeout",
+        "Botão clicado duas vezes",
+        "Pipeline que roda de novo"
+      ],
+      "related": [
+        "Retentativa",
+        "Webhook",
+        "Fila",
+        "Índice"
+      ],
+      "tags": [
+        "backend",
+        "integracao",
+        "arquitetura"
+      ]
+    },
+    {
+      "id": "condicao-de-corrida",
+      "term": "Condição de corrida",
+      "short": "Dois processos mexem no mesmo dado ao mesmo tempo e o resultado depende de quem chega primeiro.",
+      "explanation": "Acontece quando uma operação lê um valor, decide com base nele e escreve — e outra operação faz o mesmo no intervalo entre a leitura e a escrita. As duas acham que o horário estava livre e as duas reservam. O código parece correto lido de cima a baixo: o defeito só aparece com concorrência, o que o torna difícil de reproduzir. A correção não é tentar de novo, é fazer a verificação e a escrita acontecerem como uma coisa só — restrição única no banco, transação com bloqueio, ou operação atômica.",
+      "example": {
+        "language": "sql",
+        "code": "-- corrida: entre o SELECT e o INSERT, outro pedido cabe\nSELECT count(*) FROM reserva WHERE horario = '10:00';  -- 0\nINSERT INTO reserva (horario) VALUES ('10:00');\n\n-- sem corrida: o banco decide, uma vez\nCREATE UNIQUE INDEX idx_reserva_horario ON reserva (horario);\n-- o segundo INSERT falha, e falhar aqui e o comportamento correto\n"
+      },
+      "whereItAppears": [
+        "Reserva de horário ou de estoque",
+        "Aplicação rodando em várias instâncias",
+        "Tarefa agendada que dispara em paralelo",
+        "Contador que perde incremento"
+      ],
+      "related": [
+        "Transação",
+        "Índice",
+        "Idempotência"
+      ],
+      "tags": [
+        "backend",
+        "banco",
+        "arquitetura"
+      ]
+    },
+    {
+      "id": "retentativa",
+      "term": "Retentativa",
+      "short": "Repetir uma chamada que falhou, com limite e espera crescente.",
+      "explanation": "Falha de rede costuma ser temporária, então repetir resolve. Repetir errado piora: repetir na hora e sem limite transforma a instabilidade do outro serviço em sobrecarga, e o serviço que estava quase voltando recebe o dobro de tráfego. Retentativa útil tem três partes — número máximo de tentativas, espera que cresce entre elas, e a decisão de só repetir o que faz sentido repetir. Erro de validação não melhora na segunda tentativa.",
+      "example": {
+        "language": "javascript",
+        "code": "// espera crescente: 1s, 2s, 4s — e desiste\nasync function chamarComRetentativa(fn, maximo = 3) {\n  for (let tentativa = 0; tentativa < maximo; tentativa++) {\n    try {\n      return await fn()\n    } catch (erro) {\n      if (tentativa === maximo - 1 || !erroTemporario(erro)) throw erro\n      await esperar(1000 * 2 ** tentativa)\n    }\n  }\n}\n"
+      },
+      "whereItAppears": [
+        "Integração com serviço externo",
+        "Fila que reprocessa item com falha",
+        "Chamada que deu timeout"
+      ],
+      "related": [
+        "Idempotência",
+        "Timeout",
+        "Fila",
+        "Latência"
+      ],
+      "tags": [
+        "backend",
+        "integracao"
+      ]
+    },
+    {
+      "id": "timeout",
+      "term": "Timeout",
+      "short": "Tempo máximo de espera antes de desistir de uma operação.",
+      "explanation": "Sem timeout, uma chamada que nunca responde prende o recurso que a espera para sempre: a conexão fica ocupada, a requisição do usuário não termina, e a fila de espera cresce até a aplicação parar. Todo acesso a algo fora do processo precisa de um limite — chamada de rede, consulta ao banco, leitura de arquivo. Escolher o valor é um trade-off: curto demais desiste de resposta que ia chegar, longo demais segura recurso sem necessidade.",
+      "example": {
+        "language": "python",
+        "code": "# sem limite: se o parceiro travar, essa thread trava com ele\nresposta = requests.post(url, json=dados)\n\n# com limite: 5s para conectar, 15s para a resposta inteira\nresposta = requests.post(url, json=dados, timeout=(5, 15))\n"
+      },
+      "whereItAppears": [
+        "Chamada a API de terceiro",
+        "Consulta lenta no banco",
+        "Esgotamento do pool de conexões"
+      ],
+      "related": [
+        "Retentativa",
+        "Latência",
+        "Performance"
+      ],
+      "tags": [
+        "backend",
+        "integracao"
+      ]
+    },
+    {
+      "id": "recursao",
+      "term": "Recursão",
+      "short": "Uma função que resolve um problema chamando a si mesma numa versão menor dele.",
+      "explanation": "Recursão serve quando o problema tem a mesma forma em escala menor: percorrer pasta que contém pasta, somar os nós de uma árvore, achatar lista aninhada. Toda função recursiva precisa de duas coisas, e esquecer a primeira é o erro clássico: o caso base, que para a descida, e a chamada que caminha em direção a ele. Sem caso base, a pilha de chamadas estoura. Laço e recursão resolvem o mesmo conjunto de problemas; a recursão vence quando a estrutura dos dados já é aninhada.",
+      "example": {
+        "language": "python",
+        "code": "def somar_tamanhos(no):\n    # caso base: arquivo nao tem filhos\n    if no[\"tipo\"] == \"arquivo\":\n        return no[\"tamanho\"]\n    # caso recursivo: a pasta e a soma do que ha dentro\n    return sum(somar_tamanhos(filho) for filho in no[\"filhos\"])\n"
+      },
+      "whereItAppears": [
+        "Árvore de categorias ou de comentários",
+        "Percorrer diretórios",
+        "JSON com profundidade desconhecida"
+      ],
+      "related": [
+        "Algoritmo",
+        "Complexidade",
+        "Stack trace"
+      ],
+      "tags": [
+        "fundamentos",
+        "algoritmos"
+      ]
+    },
+    {
+      "id": "callback",
+      "term": "Callback",
+      "short": "Função passada para outra função, para ser chamada quando algo acontecer.",
+      "explanation": "Em vez de pedir um resultado e esperar, você entrega um pedaço de código dizendo \"chame isto quando terminar\". É o formato de todo evento de navegador (clique, rolagem) e de muitas APIs antigas de entrada e saída. O problema aparece no encadeamento: callback que chama callback que chama callback fica difícil de ler e de tratar erro, e foi por isso que Promise e async/await apareceram.",
+      "example": {
+        "language": "javascript",
+        "code": "// callback de evento: o navegador chama quando o clique acontece\nbotao.addEventListener('click', () => {\n  enviarFormulario()\n})\n\n// callback como argumento comum\nconst ordenados = [3, 1, 2].sort((a, b) => a - b)\n"
+      },
+      "whereItAppears": [
+        "Evento de clique ou de teclado",
+        "Métodos de array como map e filter",
+        "APIs antigas de Node"
+      ],
+      "related": [
+        "Promise",
+        "Closure",
+        "Framework"
+      ],
+      "tags": [
+        "javascript",
+        "frontend"
+      ]
+    },
+    {
+      "id": "promise",
+      "term": "Promise",
+      "short": "Objeto que representa um valor que ainda não chegou.",
+      "explanation": "Uma Promise é a resposta imediata para uma pergunta cuja resposta demora: ela começa pendente e termina resolvida, com o valor, ou rejeitada, com o erro. É o que `fetch` devolve. `await` espera uma Promise e entrega o valor, o que faz o código assíncrono ficar com a aparência de código linear — mas o erro continua precisando de tratamento, e a Promise rejeitada que ninguém trata vira falha silenciosa.",
+      "example": {
+        "language": "javascript",
+        "code": "// fetch devolve uma Promise, nao a resposta\nconst promessa = fetch('/api/pedidos')\n\n// await espera e entrega o valor\ntry {\n  const resposta = await fetch('/api/pedidos')\n  if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`)\n  const pedidos = await resposta.json()\n} catch (erro) {\n  // sem este catch, a rejeicao passa em silencio\n}\n"
+      },
+      "whereItAppears": [
+        "Toda chamada com fetch",
+        "Leitura de arquivo em Node",
+        "Qualquer função async"
+      ],
+      "related": [
+        "Callback",
+        "Requisição",
+        "Timeout"
+      ],
+      "tags": [
+        "javascript",
+        "frontend"
+      ]
+    },
+    {
+      "id": "closure",
+      "term": "Closure",
+      "short": "Função que continua lembrando as variáveis do lugar onde foi criada.",
+      "explanation": "Quando uma função é criada dentro de outra, ela guarda acesso às variáveis de fora, mesmo depois que a função externa terminou. Isso é o que faz um contador manter seu valor sem variável global, e o que permite a um componente guardar estado. É também a causa de um bug recorrente: a função criada dentro de um laço lembra a variável, não o valor que ela tinha naquele momento — o que com `var` leva todas as funções a verem o último valor.",
+      "example": {
+        "language": "javascript",
+        "code": "function criarContador() {\n  let total = 0 // fica vivo por causa do closure\n  return () => (total += 1)\n}\n\nconst contar = criarContador()\ncontar() // 1\ncontar() // 2\n"
+      },
+      "whereItAppears": [
+        "Estado em componente React",
+        "Função de callback que usa dado do contexto",
+        "Bug de laço com var"
+      ],
+      "related": [
+        "Callback",
+        "Framework"
+      ],
+      "tags": [
+        "javascript",
+        "frontend"
+      ]
+    },
+    {
+      "id": "container",
+      "term": "Container",
+      "short": "Processo isolado que carrega consigo as dependências de que precisa para rodar.",
+      "explanation": "Container empacota a aplicação com as bibliotecas e a configuração de sistema de que ela depende, para que rode igual na sua máquina e no servidor. Não é máquina virtual: compartilha o núcleo do sistema operacional, então sobe em segundos. O que ele resolve é \"funcionava na minha máquina\"; o que ele não resolve é estado — o que o container escreve no próprio disco desaparece quando ele é recriado, e por isso banco e arquivo de usuário ficam fora dele. Docker é a ferramenta mais comum para construir e rodar containers.",
+      "whereItAppears": [
+        "Deploy em nuvem",
+        "Subir banco local para desenvolver",
+        "Erro de \"funciona na minha máquina\"",
+        "Aplicação em várias instâncias"
+      ],
+      "related": [
+        "Docker",
+        "Deploy",
+        "Variável de ambiente"
+      ],
+      "tags": [
+        "cloud",
+        "devops"
+      ]
     }
   ]
 }
