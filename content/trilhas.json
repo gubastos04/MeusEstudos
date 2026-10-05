@@ -58,7 +58,7 @@
       "title": "Foco em web",
       "summary": "HTML, CSS e JavaScript, depois TypeScript e React, com a usabilidade que separa tela feia de tela usável.",
       "forWho": "Para quem quer construir interfaces e integrar com backend.",
-      "naoCobre": "Não cobre Python, deploy e nuvem, nem estrutura de dados. É o caminho até construir e integrar interfaces — operar um servidor fica para depois.",
+      "naoCobre": "Não cobre Python, deploy e nuvem, nem estrutura de dados. Como as aulas de custo de código e de lógica booleana moram em Python, elas também ficam de fora: vale lê-las à parte. É o caminho até construir e integrar interfaces — operar um servidor fica para depois.",
       "moduleIds": [
         "desenvolvimento-web",
         "frontend-moderno",
