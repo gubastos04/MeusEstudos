@@ -208,6 +208,266 @@
       "glossary": ["pull-request", "code-review", "Refatoração", "merge", "branch"]
     },
     {
+      "id": "eng-ci-01",
+      "type": "lesson",
+      "title": "CI: o que roda antes de alguém poder juntar",
+      "estimatedMinutes": 10,
+      "tags": ["processo", "testes"],
+      "why": "Teste que só roda na sua máquina não protege ninguém. O que protege é o que roda sozinho em todo pull request, antes de o merge ser possível.",
+      "goal": "Escrever um pipeline que roda verificação de tipos e testes em cada pull request, e saber o que não colocar nele.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Integração contínua é uma frase difícil para uma ideia simples: **toda alteração proposta é verificada por uma máquina antes de entrar**. Não é sobre ferramenta, é sobre o momento — depois do merge já é tarde, porque aí o problema é de todo mundo."
+        },
+        {
+          "kind": "text",
+          "text": "O arquivo abaixo é um pipeline do GitHub Actions. Ele tem três partes que todo pipeline tem, independentemente da ferramenta: quando roda, onde roda, e o que roda."
+        },
+        {
+          "kind": "code",
+          "language": "yaml",
+          "code": "name: verificacao\n\n# QUANDO: em todo pull request para a main, e na propria main.\non:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n\njobs:\n  verificar:\n    # ONDE: maquina limpa, sem nada da sua configuracao local.\n    runs-on: ubuntu-latest\n\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n\n      # O QUE: instalar com versoes travadas, e verificar.\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n"
+        },
+        {
+          "kind": "text",
+          "text": "`npm ci` não é `npm install` com outro nome: ele instala exatamente o que está no `package-lock.json` e falha se o lock estiver desatualizado. É o que garante que a máquina da CI tem as mesmas versões que a sua."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O pipeline só serve se bloquear",
+          "text": "Pipeline que roda e deixa juntar mesmo vermelho é relatório, não proteção. A regra de \"não é possível fazer merge com a verificação falhando\" mora na configuração do repositório, não no arquivo do pipeline."
+        },
+        {
+          "kind": "text",
+          "text": "O que **não** colocar: nada que dependa da sua máquina, nada que precise de segredo que você não possa rotacionar, e nada lento o bastante para a pessoa parar de esperar. Pipeline de dez minutos vira pipeline que ninguém olha."
+        },
+        {
+          "kind": "quiz",
+          "question": "O time adicionou um passo que roda os testes de interface num navegador real e o pipeline passou de 2 para 14 minutos. Qual é o efeito mais provável?",
+          "choices": [
+            "A qualidade sobe, porque mais coisa é verificada",
+            "As pessoas passam a abrir o PR e seguir para outra tarefa, e o retorno do erro chega tarde demais para ser barato",
+            "Nada muda, porque a máquina trabalha sozinha",
+            "O custo de execução cai, porque roda menos vezes"
+          ],
+          "answerIndex": 1,
+          "explanation": "O valor da CI está no retorno rápido. Quando o retorno demora, ele deixa de interromper o erro e passa a ser arqueologia — e a pessoa já está em outro contexto. Verificação lenta existe, mas fora do caminho do merge.",
+          "topics": ["ci"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Abra o repositório de um projeto seu e responda por escrito: hoje, o que impede alguém de juntar código com teste quebrado? Se a resposta for \"a gente lembra de rodar\", já é o achado.",
+        "expected": "Você consegue nomear a verificação que falta e em que momento ela deveria rodar."
+      },
+      "ifStuck": ["As três perguntas são sempre as mesmas: quando roda, onde roda, o que roda."],
+      "commonErrors": [
+        {
+          "error": "Usar `npm install` no pipeline.",
+          "why": "Ele pode resolver versões diferentes das suas e esconder um lock desatualizado.",
+          "fix": "Usar `npm ci`, que instala o lock exato e falha se ele divergir do package.json."
+        }
+      ],
+      "glossary": ["Teste unitário", "Pull request", "Branch"],
+      "exercise": {
+        "id": "ex-eng-ci-01",
+        "title": "Pipeline que verifica todo pull request",
+        "kind": "structural",
+        "language": "yaml",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva o pipeline que roda em todo pull request para a `main`: instala com versões travadas, verifica os tipos e roda os testes, numa máquina limpa.",
+        "starter": "name: verificacao\n\n",
+        "checks": [
+          { "name": "dispara em pull request", "type": "regex", "value": "pull_request", "hint": "O momento é antes do merge, não depois." },
+          { "name": "define onde roda", "type": "regex", "value": "runs-on", "hint": "A máquina precisa ser declarada, e precisa ser limpa." },
+          { "name": "busca o código", "type": "regex", "value": "actions/checkout", "hint": "A máquina começa vazia: o código precisa chegar nela." },
+          { "name": "instala com versões travadas", "type": "regex", "value": "npm ci", "hint": "npm install pode resolver versões diferentes das suas." },
+          { "name": "verifica os tipos", "type": "regex", "value": "typecheck", "hint": "O enunciado pede verificação de tipos." },
+          { "name": "roda os testes", "type": "regex", "value": "npm test|npm run test", "hint": "O enunciado pede os testes." }
+        ],
+        "hints": [
+          "A estrutura é: `on:` (quando), `jobs:` com `runs-on:` (onde), e `steps:` (o que).",
+          "O primeiro passo de quase todo pipeline é buscar o código."
+        ],
+        "solution": "name: verificacao\n\non:\n  pull_request:\n    branches: [main]\n\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm test\n",
+        "solutionNotes": "Esta verificação lê o YAML e confere padrões: pipeline não executa no navegador. Ela não prova que o arquivo roda. Para isso, commite num repositório de verdade e abra um pull request — o retorno chega em minutos, e é o jeito mais rápido de aprender a sintaxe."
+      }
+    },
+    {
+      "id": "eng-deploy-01",
+      "type": "lesson",
+      "title": "Do merge ao ar: previsível e com caminho de volta",
+      "estimatedMinutes": 9,
+      "tags": ["processo", "deploy"],
+      "why": "Deploy que dá medo é deploy que acontece raramente, e deploy raro acumula mudanças — o que o torna ainda mais arriscado. Sair dessa espiral depende de duas coisas: ser previsível e ter volta.",
+      "goal": "Saber o que precisa estar no lugar para publicar sem janela de manutenção, e o que fazer quando der errado.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Depois que a verificação passa e o merge acontece, falta a parte que mais assusta: colocar no ar. O medo quase sempre vem de não saber **voltar**."
+        },
+        { "kind": "text", "text": "Três coisas tornam o deploy previsível, e nenhuma é ferramenta:" },
+        {
+          "kind": "list",
+          "items": [
+            "O que vai ao ar é exatamente o que foi verificado: mesmo commit, mesmas versões travadas.",
+            "A configuração vive fora do código, então o mesmo artefato roda em qualquer ambiente.",
+            "A mudança de banco vai antes e é compatível com a versão antiga, porque durante o deploy as duas convivem."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Migration que remove coluna derruba a versão antiga",
+          "text": "Durante o deploy, instâncias velhas e novas rodam ao mesmo tempo. Remover ou renomear coluna no mesmo passo que sobe o código novo quebra quem ainda não trocou. Some em dois deploys: primeiro pare de usar, depois remova."
+        },
+        {
+          "kind": "text",
+          "text": "E a volta. O caminho mais barato é publicar de novo a versão anterior, que já foi verificada — por isso o artefato precisa ser identificável por commit. Reverter banco quase nunca funciona, e é exatamente por isso que a mudança de esquema precisa ser compatível com a versão antiga."
+        },
+        {
+          "kind": "quiz",
+          "question": "O deploy foi ao ar e o erro começou a aparecer. Qual é a primeira coisa a fazer?",
+          "choices": [
+            "Investigar a causa com calma, para não voltar sem entender",
+            "Publicar de novo a versão anterior e investigar depois, com o sistema estável",
+            "Desligar a aplicação até resolver",
+            "Corrigir direto em produção e publicar em seguida"
+          ],
+          "answerIndex": 1,
+          "explanation": "Entender é necessário, mas não com o sistema quebrado: o tempo de investigação vira tempo de incidente. Volte primeiro, investigue depois — e é o deploy ter volta barata que torna essa escolha possível.",
+          "topics": ["deploy"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Olhe o último deploy de um projeto seu e responda: quanto tempo levaria para voltar à versão anterior, e você sabe qual era ela? Escreva os passos.",
+        "expected": "Você tem os passos da volta escritos antes de precisar deles — que é o único momento em que dá para escrevê-los com calma."
+      },
+      "ifStuck": [
+        "Se a resposta para \"como volto?\" for \"não sei\", esse é o primeiro problema a resolver, antes de qualquer melhoria no deploy."
+      ],
+      "commonErrors": [
+        {
+          "error": "Rodar a migration junto com a subida do código novo.",
+          "why": "Durante o deploy as duas versões convivem, e a antiga quebra se o esquema mudou debaixo dela.",
+          "fix": "Migration compatível primeiro, código depois; remoção só num deploy seguinte."
+        }
+      ],
+      "glossary": ["Deploy", "Migration", "Container", "Variável de ambiente"]
+    },
+    {
+      "id": "eng-depurar-01",
+      "type": "lesson",
+      "title": "Depurar com método, não com palpite",
+      "estimatedMinutes": 10,
+      "tags": ["processo", "debug"],
+      "why": "Depurar é a atividade mais frequente de quem programa, e a única que a maioria aprende por tentativa. O método não torna o bug fácil: torna o progresso visível, inclusive quando a hipótese está errada.",
+      "goal": "Seguir um processo que termina em correção verificada e em um teste que impede o bug de voltar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A plataforma já ensina, para performance, que medir vem antes de mexer. Para defeito vale o mesmo, e quase ninguém aplica: **sem reproduzir, você não está corrigindo — está trocando coisas até o sintoma sumir**."
+        },
+        { "kind": "text", "text": "O processo tem oito passos, e os três primeiros são onde o tempo é ganho:" },
+        {
+          "kind": "list",
+          "items": [
+            "1. Reproduzir. Transformar \"às vezes dá errado\" numa entrada concreta que falha sempre.",
+            "2. Observar. Ler o que o sistema diz: log, mensagem, valor real — não o que você acha que ele faz.",
+            "3. Formular uma hipótese. Uma frase que pode ser falsa: \"a média fica errada quando há menos valores que a janela\".",
+            "4. Isolar. Reduzir até o menor trecho que ainda falha. Bissecção serve para código e para histórico.",
+            "5. Testar a hipótese. Uma mudança por vez, prevendo o resultado antes de rodar.",
+            "6. Corrigir a causa, não o sintoma.",
+            "7. Escrever o teste de regressão, com o caso que você reproduziu no passo 1.",
+            "8. Verificar o impacto: a correção criou algum caso novo?"
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O passo 1 é o que separa os dois mundos. Enquanto o bug é \"às vezes\", qualquer mudança parece ter funcionado — inclusive as que não fizeram nada."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// Hipotese: a media erra quando ha menos valores que a janela.\n// Previsao antes de rodar: com 2 valores e janela 7, deve dar 15 e vai dar 4,28.\nconsole.log(mediaDosUltimos([10, 20], 7))\n\n// Rodou e deu 4.285714285714286. A hipotese se sustentou:\n// o divisor e a janela, nao a quantidade de valores que existe.\n"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Não corrija o que você não reproduziu",
+          "text": "Correção sem reprodução não tem como ser verificada: você não sabe se resolveu, se escondeu, ou se o problema simplesmente não aconteceu de novo naquele dia."
+        },
+        {
+          "kind": "text",
+          "text": "O passo 7 é o que faz o trabalho valer para o futuro. O teste de regressão não é burocracia: ele é a prova de que você reproduziu, e é o que impede o mesmo defeito de voltar no próximo refactor."
+        },
+        {
+          "kind": "text",
+          "text": "E o passo 8 existe porque correção cria caso novo com frequência. Trocar um divisor resolve o relatado e pode introduzir uma divisão por zero que antes não existia."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um erro aparece em produção uma vez por dia, sem padrão aparente. Você tem uma suspeita forte do trecho responsável. Qual é o próximo passo?",
+          "choices": [
+            "Corrigir o trecho suspeito e acompanhar se o erro volta",
+            "Achar a entrada que faz o erro acontecer sempre, mesmo que demore",
+            "Adicionar tratamento de erro em volta do trecho para o sistema não quebrar",
+            "Aumentar o log de toda a aplicação e esperar"
+          ],
+          "answerIndex": 1,
+          "explanation": "Corrigir sem reproduzir não é verificável: se o erro não voltar amanhã, você não sabe se resolveu. Com a reprodução na mão, a correção é confirmada em segundos e o teste de regressão sai de graça. Aumentar o log serve ao passo 2, mas em volta da hipótese, não em tudo.",
+          "topics": ["debug"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue o último erro que você registrou em Meus erros e escreva, para ele, os passos 1 e 3: qual entrada o reproduz, e qual era a hipótese. Se não souber a entrada, esse é o próprio exercício.",
+        "expected": "Você sai com uma entrada concreta que falha, ou com a constatação de que o bug foi corrigido sem reprodução."
+      },
+      "ifStuck": [
+        "Reproduzir é restringir: comece do caso real e vá removendo o que não muda o resultado.",
+        "Se a hipótese não puder ser falsa, ela não é hipótese — é palpite com nome melhor."
+      ],
+      "commonErrors": [
+        {
+          "error": "Mudar várias coisas ao mesmo tempo e testar no fim.",
+          "why": "Se o erro sumir, você não sabe qual mudança resolveu; se continuar, você não sabe qual descartar.",
+          "fix": "Uma mudança por vez, com a previsão do resultado escrita antes de rodar."
+        },
+        {
+          "error": "Fechar o caso quando o sintoma some.",
+          "why": "Sintoma some por motivos acidentais, incluindo o dado de teste ter mudado.",
+          "fix": "Fechar quando o caso reproduzido passa e existe teste que falha sem a correção."
+        }
+      ],
+      "glossary": ["Debug", "Stack trace", "Log", "Teste unitário"],
+      "exercise": {
+        "id": "ex-eng-depurar-01",
+        "title": "O relatório mostra média baixa no começo do mês",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Chegou assim, do time comercial: \"a média de vendas aparece baixa demais nos primeiros dias do mês, depois normaliza\".\n\nA função abaixo calcula a média dos últimos `n` valores. Reproduza, corrija a causa e verifique o impacto — **a correção mais direta cria um caso novo**, e um dos testes é exatamente ele.\n\nRegra: com menos valores que a janela, a média é dos valores que existem. Sem valor nenhum, o resultado é 0.",
+        "starter": "function mediaDosUltimos(valores, n) {\n  const ultimos = valores.slice(-n)\n\n  let soma = 0\n  for (const valor of ultimos) soma += valor\n\n  return soma / n\n}\n",
+        "tests": [
+          { "name": "o caso relatado: 2 dias numa janela de 7", "expression": "mediaDosUltimos([10, 20], 7)", "expected": 15 },
+          { "name": "janela cheia continua certa", "expression": "mediaDosUltimos([1, 2, 3, 4, 5], 3)", "expected": 4 },
+          { "name": "exatamente o tamanho da janela", "expression": "mediaDosUltimos([2, 4], 2)", "expected": 3 },
+          { "name": "sem valor nenhum devolve 0, não NaN", "expression": "mediaDosUltimos([], 5)", "expected": 0 },
+          { "name": "um valor só", "expression": "mediaDosUltimos([5], 1)", "expected": 5 },
+          { "name": "janela muito maior que os dados", "expression": "mediaDosUltimos([1, 2, 3], 10)", "expected": 2, "hidden": true },
+          { "name": "pega os últimos, não os primeiros", "expression": "mediaDosUltimos([100, 1, 1], 2)", "expected": 1, "hidden": true }
+        ],
+        "hints": [
+          "Passo 1: rode `mediaDosUltimos([10, 20], 7)` e escreva o que você esperava antes de olhar o resultado.",
+          "Passo 3: a hipótese é sobre o divisor. Ele é a janela pedida ou a quantidade de valores que existe?",
+          "Passo 8: depois de trocar o divisor, pense no caso em que não existe valor nenhum."
+        ],
+        "solution": "function mediaDosUltimos(valores, n) {\n  const ultimos = valores.slice(-n)\n\n  // Sem valor nenhum nao ha media: 0 em vez de 0/0, que daria NaN.\n  // Este caso so aparece DEPOIS de corrigir o divisor — e e o passo 8.\n  if (ultimos.length === 0) return 0\n\n  let soma = 0\n  for (const valor of ultimos) soma += valor\n\n  // A causa: dividia pela janela pedida, nao pelos valores que existem.\n  return soma / ultimos.length\n}\n",
+        "solutionNotes": "O caso relatado era o divisor. Mas trocar `n` por `ultimos.length` introduz `0/0` quando a lista está vazia — que é NaN, e NaN se espalha silenciosamente pelo relatório inteiro. É por isso que o passo 8 existe, e por isso o teste da lista vazia está aí."
+      }
+    },
+    {
       "id": "eng-refatorar-01",
       "type": "lesson",
       "title": "Refatorar sem quebrar",

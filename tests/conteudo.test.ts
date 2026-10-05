@@ -273,12 +273,21 @@ describe('a solução oficial resolve o próprio exercício', () => {
     ),
   )
 
+  // Desafio tem solucao e testes como os outros dois, e nao era verificado:
+  // uma solucao oficial quebrada ali so apareceria para quem estuda.
+  const desafios = conteudo.challenges.flatMap((desafio) => {
+    if (!executaveis.includes(desafio.language)) return []
+    if (!desafio.solution || desafio.tests.length === 0) return []
+    return [{ onde: `desafio / ${desafio.id}`, exercicio: desafio }]
+  })
+
   it('há exercícios executáveis para verificar', () => {
     // Guarda contra o teste virar vazio em silêncio depois de um refactor.
     expect(exercicios.length).toBeGreaterThan(20)
+    expect(desafios.length).toBeGreaterThan(10)
   })
 
-  it.each([...exercicios, ...questoes])('$onde', ({ exercicio }) => {
+  it.each([...exercicios, ...questoes, ...desafios])('$onde', ({ exercicio }) => {
     const falhas = rodar(exercicio.solution!, exercicio.language, exercicio.tests)
     expect(falhas).toEqual([])
   })

@@ -1,0 +1,317 @@
+{
+  "challenges": [
+    {
+      "id": "des-existente-sla-prioridade",
+      "title": "Acrescentar prioridade urgente ao cálculo de SLA",
+      "category": "backend",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 30,
+      "stack": ["javascript"],
+      "context": "Você entrou no time esta semana. O módulo de SLA abaixo já está em produção e tem testes que não podem quebrar. Chegou o pedido: existe uma prioridade nova, `urgente`, com prazo de 2 horas, e ela ignora o horário comercial — conta corrido.\n\nNinguém vai te explicar o arquivo. Ache onde a mudança cabe.",
+      "objective": "Acrescentar a prioridade `urgente` sem alterar o comportamento das três que já existem.",
+      "constraints": [
+        "Os testes do comportamento atual precisam continuar passando.",
+        "Não mude a assinatura de nenhuma função exportada."
+      ],
+      "acceptance": [
+        "Urgente tem prazo de 2 horas",
+        "Urgente ignora horário comercial",
+        "As três prioridades existentes não mudam de comportamento"
+      ],
+      "starter": "// --- prazos por prioridade, em horas uteis ---\nconst PRAZOS = {\n  baixa: 72,\n  media: 24,\n  alta: 8,\n}\n\nconst INICIO_EXPEDIENTE = 9\nconst FIM_EXPEDIENTE = 18\n\nfunction ehDiaUtil(data) {\n  const dia = data.getUTCDay()\n  return dia !== 0 && dia !== 6\n}\n\n// Avanca `horas` contando apenas expediente de dia util.\nfunction somarHorasUteis(inicio, horas) {\n  const atual = new Date(inicio.getTime())\n  let restante = horas\n\n  while (restante > 0) {\n    atual.setUTCHours(atual.getUTCHours() + 1)\n\n    if (ehDiaUtil(atual) && atual.getUTCHours() > INICIO_EXPEDIENTE && atual.getUTCHours() <= FIM_EXPEDIENTE) {\n      restante -= 1\n    }\n  }\n\n  return atual\n}\n\nfunction prazoDe(prioridade) {\n  const horas = PRAZOS[prioridade]\n  if (horas === undefined) throw new Error(`prioridade desconhecida: ${prioridade}`)\n  return horas\n}\n\n// Vencimento do ticket, em ISO, a partir da abertura.\nfunction vencimentoDoTicket(abertoEm, prioridade) {\n  const inicio = new Date(abertoEm)\n  const horas = prazoDe(prioridade)\n  return somarHorasUteis(inicio, horas).toISOString()\n}\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "contrato atual: alta continua com 8 horas úteis", "expression": "prazoDe('alta')", "expected": 8 },
+        { "name": "contrato atual: media continua com 24", "expression": "prazoDe('media')", "expected": 24 },
+        { "name": "contrato atual: baixa continua com 72", "expression": "prazoDe('baixa')", "expected": 72 },
+        { "name": "contrato atual: prioridade desconhecida continua falhando", "expression": "prazoDe('inventada')", "expected": null, "expectThrows": true },
+        { "name": "urgente tem prazo de 2 horas", "expression": "prazoDe('urgente')", "expected": 2 },
+        {
+          "name": "urgente conta corrido: 2h depois das 23h cai no dia seguinte",
+          "expression": "vencimentoDoTicket('2026-03-10T23:00:00.000Z', 'urgente')",
+          "expected": "2026-03-11T01:00:00.000Z"
+        },
+        {
+          "name": "alta continua pulando a madrugada",
+          "expression": "vencimentoDoTicket('2026-03-10T17:00:00.000Z', 'alta').slice(0, 10)",
+          "expected": "2026-03-11",
+          "hidden": true
+        },
+        {
+          "name": "urgente no meio do expediente também conta corrido",
+          "expression": "vencimentoDoTicket('2026-03-10T10:00:00.000Z', 'urgente')",
+          "expected": "2026-03-10T12:00:00.000Z",
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "Leia o arquivo inteiro antes de mudar qualquer linha. São cinco funções e duas constantes — veja quem chama quem.",
+        "São duas mudanças, em lugares diferentes: o prazo e a forma de contar o tempo.",
+        "`vencimentoDoTicket` sempre chama `somarHorasUteis`. Para urgente, o caminho precisa ser outro."
+      ],
+      "solution": "const PRAZOS = {\n  baixa: 72,\n  media: 24,\n  alta: 8,\n  urgente: 2,\n}\n\n// Prioridades que contam tempo corrido, nao horas uteis.\nconst CORRIDAS = new Set(['urgente'])\n\nconst INICIO_EXPEDIENTE = 9\nconst FIM_EXPEDIENTE = 18\n\nfunction ehDiaUtil(data) {\n  const dia = data.getUTCDay()\n  return dia !== 0 && dia !== 6\n}\n\nfunction somarHorasUteis(inicio, horas) {\n  const atual = new Date(inicio.getTime())\n  let restante = horas\n\n  while (restante > 0) {\n    atual.setUTCHours(atual.getUTCHours() + 1)\n\n    if (ehDiaUtil(atual) && atual.getUTCHours() > INICIO_EXPEDIENTE && atual.getUTCHours() <= FIM_EXPEDIENTE) {\n      restante -= 1\n    }\n  }\n\n  return atual\n}\n\nfunction prazoDe(prioridade) {\n  const horas = PRAZOS[prioridade]\n  if (horas === undefined) throw new Error(`prioridade desconhecida: ${prioridade}`)\n  return horas\n}\n\nfunction vencimentoDoTicket(abertoEm, prioridade) {\n  const inicio = new Date(abertoEm)\n  const horas = prazoDe(prioridade)\n\n  if (CORRIDAS.has(prioridade)) {\n    return new Date(inicio.getTime() + horas * 60 * 60 * 1000).toISOString()\n  }\n\n  return somarHorasUteis(inicio, horas).toISOString()\n}\n",
+      "solutionNotes": "A mudança cabe em dois pontos e nenhum deles é dentro de `somarHorasUteis` — mexer ali quebraria as três prioridades existentes, que é o que os quatro primeiros testes protegem. Acrescentar um conjunto de prioridades corridas é melhor que um `if (prioridade === 'urgente')` porque a próxima exceção não exige tocar na função de novo."
+    },
+    {
+      "id": "des-existente-desconto-cupom",
+      "title": "Cupom de frete grátis no carrinho que já existe",
+      "category": "backend",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 30,
+      "stack": ["javascript"],
+      "context": "O cálculo de carrinho abaixo está em produção e tem regras acumuladas de meses. O marketing pediu um cupom novo: `FRETEGRATIS` zera o frete, não dá desconto no subtotal, e pode ser combinado com os cupons de percentual que já existem.\n\nOlhe como os cupons atuais funcionam antes de acrescentar o seu.",
+      "objective": "Acrescentar o cupom de frete grátis sem mudar o resultado de nenhum carrinho que já funciona.",
+      "constraints": ["Os cupons existentes mantêm o comportamento atual.", "O total nunca é negativo."],
+      "acceptance": ["FRETEGRATIS zera o frete", "FRETEGRATIS não altera o subtotal", "Os cupons de percentual continuam iguais"],
+      "starter": "const CUPONS = {\n  PRIMEIRA: { tipo: 'percentual', valor: 10 },\n  VOLTA20: { tipo: 'percentual', valor: 20 },\n}\n\nconst FRETE_PADRAO = 25\n\nfunction subtotalDe(itens) {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0)\n}\n\nfunction freteDe(itens) {\n  // Acima de 300 o frete ja sai de graca, independentemente de cupom.\n  return subtotalDe(itens) >= 300 ? 0 : FRETE_PADRAO\n}\n\nfunction descontoDe(subtotal, cupom) {\n  const regra = CUPONS[cupom]\n  if (!regra) return 0\n  if (regra.tipo === 'percentual') return (subtotal * regra.valor) / 100\n  return 0\n}\n\nfunction calcularCarrinho(itens, cupons = []) {\n  const subtotal = subtotalDe(itens)\n  const frete = freteDe(itens)\n\n  let desconto = 0\n  for (const cupom of cupons) desconto += descontoDe(subtotal, cupom)\n\n  const total = Math.max(0, subtotal - desconto + frete)\n  return { subtotal, frete, desconto, total }\n}\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "contrato atual: carrinho sem cupom", "expression": "calcularCarrinho([{ preco: 50, quantidade: 2 }]).total", "expected": 125 },
+        { "name": "contrato atual: frete grátis acima de 300", "expression": "calcularCarrinho([{ preco: 300, quantidade: 1 }]).frete", "expected": 0 },
+        { "name": "contrato atual: cupom de percentual", "expression": "calcularCarrinho([{ preco: 100, quantidade: 1 }], ['PRIMEIRA']).desconto", "expected": 10 },
+        { "name": "contrato atual: cupom desconhecido é ignorado", "expression": "calcularCarrinho([{ preco: 100, quantidade: 1 }], ['INVENTADO']).desconto", "expected": 0 },
+        { "name": "FRETEGRATIS zera o frete", "expression": "calcularCarrinho([{ preco: 50, quantidade: 1 }], ['FRETEGRATIS']).frete", "expected": 0 },
+        { "name": "FRETEGRATIS não mexe no subtotal nem no desconto", "expression": "calcularCarrinho([{ preco: 50, quantidade: 1 }], ['FRETEGRATIS']).desconto", "expected": 0 },
+        {
+          "name": "combina com cupom de percentual",
+          "expression": "calcularCarrinho([{ preco: 100, quantidade: 1 }], ['PRIMEIRA', 'FRETEGRATIS']).total",
+          "expected": 90,
+          "hidden": true
+        },
+        { "name": "carrinho vazio continua em zero", "expression": "calcularCarrinho([]).total", "expected": 25, "hidden": true }
+      ],
+      "hints": [
+        "Leia primeiro: `descontoDe` decide por tipo de cupom. Seu cupom tem um tipo que ainda não existe.",
+        "Frete não passa por `descontoDe`. Onde o frete é decidido?",
+        "O cupom precisa ser reconhecido em dois lugares: existir no catálogo e afetar o frete."
+      ],
+      "solution": "const CUPONS = {\n  PRIMEIRA: { tipo: 'percentual', valor: 10 },\n  VOLTA20: { tipo: 'percentual', valor: 20 },\n  FRETEGRATIS: { tipo: 'frete', valor: 100 },\n}\n\nconst FRETE_PADRAO = 25\n\nfunction subtotalDe(itens) {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0)\n}\n\nfunction freteDe(itens, cupons = []) {\n  if (subtotalDe(itens) >= 300) return 0\n  // Cupom de frete zera so o frete: o subtotal e o desconto nao mudam.\n  if (cupons.some((cupom) => CUPONS[cupom]?.tipo === 'frete')) return 0\n  return FRETE_PADRAO\n}\n\nfunction descontoDe(subtotal, cupom) {\n  const regra = CUPONS[cupom]\n  if (!regra) return 0\n  if (regra.tipo === 'percentual') return (subtotal * regra.valor) / 100\n  return 0\n}\n\nfunction calcularCarrinho(itens, cupons = []) {\n  const subtotal = subtotalDe(itens)\n  const frete = freteDe(itens, cupons)\n\n  let desconto = 0\n  for (const cupom of cupons) desconto += descontoDe(subtotal, cupom)\n\n  const total = Math.max(0, subtotal - desconto + frete)\n  return { subtotal, frete, desconto, total }\n}\n",
+      "solutionNotes": "`descontoDe` já devolvia 0 para tipo desconhecido, então acrescentar o tipo `frete` ao catálogo não quebra nada ali — isso é sorte do código existente, e vale notar ao ler. A mudança real é `freteDe` passar a receber os cupons, que é a única assinatura interna alterada."
+    },
+    {
+      "id": "des-existente-filtro-busca",
+      "title": "Busca por texto na listagem que já filtra",
+      "category": "backend",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 25,
+      "stack": ["javascript"],
+      "context": "A listagem de tickets já filtra por status, prioridade e período. Pediram busca por texto: o termo precisa casar com título ou com o nome do solicitante, sem diferenciar maiúscula de minúscula, e precisa combinar com os filtros que já existem.",
+      "objective": "Acrescentar o filtro de texto ao pipeline existente, sem mudar o comportamento dos outros três.",
+      "constraints": ["Termo ausente ou em branco não filtra nada.", "Os filtros existentes continuam combináveis entre si."],
+      "acceptance": ["Busca casa com título ou solicitante", "Busca ignora maiúsculas", "Termo vazio não filtra"],
+      "starter": "function dentroDoPeriodo(ticket, desde, ate) {\n  if (desde && ticket.criadoEm < desde) return false\n  if (ate && ticket.criadoEm > ate) return false\n  return true\n}\n\nfunction filtrarTickets(tickets, filtros = {}) {\n  const { status, prioridade, desde, ate } = filtros\n\n  return tickets.filter((ticket) => {\n    if (status && ticket.status !== status) return false\n    if (prioridade && ticket.prioridade !== prioridade) return false\n    if (!dentroDoPeriodo(ticket, desde, ate)) return false\n    return true\n  })\n}\n\nconst TICKETS = [\n  { id: 1, titulo: 'Impressora sem toner', solicitante: 'Ana', status: 'aberto', prioridade: 'alta', criadoEm: '2026-03-01' },\n  { id: 2, titulo: 'VPN caiu', solicitante: 'Bruno', status: 'fechado', prioridade: 'media', criadoEm: '2026-03-10' },\n  { id: 3, titulo: 'Acesso ao sistema', solicitante: 'Ana Paula', status: 'aberto', prioridade: 'baixa', criadoEm: '2026-03-20' },\n]\n",
+      "language": "javascript",
+      "tests": [
+        { "name": "contrato atual: sem filtro devolve tudo", "expression": "filtrarTickets(TICKETS).length", "expected": 3 },
+        { "name": "contrato atual: filtra por status", "expression": "filtrarTickets(TICKETS, { status: 'aberto' }).map((t) => t.id)", "expected": [1, 3] },
+        { "name": "contrato atual: filtra por período", "expression": "filtrarTickets(TICKETS, { desde: '2026-03-05' }).map((t) => t.id)", "expected": [2, 3] },
+        { "name": "busca no título", "expression": "filtrarTickets(TICKETS, { busca: 'vpn' }).map((t) => t.id)", "expected": [2] },
+        { "name": "busca no solicitante", "expression": "filtrarTickets(TICKETS, { busca: 'bruno' }).map((t) => t.id)", "expected": [2] },
+        { "name": "busca ignora maiúsculas e casa parcial", "expression": "filtrarTickets(TICKETS, { busca: 'ANA' }).map((t) => t.id)", "expected": [1, 3] },
+        { "name": "termo em branco não filtra", "expression": "filtrarTickets(TICKETS, { busca: '   ' }).length", "expected": 3, "hidden": true },
+        {
+          "name": "busca combina com status",
+          "expression": "filtrarTickets(TICKETS, { busca: 'ana', status: 'aberto' }).map((t) => t.id)",
+          "expected": [1, 3],
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "O filtro é um `filter` com uma sequência de `if` que descartam. A sua regra entra na mesma sequência.",
+        "Normalize os dois lados para minúsculo antes de comparar.",
+        "Termo em branco precisa ser tratado como ausente — repare que `desde` e `ate` já fazem isso com `if (desde && ...)`."
+      ],
+      "solution": "function dentroDoPeriodo(ticket, desde, ate) {\n  if (desde && ticket.criadoEm < desde) return false\n  if (ate && ticket.criadoEm > ate) return false\n  return true\n}\n\nfunction casaBusca(ticket, termo) {\n  const alvo = `${ticket.titulo} ${ticket.solicitante}`.toLowerCase()\n  return alvo.includes(termo)\n}\n\nfunction filtrarTickets(tickets, filtros = {}) {\n  const { status, prioridade, desde, ate, busca } = filtros\n  // Termo em branco e ausencia de termo, igual aos filtros de periodo.\n  const termo = (busca ?? '').trim().toLowerCase()\n\n  return tickets.filter((ticket) => {\n    if (status && ticket.status !== status) return false\n    if (prioridade && ticket.prioridade !== prioridade) return false\n    if (!dentroDoPeriodo(ticket, desde, ate)) return false\n    if (termo && !casaBusca(ticket, termo)) return false\n    return true\n  })\n}\n\nconst TICKETS = [\n  { id: 1, titulo: 'Impressora sem toner', solicitante: 'Ana', status: 'aberto', prioridade: 'alta', criadoEm: '2026-03-01' },\n  { id: 2, titulo: 'VPN caiu', solicitante: 'Bruno', status: 'fechado', prioridade: 'media', criadoEm: '2026-03-10' },\n  { id: 3, titulo: 'Acesso ao sistema', solicitante: 'Ana Paula', status: 'aberto', prioridade: 'baixa', criadoEm: '2026-03-20' },\n]\n",
+      "solutionNotes": "A mudança segue o formato que já estava ali: mais um `if` que descarta, e a normalização do termo feita uma vez fora do laço em vez de uma vez por ticket. Imitar o padrão existente é o que faz a revisão ser rápida — código novo que destoa custa atenção mesmo quando está certo."
+    },
+    {
+      "id": "des-existente-log-correlacao",
+      "title": "Acrescentar id de correlação ao log que já existe",
+      "category": "arquitetura",
+      "difficulty": "intermediario",
+      "estimatedMinutes": 25,
+      "stack": ["javascript"],
+      "context": "Investigar um erro em produção está difícil: as linhas de log de uma mesma requisição não têm como ser agrupadas. Pediram um `requisicaoId` em toda linha.\n\nO módulo de log abaixo é usado em dezenas de lugares e a assinatura de `log.info` e `log.erro` não pode mudar.",
+      "objective": "Fazer toda linha sair com o id da requisição atual, sem alterar a assinatura das funções de log.",
+      "constraints": [
+        "`log.info(mensagem, dados)` e `log.erro(mensagem, dados)` continuam com a mesma assinatura.",
+        "Sem requisição em andamento, a linha sai sem o campo, e não com id vazio."
+      ],
+      "acceptance": ["Toda linha dentro de uma requisição leva o id", "A assinatura das funções não muda", "Fora de requisição, não há campo de id"],
+      "starter": "const saida = []\n\nfunction formatar(nivel, mensagem, dados) {\n  return JSON.stringify({ nivel, mensagem, ...dados })\n}\n\nconst log = {\n  info(mensagem, dados = {}) {\n    saida.push(formatar('info', mensagem, dados))\n  },\n  erro(mensagem, dados = {}) {\n    saida.push(formatar('erro', mensagem, dados))\n  },\n}\n\n// Chamado pelo servidor a cada requisicao que chega.\nfunction comRequisicao(id, trabalho) {\n  return trabalho()\n}\n\nfunction linhas() {\n  return saida.map((linha) => JSON.parse(linha))\n}\n\nfunction limpar() {\n  saida.length = 0\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "contrato atual: nível e mensagem continuam saindo",
+          "expression": "(() => { limpar(); log.info('oi'); return linhas()[0].nivel + ':' + linhas()[0].mensagem })()",
+          "expected": "info:oi"
+        },
+        {
+          "name": "contrato atual: dados extras continuam saindo",
+          "expression": "(() => { limpar(); log.erro('falhou', { pedido: 9 }); return linhas()[0].pedido })()",
+          "expected": 9
+        },
+        {
+          "name": "dentro da requisição, a linha leva o id",
+          "expression": "(() => { limpar(); comRequisicao('req-1', () => log.info('processando')); return linhas()[0].requisicaoId })()",
+          "expected": "req-1"
+        },
+        {
+          "name": "duas linhas da mesma requisição levam o mesmo id",
+          "expression": "(() => { limpar(); comRequisicao('req-2', () => { log.info('a'); log.erro('b') }); return linhas().map((l) => l.requisicaoId) })()",
+          "expected": ["req-2", "req-2"]
+        },
+        {
+          "name": "fora de requisição não há campo de id",
+          "expression": "(() => { limpar(); log.info('fora'); return 'requisicaoId' in linhas()[0] })()",
+          "expected": false
+        },
+        {
+          "name": "depois da requisição volta a não ter id",
+          "expression": "(() => { limpar(); comRequisicao('req-3', () => log.info('dentro')); log.info('depois'); return 'requisicaoId' in linhas()[1] })()",
+          "expected": false,
+          "hidden": true
+        },
+        {
+          "name": "requisições seguidas não misturam id",
+          "expression": "(() => { limpar(); comRequisicao('a', () => log.info('1')); comRequisicao('b', () => log.info('2')); return linhas().map((l) => l.requisicaoId) })()",
+          "expected": ["a", "b"],
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "`comRequisicao` já existe e já envolve o trabalho inteiro. Ela é o lugar onde o id entra e sai de cena.",
+        "Se a assinatura do log não pode mudar, o id precisa estar acessível sem ser passado como argumento.",
+        "Lembre de limpar o id quando o trabalho terminar, inclusive se ele lançar erro."
+      ],
+      "solution": "const saida = []\n\n// Fora das funcoes de log: e o que permite a assinatura delas nao mudar.\nlet requisicaoAtual = null\n\nfunction formatar(nivel, mensagem, dados) {\n  // Espalhar condicionalmente evita o campo existir com valor vazio.\n  const contexto = requisicaoAtual ? { requisicaoId: requisicaoAtual } : {}\n  return JSON.stringify({ nivel, mensagem, ...contexto, ...dados })\n}\n\nconst log = {\n  info(mensagem, dados = {}) {\n    saida.push(formatar('info', mensagem, dados))\n  },\n  erro(mensagem, dados = {}) {\n    saida.push(formatar('erro', mensagem, dados))\n  },\n}\n\nfunction comRequisicao(id, trabalho) {\n  const anterior = requisicaoAtual\n  requisicaoAtual = id\n  try {\n    return trabalho()\n  } finally {\n    // finally garante a limpeza mesmo se o trabalho lancar erro.\n    requisicaoAtual = anterior\n  }\n}\n\nfunction linhas() {\n  return saida.map((linha) => JSON.parse(linha))\n}\n\nfunction limpar() {\n  saida.length = 0\n}\n",
+      "solutionNotes": "A chave é notar que `comRequisicao` já existia e não fazia nada — ela foi deixada ali justamente como o ponto de extensão. Em Node de verdade, esse papel é de `AsyncLocalStorage`, porque uma variável de módulo se mistura entre requisições concorrentes; a forma do problema é a mesma."
+    },
+    {
+      "id": "des-existente-validacao-campo",
+      "title": "Campo novo na validação sem quebrar o formato do erro",
+      "category": "backend",
+      "difficulty": "iniciante",
+      "estimatedMinutes": 20,
+      "stack": ["javascript"],
+      "context": "A validação de cadastro abaixo já está integrada com o frontend, que lê os erros por nome de campo. Pediram um campo novo: `telefone`, obrigatório, e precisa ter entre 10 e 11 dígitos depois de remover o que não é número.",
+      "objective": "Acrescentar a validação de telefone mantendo exatamente o formato de erro que o frontend já consome.",
+      "constraints": ["O formato do objeto de erros não muda.", "As validações existentes continuam iguais."],
+      "acceptance": ["Telefone ausente ou curto gera erro", "Telefone com máscara é aceito", "Os erros existentes não mudam de chave nem de mensagem"],
+      "starter": "function validar(dados) {\n  const erros = {}\n\n  const nome = (dados.nome ?? '').trim()\n  if (nome.length < 2) erros.nome = 'Informe seu nome'\n\n  const email = dados.email ?? ''\n  if (!email.includes('@')) erros.email = 'O email precisa ter @'\n\n  const senha = dados.senha ?? ''\n  if (senha.length < 8) erros.senha = 'A senha precisa de 8 caracteres ou mais'\n\n  return { ok: Object.keys(erros).length === 0, erros }\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "contrato atual: nome curto",
+          "expression": "validar({ nome: 'A', email: 'a@b.c', senha: 'senha1234', telefone: '11999998888' }).erros.nome",
+          "expected": "Informe seu nome"
+        },
+        {
+          "name": "contrato atual: email sem arroba",
+          "expression": "validar({ nome: 'Ana', email: 'ab.c', senha: 'senha1234', telefone: '11999998888' }).erros.email",
+          "expected": "O email precisa ter @"
+        },
+        {
+          "name": "cadastro completo passa",
+          "expression": "validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234', telefone: '11999998888' }).ok",
+          "expected": true
+        },
+        {
+          "name": "telefone ausente gera erro",
+          "expression": "'telefone' in validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234' }).erros",
+          "expected": true
+        },
+        {
+          "name": "telefone com máscara é aceito",
+          "expression": "validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234', telefone: '(11) 99999-8888' }).ok",
+          "expected": true
+        },
+        {
+          "name": "telefone curto demais gera erro",
+          "expression": "validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234', telefone: '1199' }).ok",
+          "expected": false
+        },
+        {
+          "name": "dez dígitos é válido",
+          "expression": "validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234', telefone: '1133334444' }).ok",
+          "expected": true,
+          "hidden": true
+        },
+        {
+          "name": "doze dígitos não é válido",
+          "expression": "validar({ nome: 'Ana', email: 'a@b.c', senha: 'senha1234', telefone: '119999988887' }).ok",
+          "expected": false,
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "Repare no padrão das três validações existentes: pegar o valor com padrão, verificar, gravar a mensagem na chave do campo.",
+        "\"Depois de remover o que não é número\" é uma substituição antes da contagem.",
+        "Dez e onze dígitos são válidos; nove e doze não."
+      ],
+      "solution": "function validar(dados) {\n  const erros = {}\n\n  const nome = (dados.nome ?? '').trim()\n  if (nome.length < 2) erros.nome = 'Informe seu nome'\n\n  const email = dados.email ?? ''\n  if (!email.includes('@')) erros.email = 'O email precisa ter @'\n\n  const senha = dados.senha ?? ''\n  if (senha.length < 8) erros.senha = 'A senha precisa de 8 caracteres ou mais'\n\n  // Mesma forma das outras tres: valor com padrao, verificacao, mensagem.\n  const telefone = String(dados.telefone ?? '').replace(/\\D/g, '')\n  if (telefone.length < 10 || telefone.length > 11) {\n    erros.telefone = 'O telefone precisa ter 10 ou 11 dígitos'\n  }\n\n  return { ok: Object.keys(erros).length === 0, erros }\n}\n",
+      "solutionNotes": "O valor de ler o código antes aparece aqui no formato: o frontend lê `erros.<campo>`, então a chave precisa ser exatamente `telefone`. Inventar `erros.telefoneInvalido` passaria nos testes de comportamento e quebraria a tela — por isso o teste usa `'telefone' in erros`."
+    },
+    {
+      "id": "des-existente-cache-invalidar",
+      "title": "Invalidar o cache que alguém já implementou",
+      "category": "performance",
+      "difficulty": "avancado",
+      "estimatedMinutes": 30,
+      "stack": ["javascript"],
+      "context": "O cache abaixo foi acrescentado há meses e resolveu a lentidão da listagem. Agora apareceu um defeito: quando um ticket é alterado, a listagem continua mostrando o valor antigo até o processo reiniciar.\n\nO autor do cache não trabalha mais aqui.",
+      "objective": "Acrescentar invalidação ao cache existente, sem perder o ganho que ele trouxe.",
+      "constraints": [
+        "`buscarTickets` continua devolvendo do cache quando nada mudou.",
+        "A invalidação não pode limpar o cache inteiro quando só um filtro foi afetado."
+      ],
+      "acceptance": [
+        "Alterar um ticket faz a próxima busca ir à origem",
+        "Buscas repetidas sem alteração continuam vindo do cache",
+        "Invalidar um status não descarta os outros"
+      ],
+      "starter": "let idasAFonte = 0\n\nconst cache = new Map()\n\nfunction chaveDe(filtros) {\n  return JSON.stringify(filtros)\n}\n\n// Simula a consulta cara ao banco.\nfunction consultarFonte(filtros) {\n  idasAFonte += 1\n  return [{ id: 1, status: filtros.status ?? 'todos' }]\n}\n\nfunction buscarTickets(filtros = {}) {\n  const chave = chaveDe(filtros)\n\n  if (cache.has(chave)) return cache.get(chave)\n\n  const resultado = consultarFonte(filtros)\n  cache.set(chave, resultado)\n  return resultado\n}\n\n// Chamado quando um ticket e alterado. Hoje nao faz nada.\nfunction ticketAlterado(status) {}\n\nfunction contarIdas() {\n  return idasAFonte\n}\n\nfunction zerar() {\n  cache.clear()\n  idasAFonte = 0\n}\n",
+      "language": "javascript",
+      "tests": [
+        {
+          "name": "contrato atual: a segunda busca igual não vai à fonte",
+          "expression": "(() => { zerar(); buscarTickets({ status: 'aberto' }); buscarTickets({ status: 'aberto' }); return contarIdas() })()",
+          "expected": 1
+        },
+        {
+          "name": "contrato atual: filtros diferentes são buscas diferentes",
+          "expression": "(() => { zerar(); buscarTickets({ status: 'aberto' }); buscarTickets({ status: 'fechado' }); return contarIdas() })()",
+          "expected": 2
+        },
+        {
+          "name": "o caso relatado: depois de alterar, a busca vai à fonte",
+          "expression": "(() => { zerar(); buscarTickets({ status: 'aberto' }); ticketAlterado('aberto'); buscarTickets({ status: 'aberto' }); return contarIdas() })()",
+          "expected": 2
+        },
+        {
+          "name": "invalidar um status não derruba o outro",
+          "expression": "(() => { zerar(); buscarTickets({ status: 'aberto' }); buscarTickets({ status: 'fechado' }); ticketAlterado('aberto'); buscarTickets({ status: 'fechado' }); return contarIdas() })()",
+          "expected": 2
+        },
+        {
+          "name": "depois de invalidar, o cache volta a funcionar",
+          "expression": "(() => { zerar(); buscarTickets({ status: 'aberto' }); ticketAlterado('aberto'); buscarTickets({ status: 'aberto' }); buscarTickets({ status: 'aberto' }); return contarIdas() })()",
+          "expected": 2
+        },
+        {
+          "name": "alteração em status sem cache não quebra",
+          "expression": "(() => { zerar(); ticketAlterado('inexistente'); return contarIdas() })()",
+          "expected": 0,
+          "hidden": true
+        }
+      ],
+      "hints": [
+        "`ticketAlterado` já existe e está vazia: ela é o ponto de extensão que o autor deixou.",
+        "A chave do cache é o JSON dos filtros. Como descobrir quais chaves se referem a um status?",
+        "Percorrer as chaves do Map e remover as que combinam resolve, e mantém os outros filtros intactos."
+      ],
+      "solution": "let idasAFonte = 0\n\nconst cache = new Map()\n\nfunction chaveDe(filtros) {\n  return JSON.stringify(filtros)\n}\n\nfunction consultarFonte(filtros) {\n  idasAFonte += 1\n  return [{ id: 1, status: filtros.status ?? 'todos' }]\n}\n\nfunction buscarTickets(filtros = {}) {\n  const chave = chaveDe(filtros)\n\n  if (cache.has(chave)) return cache.get(chave)\n\n  const resultado = consultarFonte(filtros)\n  cache.set(chave, resultado)\n  return resultado\n}\n\nfunction ticketAlterado(status) {\n  // Remove so as entradas afetadas: limpar tudo devolveria a lentidao que o\n  // cache resolveu, a cada alteracao de qualquer ticket.\n  for (const chave of [...cache.keys()]) {\n    const filtros = JSON.parse(chave)\n    if (filtros.status === status || filtros.status === undefined) {\n      cache.delete(chave)\n    }\n  }\n}\n\nfunction contarIdas() {\n  return idasAFonte\n}\n\nfunction zerar() {\n  cache.clear()\n  idasAFonte = 0\n}\n",
+      "solutionNotes": "A entrada sem filtro de status também precisa cair, porque uma listagem de \"todos\" contém o ticket alterado — é o tipo de detalhe que só aparece lendo o que a chave significa. Invalidação é a parte difícil de cache: guardar é fácil, saber quando o guardado deixou de valer é o problema."
+    }
+  ]
+}
