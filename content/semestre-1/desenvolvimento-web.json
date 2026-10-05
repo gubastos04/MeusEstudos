@@ -400,92 +400,108 @@
       "glossary": ["requisicao", "resposta", "status-code", "json", "cors"]
     },
     {
-      "id": "web-backend-php-01",
+      "id": "web-backend-01",
       "type": "lesson",
-      "title": "O lado do servidor: o que o PHP faz numa requisição",
+      "title": "O lado do servidor: o que acontece em cada requisição",
       "estimatedMinutes": 10,
       "tags": ["php", "backend", "http"],
-      "why": "Entender o ciclo da requisição no servidor é o que separa quem copia código de quem sabe onde o problema está. PHP mostra esse ciclo sem camadas.",
-      "goal": "Ler o ciclo requisição-resposta no servidor e reconhecer onde entram validação e consulta parametrizada.",
+      "why": "Entender o ciclo da requisição no servidor é o que separa quem copia código de quem sabe onde o problema está. Todo framework faz o mesmo; ver sem camadas é o que torna a camada compreensível depois.",
+      "goal": "Ler o ciclo requisição-resposta no servidor e reconhecer onde entram a validação da entrada e a consulta parametrizada.",
       "blocks": [
         {
           "kind": "text",
-          "text": "Numa requisição, o servidor recebe método, caminho e parâmetros; decide o que fazer; busca dados; e devolve status mais corpo. Todo framework faz isso, com mais camadas."
+          "text": "Numa requisição, o servidor recebe método, caminho e parâmetros; decide o que fazer; busca dados; e devolve status mais corpo. Todo framework faz isso, com mais nomes em volta. O código abaixo é o ciclo inteiro, sem framework nenhum."
         },
         {
           "kind": "code",
-          "language": "php",
-          "code": "<?php\n// GET /pedidos.php?status=pending\nheader('Content-Type: application/json; charset=utf-8');\n\n$status = $_GET['status'] ?? null;\n$permitidos = ['pending', 'done', 'canceled'];\n\nif ($status !== null && !in_array($status, $permitidos, true)) {\n    http_response_code(422);\n    echo json_encode(['erro' => 'status inválido']);\n    exit;\n}"
+          "language": "python",
+          "code": "# GET /pedidos?status=pending\n\nPERMITIDOS = {\"pending\", \"paid\", \"shipped\", \"done\"}\nLIMITE = 50\n\n\ndef tratar(parametros):\n    status = parametros.get(\"status\")\n\n    # Nunca confie no que chega: a lista de permitidos e a validacao.\n    if status is not None and status not in PERMITIDOS:\n        return 422, {\"erro\": \"status inválido\", \"permitidos\": sorted(PERMITIDOS)}\n\n    pedidos = buscar_pedidos(status, LIMITE)\n    return 200, {\"pedidos\": pedidos}\n"
         },
         {
           "kind": "text",
-          "text": "Duas decisões importantes já aparecem: a lista de valores permitidos (nunca confie no que chega) e o status 422 para dado inválido, diferente de 500."
+          "text": "Duas decisões aparecem já aqui: a lista de valores permitidos, porque o parâmetro vem de fora e não tem dono; e o status **422** para dado inválido, que é diferente de 500. O 500 diz \"eu quebrei\"; o 422 diz \"o que você mandou não serve\", e quem integra trata os dois de forma oposta — um vale retentativa, o outro não."
         },
         {
           "kind": "code",
-          "language": "php",
-          "code": "$sql = 'SELECT id, status, criado_em FROM pedido';\n$parametros = [];\n\nif ($status !== null) {\n    $sql .= ' WHERE status = :status';\n    $parametros['status'] = $status;\n}\n\n$sql .= ' ORDER BY criado_em DESC LIMIT 50';\n\n$consulta = $pdo->prepare($sql);\n$consulta->execute($parametros);\n\necho json_encode($consulta->fetchAll(PDO::FETCH_ASSOC));"
+          "language": "python",
+          "code": "def buscar_pedidos(status, limite):\n    sql = \"SELECT id, status, criado_em FROM pedido\"\n    parametros = []\n\n    if status is not None:\n        sql += \" WHERE status = ?\"\n        parametros.append(status)\n\n    sql += \" ORDER BY criado_em DESC LIMIT ?\"\n    parametros.append(limite)\n\n    # O driver recebe comando e valores separados. O marcador muda de nome\n    # entre bibliotecas (?, %s, :nome), a ideia nao muda.\n    return conexao.execute(sql, parametros).fetchall()\n"
         },
         {
           "kind": "callout",
           "tone": "danger",
-          "title": "Nunca concatene valor na consulta",
-          "text": "\"WHERE status = '$status'\" abre injeção de SQL. Com prepare e parâmetro nomeado, o banco recebe comando e valor separados e trata o valor sempre como dado."
+          "title": "Montar a consulta com f-string abre injeção de SQL",
+          "text": "Escrever f\"WHERE status = '{status}'\" entrega ao banco um comando montado com texto de fora. Com parâmetro, o banco recebe o comando e o valor por caminhos separados e trata o valor sempre como dado — nunca como instrução."
         },
         {
           "kind": "text",
-          "text": "O `LIMIT 50` não é detalhe: sem limite, a consulta cresce junto com a tabela e um dia devolve tudo."
+          "text": "O `LIMIT` não é detalhe: sem limite, a consulta cresce junto com a tabela e um dia devolve tudo. A tela que funcionava com 200 pedidos trava com 200 mil, e ninguém mudou uma linha de código."
         },
-        {
-          "kind": "text",
-          "text": "Onde ficam os segredos: fora do código."
-        },
+        { "kind": "text", "text": "Onde ficam os segredos: fora do código, no ambiente." },
         {
           "kind": "code",
-          "language": "php",
-          "code": "$dsn = getenv('DATABASE_DSN');\n$usuario = getenv('DATABASE_USER');\n$senha = getenv('DATABASE_PASSWORD');"
+          "language": "python",
+          "code": "import os\n\n# Ausente e erro na partida, nao um None que vaza ate a primeira consulta.\nBANCO_URL = os.environ[\"DATABASE_URL\"]\n"
         },
         {
           "kind": "quiz",
-          "question": "Qual resposta HTTP é adequada quando o cliente envia `status=banana` e os valores válidos são outros?",
-          "choices": ["200 com lista vazia", "422 com mensagem explicando o campo inválido", "500, porque o servidor não sabe processar", "404, porque o status não existe"],
+          "question": "O cliente envia `status=banana` e os valores válidos são outros. Qual resposta é adequada?",
+          "choices": [
+            "500, porque algo saiu do esperado",
+            "422, porque o pedido foi entendido e o valor não serve",
+            "200 com lista vazia, porque não há pedidos com esse status",
+            "404, porque não existe esse status"
+          ],
           "answerIndex": 1,
-          "explanation": "O pedido está malformado, então é erro do cliente (4xx). 422 comunica dado inválido. 200 com lista vazia esconde o erro de quem integra; 500 culpa o servidor por um problema de entrada.",
-          "topics": ["http"]
+          "explanation": "O 500 diria que o servidor quebrou, e quem integra vai repetir a chamada à toa. O 200 com lista vazia esconde o erro: quem chamou acha que não há pedidos, quando na verdade errou o parâmetro. O 422 diz exatamente o que aconteceu.",
+          "topics": ["status code"]
         }
       ],
       "tryNow": {
-        "instructions": "Escreva o trecho de servidor (em PHP ou Python, como preferir) que valida um parâmetro de período: duas datas no formato AAAA-MM-DD, e o início não pode ser depois do fim.",
-        "expected": "Requisição inválida devolve 422 com mensagem; válida segue para a consulta."
+        "instructions": "Pegue um endpoint de um projeto seu que receba parâmetro de filtro e responda: o que acontece hoje se alguém mandar um valor que você não previu? Escreva o status que ele devolve e o que deveria devolver.",
+        "expected": "Você sabe dizer se o endpoint valida a entrada ou apenas repassa o valor para a consulta."
       },
-      "ifStuck": ["Valide formato primeiro, depois a relação entre as duas datas."],
+      "ifStuck": ["O ciclo tem quatro partes: receber, validar, buscar, responder. Localize as quatro no código antes de mexer."],
       "commonErrors": [
         {
-          "error": "A API devolve 200 com {\"erro\": \"...\"} no corpo.",
-          "why": "Quem consome vê sucesso e só descobre a falha lendo o corpo. Monitoramento não acusa.",
-          "fix": "Use o status correto: 4xx para erro do cliente, 5xx para falha do servidor."
+          "error": "Devolver 200 com lista vazia para parâmetro inválido.",
+          "why": "Quem integra não distingue \"não há resultado\" de \"você errou o parâmetro\", e o bug fica invisível dos dois lados.",
+          "fix": "Validar antes de consultar e devolver 422 com a lista de valores aceitos."
         }
       ],
       "exercise": {
-        "id": "ex-web-consulta-parametrizada-01",
-        "title": "Consulta sem injeção",
-        "kind": "structural",
-        "language": "php",
-        "estimatedMinutes": 7,
-        "prompt": "Reescreva esta consulta vulnerável usando PDO com parâmetro nomeado e limite de resultados: $sql = \"SELECT * FROM pedido WHERE status = '$status'\";",
-        "starter": "<?php\n// reescreva aqui\n",
-        "checks": [
-          { "name": "usa prepare", "type": "contains", "value": "prepare", "hint": "Consulta parametrizada começa com prepare." },
-          { "name": "usa parametro nomeado ou posicional", "type": "regex", "value": ":\\w+|\\?", "hint": "O valor entra como parâmetro, não no texto da consulta." },
-          { "name": "executa com os valores separados", "type": "contains", "value": "execute", "hint": "Os valores vão em execute." },
-          { "name": "nao interpola variavel na consulta", "type": "regex", "value": "^(?![\\s\\S]*(WHERE|where)[^;]*\\$\\w)[\\s\\S]*$", "hint": "Nenhuma variável PHP dentro do texto SQL." },
-          { "name": "limita o resultado", "type": "regex", "value": "LIMIT|limit", "hint": "Listagem sem limite quebra quando a tabela cresce." }
+        "id": "ex-web-ciclo-requisicao-01",
+        "title": "Validar a entrada antes de consultar",
+        "kind": "code",
+        "language": "python",
+        "estimatedMinutes": 10,
+        "prompt": "Escreva `tratar(parametros)`, a parte do servidor que recebe a requisição e decide a resposta. Devolve a tupla `(status, corpo)`.\n\n- `status` ausente → `200` e todos os pedidos, respeitando o limite;\n- `status` na lista de permitidos → `200` e só os daquele status;\n- `status` fora da lista → `422` e `{\"erro\": \"status inválido\"}`, **sem** consultar nada;\n- `limite` ausente vale 50, e nunca passa de 100 mesmo que peçam mais.\n\nO cenário já traz os pedidos e um contador de consultas, que um dos testes usa.",
+        "starter": "# --- cenário: não precisa mudar nada aqui ---\nPERMITIDOS = {\"pending\", \"paid\", \"done\"}\n\nPEDIDOS = [\n    {\"id\": 1, \"status\": \"pending\"},\n    {\"id\": 2, \"status\": \"done\"},\n    {\"id\": 3, \"status\": \"pending\"},\n    {\"id\": 4, \"status\": \"paid\"},\n]\n\nconsultas = {\"total\": 0}\n\n\ndef buscar_pedidos(status, limite):\n    \"\"\"Conta as idas ao banco: validar antes evita ida desnecessária.\"\"\"\n    consultas[\"total\"] += 1\n    achados = [p for p in PEDIDOS if status is None or p[\"status\"] == status]\n    return achados[:limite]\n\n\n# --- daqui para baixo é com você ---\ndef tratar(parametros):\n    # escreva aqui\n    pass\n",
+        "tests": [
+          { "name": "sem filtro devolve 200", "expression": "tratar({})[0]", "expected": 200 },
+          { "name": "sem filtro devolve todos", "expression": "len(tratar({})[1][\"pedidos\"])", "expected": 4 },
+          {
+            "name": "filtra por status permitido",
+            "expression": "[p[\"id\"] for p in tratar({\"status\": \"pending\"})[1][\"pedidos\"]]",
+            "expected": [1, 3]
+          },
+          { "name": "status fora da lista devolve 422", "expression": "tratar({\"status\": \"banana\"})[0]", "expected": 422 },
+          { "name": "a resposta de erro diz o que houve", "expression": "tratar({\"status\": \"banana\"})[1][\"erro\"]", "expected": "status inválido" },
+          {
+            "name": "entrada inválida não consulta o banco",
+            "expression": "(consultas.update({\"total\": 0}), tratar({\"status\": \"banana\"}), consultas[\"total\"])[2]",
+            "expected": 0
+          },
+          { "name": "limite ausente vale 50", "expression": "len(tratar({})[1][\"pedidos\"])", "expected": 4, "hidden": true },
+          { "name": "limite pedido é respeitado", "expression": "len(tratar({\"limite\": 2})[1][\"pedidos\"])", "expected": 2, "hidden": true },
+          { "name": "limite acima de 100 é cortado em 100", "expression": "len(tratar({\"limite\": 5000})[1][\"pedidos\"])", "expected": 4, "hidden": true }
         ],
         "hints": [
-          "O texto da consulta fica fixo; o valor viaja em execute.",
-          "Formato: $c = $pdo->prepare('... WHERE status = :status LIMIT 50'); $c->execute(['status' => $status]);"
+          "A ordem importa: validar vem antes de consultar, e é por isso que existe o teste do contador.",
+          "`status is not None and status not in PERMITIDOS` separa \"não filtrou\" de \"filtrou errado\".",
+          "Para o limite, `min(pedido, 100)` resolve o teto; o padrão entra antes dele."
         ],
-        "solution": "<?php\n$consulta = $pdo->prepare(\n    'SELECT id, status, criado_em FROM pedido WHERE status = :status ORDER BY criado_em DESC LIMIT 50'\n);\n$consulta->execute(['status' => $status]);\n$pedidos = $consulta->fetchAll(PDO::FETCH_ASSOC);\n"
+        "solution": "# --- cenário: não precisa mudar nada aqui ---\nPERMITIDOS = {\"pending\", \"paid\", \"done\"}\n\nPEDIDOS = [\n    {\"id\": 1, \"status\": \"pending\"},\n    {\"id\": 2, \"status\": \"done\"},\n    {\"id\": 3, \"status\": \"pending\"},\n    {\"id\": 4, \"status\": \"paid\"},\n]\n\nconsultas = {\"total\": 0}\n\n\ndef buscar_pedidos(status, limite):\n    consultas[\"total\"] += 1\n    achados = [p for p in PEDIDOS if status is None or p[\"status\"] == status]\n    return achados[:limite]\n\n\ndef tratar(parametros):\n    status = parametros.get(\"status\")\n\n    # Validar antes de consultar: entrada invalida nao gasta ida ao banco.\n    if status is not None and status not in PERMITIDOS:\n        return 422, {\"erro\": \"status inválido\", \"permitidos\": sorted(PERMITIDOS)}\n\n    # Teto no limite: sem ele, quem chama decide o tamanho da sua consulta.\n    limite = min(parametros.get(\"limite\") or 50, 100)\n\n    return 200, {\"pedidos\": buscar_pedidos(status, limite)}\n",
+        "solutionNotes": "O teste do contador é o que prova a ordem: validar depois de consultar passaria em todos os outros casos e gastaria uma ida ao banco por requisição inválida. O teto no limite existe pelo mesmo motivo da lista de permitidos — o parâmetro vem de fora, e sem teto quem chama decide o tamanho da sua consulta."
       },
       "glossary": ["injecao-sql", "status-code", "variavel-de-ambiente", "paginacao"]
     },

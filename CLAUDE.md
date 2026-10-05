@@ -218,6 +218,13 @@ Código de usuário **nunca** roda no servidor.
 - Python: Pyodide em Worker, baixado sob demanda com confirmação explícita
   (são megabytes; a pessoa pode estar em rede móvel). Falha de download degrada
   para verificação estrutural com mensagem clara.
+
+  **A stdlib do Pyodide é menor que a do CPython.** `sqlite3` não existe lá, e
+  `pandas` e `numpy` só depois de carregados explicitamente. O verificador de
+  conteúdo roda num CPython local, que tem tudo — então um exercício que importe
+  um desses passa na verificação e falha no navegador de quem estuda. Antes de
+  escrever conteúdo Python que importe qualquer coisa, confira se o módulo existe
+  no Pyodide. Hoje nenhum exercício executado importa nada.
 - SQL: SQLite via sql.js em Worker, **sem perguntar** — são ~330 kB pela rede,
   e pedir autorização para isso seria cerimônia sem benefício. O banco é criado
   em memória a cada execução e o esquema vem do próprio código da pessoa: ela

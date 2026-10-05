@@ -493,6 +493,14 @@ export const trackSchema = z.object({
   summary: z.string().min(10).max(400),
   /** Para quem este caminho faz sentido. */
   forWho: z.string().min(10).max(300),
+  /**
+   * O que a trilha deixa de fora, em uma frase.
+   *
+   * Uma trilha cobre de 7 a 9 dos 21 modulos. Sem dizer o que fica de fora,
+   * ela deixa a pessoa concluir que terminou a formacao — e a regra 9 do
+   * produto e nao afirmar certeza que nao existe.
+   */
+  naoCobre: z.string().max(400).optional(),
   moduleIds: z.array(z.string().min(2).max(80)).min(1).max(20),
 })
 

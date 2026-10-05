@@ -5,6 +5,7 @@
       "title": "Começo do zero",
       "summary": "Da primeira linha de código até entregar uma demanda pequena com Git e banco de dados.",
       "forWho": "Para quem nunca programou ou só mexeu em tutorial solto.",
+      "naoCobre": "Não cobre estrutura de dados, algoritmos e complexidade, nem interface com React. É o caminho até entregar uma demanda pequena com o sistema no ar — não a formação inteira.",
       "moduleIds": [
         "pensamento-computacional",
         "python",
@@ -22,6 +23,7 @@
       "title": "Recomeçando",
       "summary": "Retoma a base rápido e vai direto para o que aparece no trabalho: Git, API, banco e segurança.",
       "forWho": "Para quem já programou algum dia e parou por muito tempo.",
+      "naoCobre": "Não cobre deploy e nuvem, algoritmos e complexidade, nem interface com React. Pressupõe que você já programou antes: a parte de pensamento computacional fica de fora.",
       "moduleIds": [
         "python",
         "engenharia-software",
@@ -38,6 +40,7 @@
       "title": "Foco em backend",
       "summary": "Python, API, banco, segurança e deploy. O caminho mais curto para trabalhar em servidor.",
       "forWho": "Para quem já tem base de programação e quer trabalhar em backend.",
+      "naoCobre": "Não cobre frontend além do básico de web, estrutura de dados nem processamento de dados. As aulas de custo de código e de quando não otimizar vêm junto, em Python e em banco de dados.",
       "moduleIds": [
         "python",
         "comunicacao-aplicacoes",
@@ -55,6 +58,7 @@
       "title": "Foco em web",
       "summary": "HTML, CSS e JavaScript, depois TypeScript e React, com a usabilidade que separa tela feia de tela usável.",
       "forWho": "Para quem quer construir interfaces e integrar com backend.",
+      "naoCobre": "Não cobre Python, deploy e nuvem, nem estrutura de dados. É o caminho até construir e integrar interfaces — operar um servidor fica para depois.",
       "moduleIds": [
         "desenvolvimento-web",
         "frontend-moderno",

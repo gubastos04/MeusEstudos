@@ -16,7 +16,7 @@ import { Botao, Cartao, ErroTecnico, Nota } from './ui'
  * motivo escrito — a pessoa pode trocar ali mesmo.
  */
 
-type Trilha = { id: string; title: string; summary: string; forWho: string }
+type Trilha = { id: string; title: string; summary: string; forWho: string; naoCobre?: string }
 
 export function InicioRapido({ trilhas }: { trilhas: Trilha[] }) {
   const router = useRouter()
@@ -194,6 +194,10 @@ export function InicioRapido({ trilhas }: { trilhas: Trilha[] }) {
                     </span>
                     <span className="text-ink-muted block text-xs">{trilha.summary}</span>
                     <span className="text-ink-faint block text-xs">{trilha.forWho}</span>
+                    {/* O que fica de fora aparece ANTES da escolha: depois seria aviso tardio. */}
+                    {trilha.naoCobre ? (
+                      <span className="text-ink-faint mt-1 block text-xs">{trilha.naoCobre}</span>
+                    ) : null}
                   </span>
                 </label>
               )

@@ -9,6 +9,115 @@
   "stack": ["sql", "python"],
   "items": [
     {
+      "id": "bd-modelo-dados-01",
+      "type": "lesson",
+      "title": "Modelo de dados: entidades e relações",
+      "estimatedMinutes": 10,
+      "tags": ["modelagem", "banco"],
+      "why": "Errar o modelo de dados é o erro mais caro do projeto. Código se reescreve numa tarde; migrar dado em produção é semana.",
+      "goal": "Desenhar entidades, cardinalidade e chaves para um domínio pequeno.",
+      "blocks": [
+        { "kind": "text", "text": "Entidade é um substantivo do domínio que precisa existir por si: cliente, pedido, produto, ticket." },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Cliente  1 ---- N  Pedido  1 ---- N  ItemPedido  N ---- 1  Produto\n\nLê-se: um cliente tem muitos pedidos; um pedido tem muitos itens;\ncada item aponta para um produto."
+        },
+        {
+          "kind": "text",
+          "text": "As perguntas que definem a cardinalidade: um pedido pode existir sem cliente? um cliente pode ter dois pedidos? o mesmo produto aparece em vários pedidos?"
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "CREATE TABLE pedido (\n  id          SERIAL PRIMARY KEY,\n  cliente_id  INT NOT NULL REFERENCES cliente(id),\n  status      TEXT NOT NULL,\n  criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\nCREATE TABLE item_pedido (\n  id          SERIAL PRIMARY KEY,\n  pedido_id   INT NOT NULL REFERENCES pedido(id) ON DELETE CASCADE,\n  produto_id  INT NOT NULL REFERENCES produto(id),\n  quantidade  INT NOT NULL CHECK (quantidade > 0),\n  preco_unit  NUMERIC(12,2) NOT NULL\n);"
+        },
+        { "kind": "text", "text": "Três decisões escondidas nesse trecho:" },
+        {
+          "kind": "list",
+          "items": [
+            "`ON DELETE CASCADE` em item: item não faz sentido sem o pedido",
+            "`preco_unit` guardado no item: o preço do produto muda, o do pedido não pode mudar depois",
+            "`CHECK (quantidade > 0)`: o banco garante, independentemente do código"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Não guardar o preço no item",
+          "text": "Se o total do pedido for calculado a partir do preço atual do produto, todo pedido antigo muda de valor quando a tabela de preços é atualizada. É um erro de modelagem que corrompe histórico."
+        },
+        {
+          "kind": "text",
+          "text": "Relação muitos-para-muitos precisa de tabela intermediária. Ela costuma ganhar campos próprios (data, quantidade, quem fez)."
+        },
+        {
+          "kind": "quiz",
+          "question": "Onde deve ficar o preço usado no cálculo de um pedido já fechado?",
+          "choices": [
+            "Sempre na tabela de produto, consultado na hora de exibir",
+            "Copiado no item do pedido, no momento da compra",
+            "Num arquivo de configuração",
+            "Calculado a partir do total dividido pela quantidade"
+          ],
+          "answerIndex": 1,
+          "explanation": "O preço do pedido é um fato histórico. Consultar o preço atual faz o passado mudar quando o presente muda.",
+          "topics": ["modelagem"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Desenhe (em texto mesmo) o modelo de um sistema de atendimento: usuário, ticket, comentário, prioridade e histórico de status. Marque a cardinalidade de cada relação.",
+        "expected": "Cada relação com número nas duas pontas, e uma nota dizendo o que pode existir sem o quê."
+      },
+      "ifStuck": ["Comece listando os substantivos da descrição do problema. Cada um é candidato a entidade."],
+      "commonErrors": [
+        {
+          "error": "Guardar lista de valores separados por vírgula numa coluna.",
+          "why": "Impede índice, junção e integridade. Toda consulta passa a precisar de manipulação de texto.",
+          "fix": "Tabela relacionada, uma linha por valor."
+        }
+      ],
+      "exercise": {
+        "id": "ex-uml-modelo-sql-01",
+        "title": "Tabela de histórico de status",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "Escreva o CREATE TABLE de `ticket_status_historico`, que registra cada mudança de status de um ticket: qual ticket, status anterior, novo status, quem mudou e quando. O histórico não deve sobreviver à exclusão do ticket.",
+        "starter": "CREATE TABLE ticket_status_historico (\n\n);\n",
+        "checks": [
+          { "name": "tem chave primaria", "type": "regex", "value": "PRIMARY KEY|primary key", "hint": "Toda tabela precisa de identificador." },
+          {
+            "name": "referencia o ticket",
+            "type": "regex",
+            "value": "REFERENCES\\s+ticket|references\\s+ticket",
+            "hint": "A ligação com ticket é chave estrangeira."
+          },
+          {
+            "name": "apaga junto com o ticket",
+            "type": "regex",
+            "value": "ON DELETE CASCADE|on delete cascade",
+            "hint": "O enunciado diz que o histórico não sobrevive ao ticket."
+          },
+          { "name": "registra quem mudou", "type": "regex", "value": "usuario|autor", "hint": "Quem fez a mudança?" },
+          { "name": "registra quando", "type": "regex", "value": "TIMESTAMP|timestamp|criado_em|mudado_em", "hint": "Histórico sem data não serve." },
+          {
+            "name": "guarda os dois status",
+            "type": "regex",
+            "value": "(status_anterior|de_status)[\\s\\S]*(status_novo|para_status)",
+            "hint": "Anterior e novo."
+          }
+        ],
+        "hints": [
+          "São seis colunas: id, ticket_id, status_anterior, status_novo, usuario_id, mudado_em.",
+          "status_anterior pode ser nulo na criação do ticket."
+        ],
+        "solution": "CREATE TABLE ticket_status_historico (\n  id              SERIAL PRIMARY KEY,\n  ticket_id       INT NOT NULL REFERENCES ticket(id) ON DELETE CASCADE,\n  status_anterior TEXT,\n  status_novo     TEXT NOT NULL,\n  usuario_id      INT NOT NULL REFERENCES usuario(id),\n  mudado_em       TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\nCREATE INDEX idx_historico_ticket ON ticket_status_historico (ticket_id, mudado_em DESC);\n",
+        "solutionNotes": "O índice existe porque a consulta natural é \"histórico deste ticket, do mais recente para o mais antigo\"."
+      },
+      "glossary": ["chave-estrangeira", "normalizacao", "indice", "migration"]
+    },
+    {
       "id": "bd-select-filtro-01",
       "type": "lesson",
       "title": "SELECT, WHERE e o que o banco faz por baixo",
@@ -233,7 +342,7 @@
       "glossary": ["sql", "Query", "chave-estrangeira"]
     },
     {
-      "id": "bd-indice-transacao-01",
+      "id": "bd-indice-01",
       "type": "lesson",
       "title": "Índice: a partir da consulta, não por precaução",
       "estimatedMinutes": 9,
@@ -344,6 +453,134 @@
         }
       ],
       "glossary": ["transacao", "condicao-de-corrida"]
+    },
+    {
+      "id": "bd-quando-nao-otimizar-01",
+      "type": "lesson",
+      "title": "Quando otimizar não vale a pena",
+      "estimatedMinutes": 8,
+      "tags": ["performance", "qualidade"],
+      "why": "Código otimizado é mais difícil de ler e de mudar. Pagar esse preço onde não havia problema é prejuízo — e acontece o tempo todo.",
+      "goal": "Decidir se vale otimizar a partir de três perguntas, antes de tocar no código.",
+      "blocks": [
+        { "kind": "text", "text": "Três perguntas, nessa ordem. Se qualquer uma falhar, não otimize." },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            "Isso está medido, ou é impressão?",
+            "É esse trecho que domina o tempo, ou é outro?",
+            "O ganho compensa o código ficar mais difícil de entender?"
+          ]
+        },
+        { "kind": "text", "text": "A segunda pergunta é a que mais derruba otimização: melhorar em 90% algo que consome 2% do tempo total economiza 1,8%." },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Requisição de 3.200 ms:\n  consulta ao banco      3.000 ms   (94%)\n  montagem da resposta     180 ms   (5%)\n  serialização              20 ms   (1%)\n\nOtimizar a serialização pela metade economiza 10 ms.\nNinguém percebe."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Volume pequeno e fixo não precisa de estrutura esperta",
+          "text": "Um laço dentro de outro sobre uma lista de 12 estados brasileiros é O(n²) e roda em microssegundos. Trocar por um Map aqui adiciona uma linha e não melhora nada que alguém consiga medir."
+        },
+        {
+          "kind": "text",
+          "text": "O que muda a conta é o crescimento. A pergunta certa não é \"quantos itens tem hoje\", é **\"esse número pode crescer, e até onde?\"**"
+        },
+        {
+          "kind": "table",
+          "headers": ["Situação", "Otimizar?"],
+          "rows": [
+            ["lista fixa de 12 itens", "não"],
+            ["lista que cresce com os usuários", "sim, desde o começo"],
+            ["roda uma vez por mês", "raramente"],
+            ["roda a cada requisição", "sim, se estiver medido"],
+            ["consulta dentro de laço", "sempre"]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Há um caso em que vale escrever a versão eficiente sem medir nada: quando ela **não é mais complicada**. Usar `Set` em vez de `Array` para verificar pertencimento custa o mesmo trabalho de escrita e evita o problema antes de ele existir."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você encontrou um laço aninhado sobre uma lista de 8 formas de pagamento, carregada uma vez na inicialização. Vale trocar por uma estrutura indexada?",
+          "choices": [
+            "Sim: laço aninhado é sempre problema",
+            "Não: o número é pequeno, fixo e roda uma vez; a troca adiciona complexidade sem ganho mensurável",
+            "Sim, mas só se o sistema tiver muitos usuários",
+            "Não, porque otimização é sempre prematura"
+          ],
+          "answerIndex": 1,
+          "explanation": "Pequeno, fixo e executado uma vez: as três condições que dispensam otimização. A última alternativa erra pelo outro lado — consulta dentro de laço, por exemplo, deve ser evitada desde o primeiro dia."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um trecho que você já pensou em otimizar. Responda às três perguntas por escrito, com números onde houver.",
+        "expected": "Na maioria dos casos você vai parar na primeira pergunta — e isso é resposta."
+      },
+      "ifStuck": [
+        "Se não há medição, a resposta da primeira pergunta é \"é impressão\".",
+        "Meça antes com um cronômetro simples em volta do trecho. Não precisa de ferramenta sofisticada."
+      ],
+      "commonErrors": [
+        {
+          "error": "Trocar legibilidade por desempenho sem medir o antes.",
+          "why": "Sem a medição inicial não há como saber se o ganho existiu, e o código piorou de qualquer forma.",
+          "fix": "Meça, mude, meça de novo. Se o ganho não aparecer, desfaça."
+        }
+      ],
+      "exercise": {
+        "id": "ex-alg-vale-otimizar-01",
+        "title": "Decidir se vale otimizar",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 8,
+        "prompt": "Implemente `valeOtimizar({ medido, fatiaDoTempo, podeCrescer, aumentaComplexidade })`. Devolva 'nao: sem medicao' quando não houver medição; 'nao: nao domina o tempo' quando a fatia for menor que 0.2 e o volume não puder crescer; 'sim' quando a fatia for 0.2 ou mais, ou quando o volume puder crescer; e, entre os casos de 'sim', devolva 'sim: ganho facil' quando a mudança não aumentar a complexidade.",
+        "starter": "function valeOtimizar(caso) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "sem medicao",
+            "expression": "valeOtimizar({medido: false, fatiaDoTempo: 0.9, podeCrescer: true, aumentaComplexidade: false})",
+            "expected": "nao: sem medicao"
+          },
+          {
+            "name": "fatia pequena e volume fixo",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.01, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "nao: nao domina o tempo"
+          },
+          {
+            "name": "domina o tempo",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.9, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "sim"
+          },
+          {
+            "name": "volume pode crescer",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.05, podeCrescer: true, aumentaComplexidade: true})",
+            "expected": "sim"
+          },
+          {
+            "name": "ganho facil quando nao complica",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.9, podeCrescer: false, aumentaComplexidade: false})",
+            "expected": "sim: ganho facil"
+          },
+          {
+            "name": "limite exato da fatia conta como domina",
+            "expression": "valeOtimizar({medido: true, fatiaDoTempo: 0.2, podeCrescer: false, aumentaComplexidade: true})",
+            "expected": "sim"
+          }
+        ],
+        "hints": [
+          "A ordem das verificações é a ordem das três perguntas da aula.",
+          "A fatia de 0.2 conta como dominar o tempo: a comparação é >=.",
+          "A distinção entre 'sim' e 'sim: ganho facil' vem só de aumentaComplexidade."
+        ],
+        "solution": "function valeOtimizar({ medido, fatiaDoTempo, podeCrescer, aumentaComplexidade }) {\n  if (!medido) return 'nao: sem medicao'\n\n  const domina = fatiaDoTempo >= 0.2\n  if (!domina && !podeCrescer) return 'nao: nao domina o tempo'\n\n  return aumentaComplexidade ? 'sim' : 'sim: ganho facil'\n}\n",
+        "solutionNotes": "A regra do volume que pode crescer passa na frente da medição de hoje de propósito: consulta dentro de laço mede bem com 20 registros e derruba a tela com 20 mil."
+      },
+      "glossary": ["Performance", "Complexidade", "Refatoração", "Latência"]
     },
     {
       "id": "bd-null-tres-valores-01",

@@ -16,6 +16,7 @@ export default async function PaginaComecar() {
     title: trilha.title,
     summary: trilha.summary,
     forWho: trilha.forWho,
+    naoCobre: trilha.naoCobre,
   }))
 
   return (

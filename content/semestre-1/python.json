@@ -525,6 +525,120 @@
       ]
     },
     {
+      "id": "python-custo-codigo-01",
+      "type": "lesson",
+      "title": "Ler o custo de um trecho de código",
+      "estimatedMinutes": 10,
+      "tags": ["algoritmos"],
+      "why": "Não é sobre notação. É sobre olhar um código em review e saber se ele sobrevive a cem mil registros.",
+      "goal": "Classificar o custo de um trecho pela estrutura dos laços e acessos.",
+      "blocks": [
+        {
+          "kind": "table",
+          "headers": ["Padrão no código", "Custo", "100 mil itens"],
+          "rows": [
+            ["acesso direto (dicionário, índice)", "O(1)", "instantâneo"],
+            ["um laço sobre a entrada", "O(n)", "rápido"],
+            ["ordenação", "O(n log n)", "aceitável"],
+            ["laço dentro de laço sobre a mesma entrada", "O(n²)", "10 bilhões de passos"]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O que procurar na leitura: quantos laços percorrem a entrada, se um está dentro do outro, e se há busca linear dentro de um laço."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// O(n²) escondido: includes percorre a lista a cada iteração\nconst duplicados = []\nfor (const item of itens) {\n  if (vistos.includes(item)) duplicados.push(item)\n  vistos.push(item)\n}\n\n// O(n): Set tem verificação direta\nconst vistos = new Set()\nconst duplicados = []\nfor (const item of itens) {\n  if (vistos.has(item)) duplicados.push(item)\n  vistos.add(item)\n}"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O custo escondido nas funções prontas",
+          "text": "`includes`, `indexOf`, `find` e `in lista` percorrem a coleção. Dentro de um laço, cada um deles multiplica o custo total."
+        },
+        { "kind": "text", "text": "Complexidade não é tudo. Para n pequeno e fixo, O(n²) é irrelevante. A pergunta é sempre: **quanto esse n pode crescer?**" },
+        {
+          "kind": "text",
+          "text": "E na prática, a constante que domina quase todo sistema web não é o cálculo: é a ida ao banco ou à rede. Um O(n) com uma consulta por item é pior que um O(n²) em memória."
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# O(n) em número de operações, N consultas ao banco: o pior dos dois mundos\nfor pedido in pedidos:\n    cliente = banco.buscar_cliente(pedido.cliente_id)"
+        },
+        {
+          "kind": "quiz",
+          "question": "Qual trecho é mais preocupante para 50 mil registros?",
+          "choices": [
+            "Dois laços sequenciais, cada um percorrendo a lista uma vez",
+            "Um laço com uma consulta ao banco em cada iteração",
+            "Uma ordenação da lista",
+            "Um laço que soma valores"
+          ],
+          "answerIndex": 1,
+          "explanation": "50 mil consultas ao banco, mesmo a 1ms cada, são 50 segundos. Os outros três são operações em memória, milhares de vezes mais baratas."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma função sua que processa lista e conte: quantos laços percorrem a entrada? Existe busca linear dentro de laço? Existe acesso a banco ou rede dentro de laço?",
+        "expected": "Você consegue nomear o custo e dizer se ele importa para o volume real do sistema."
+      },
+      "ifStuck": ["Comece marcando cada `for`, cada `includes`/`find` e cada chamada de banco. O padrão aparece."],
+      "commonErrors": [
+        {
+          "error": "Otimizar cálculo quando o gargalo é o banco.",
+          "why": "A intuição vai para o código visível, não para a espera.",
+          "fix": "Meça antes. Conte as consultas executadas por requisição."
+        }
+      ],
+      "exercise": {
+        "id": "ex-alg-otimizar-01",
+        "title": "Tirar o laço de dentro do laço",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `juntarPedidosComClientes(pedidos, clientes)`. Cada pedido tem `clienteId`; cada cliente tem `id` e `nome`. Devolva a lista de pedidos com o campo `clienteNome` preenchido (ou null quando o cliente não existir). A solução não pode fazer busca linear dentro do laço.",
+        "starter": "function juntarPedidosComClientes(pedidos, clientes) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "listas vazias",
+            "expression": "juntarPedidosComClientes([], [])",
+            "expected": []
+          },
+          {
+            "name": "associa o nome",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'a'}], [{id:'a',nome:'Ana'}])[0].clienteNome",
+            "expected": "Ana"
+          },
+          {
+            "name": "cliente inexistente fica null",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'z'}], [{id:'a',nome:'Ana'}])[0].clienteNome",
+            "expected": null
+          },
+          {
+            "name": "mantem a ordem e a quantidade",
+            "expression": "juntarPedidosComClientes([{id:1,clienteId:'a'},{id:2,clienteId:'b'}], [{id:'b',nome:'Bia'},{id:'a',nome:'Ana'}]).map(p => p.id)",
+            "expected": [1, 2]
+          },
+          {
+            "name": "funciona com volume sem ficar quadratico",
+            "expression": "juntarPedidosComClientes(Array.from({length: 20000}, (_, i) => ({id: i, clienteId: 'c' + (i % 5000)})), Array.from({length: 5000}, (_, i) => ({id: 'c' + i, nome: 'N' + i}))).filter(p => p.clienteNome === null).length",
+            "expected": 0
+          }
+        ],
+        "hints": [
+          "Monte um índice dos clientes por id antes de percorrer os pedidos.",
+          "Um Map ou um objeto simples resolve.",
+          "Se você usar clientes.find() dentro do laço, o último teste vai demorar demais."
+        ],
+        "solution": "function juntarPedidosComClientes(pedidos, clientes) {\n  const porId = new Map(clientes.map((cliente) => [cliente.id, cliente]))\n\n  return pedidos.map((pedido) => ({\n    ...pedido,\n    clienteNome: porId.get(pedido.clienteId)?.nome ?? null,\n  }))\n}\n",
+        "solutionNotes": "Com find dentro do map, o último teste faria até 100 milhões de comparações. Com Map, são 25 mil operações."
+      },
+      "glossary": ["Big O", "Complexidade", "Latência", "Performance", "Query"]
+    },
+    {
       "id": "python-funcoes-01",
       "type": "lesson",
       "title": "Funções",
