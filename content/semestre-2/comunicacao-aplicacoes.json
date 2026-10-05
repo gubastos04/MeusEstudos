@@ -480,6 +480,132 @@
       ]
     },
     {
+      "id": "com-cache-http-01",
+      "type": "lesson",
+      "title": "Cache HTTP: a resposta mais rápida é a que não acontece",
+      "estimatedMinutes": 10,
+      "tags": ["api", "performance"],
+      "why": "Antes de otimizar a consulta, vale perguntar se a requisição precisava acontecer. Cache HTTP é combinado entre cliente e servidor por cabeçalho, e funciona sem você escrever cache nenhum.",
+      "goal": "Escolher entre cache por tempo e cache por validação, e saber o que nunca pode ser cacheado.",
+      "blocks": [
+        { "kind": "text", "text": "Existem dois acordos possíveis, e eles respondem a perguntas diferentes." },
+        {
+          "kind": "text",
+          "text": "**Por tempo** (`Cache-Control: max-age`): \"pode usar esta resposta por N segundos sem me perguntar\". Economiza a requisição inteira. O custo é que, se o dado mudar antes, o cliente não fica sabendo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Cache-Control: public, max-age=300\n\n// Por 5 minutos o navegador nem chega ao servidor.\n// Serve para o que muda devagar: catalogo, configuracao publica."
+        },
+        {
+          "kind": "text",
+          "text": "**Por validação** (`ETag`): \"guarde esta versão; da próxima vez me diga qual você tem e eu respondo se mudou\". A requisição acontece, mas a resposta vem vazia quando nada mudou — `304 Not Modified`, sem corpo."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "// Primeira resposta\nETag: \"v7\"\n\n// Proxima requisicao do cliente\nIf-None-Match: \"v7\"\n\n// Resposta do servidor, se nada mudou\n304 Not Modified     (sem corpo)"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Resposta com dado de usuário nunca é `public`",
+          "text": "`Cache-Control: public` autoriza qualquer cache no caminho — do navegador ao CDN — a guardar e servir aquilo para outra pessoa. Para resposta autenticada, use `private`, ou `no-store` quando nem o navegador deve guardar."
+        },
+        {
+          "kind": "text",
+          "text": "A escolha é sobre tolerância a dado velho: quanto tempo você aceita servir o valor anterior. Se a resposta for \"nenhum\", o cache por tempo está fora e sobra o por validação — que ainda economiza a transferência, mesmo sem economizar a ida."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma API devolve o extrato do usuário autenticado. Qual cabeçalho é adequado?",
+          "choices": [
+            "Cache-Control: public, max-age=300",
+            "Cache-Control: private, no-cache + ETag",
+            "Cache-Control: public, max-age=0",
+            "Nenhum: cache é sempre perigoso em API"
+          ],
+          "answerIndex": 1,
+          "explanation": "`private` impede cache compartilhado de guardar extrato de uma pessoa e servir para outra. `no-cache` não significa \"não guarde\": significa \"guarde, mas revalide antes de usar\" — que com ETag economiza transferência sem nunca servir dado velho.",
+          "topics": ["api", "performance"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Abra a aba de rede do navegador num site que você usa e procure respostas com status 304. Veja o tamanho delas comparado com a primeira carga.",
+        "expected": "Você vê na prática a diferença entre a requisição que não acontece e a que acontece sem corpo."
+      },
+      "ifStuck": ["A pergunta que decide é sempre a mesma: por quanto tempo servir o valor anterior é aceitável?"],
+      "commonErrors": [
+        {
+          "error": "Usar `no-cache` achando que desliga o cache.",
+          "why": "Ele manda revalidar, não manda não guardar. Quem desliga de verdade é `no-store`.",
+          "fix": "Para dado sensível que não pode ficar no disco de ninguém, `no-store`."
+        }
+      ],
+      "glossary": ["Cache", "Requisição", "Resposta", "Status code", "Latência"],
+      "exercise": {
+        "id": "ex-com-cache-http-01",
+        "title": "Responder 304 quando nada mudou",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Escreva `responder(requisicao, recurso)`, que implementa o cache por validação.\n\n- Se `requisicao.ifNoneMatch` for igual à `recurso.etag`, devolva `{ status: 304 }` **sem corpo** e com o `etag`.\n- Caso contrário, devolva `{ status: 200, corpo, etag }`.\n- Em todos os casos, inclua `cacheControl`: `\"private, no-cache\"` quando `recurso.privado` for verdadeiro, e `\"public, max-age=300\"` caso contrário.",
+        "starter": "function responder(requisicao, recurso) {\n  // escreva aqui\n}\n",
+        "tests": [
+          {
+            "name": "sem cabeçalho do cliente, responde 200",
+            "expression": "responder({}, { etag: 'v7', corpo: { id: 1 }, privado: false }).status",
+            "expected": 200
+          },
+          {
+            "name": "etag igual responde 304",
+            "expression": "responder({ ifNoneMatch: 'v7' }, { etag: 'v7', corpo: { id: 1 }, privado: false }).status",
+            "expected": 304
+          },
+          {
+            "name": "o 304 não leva corpo",
+            "expression": "'corpo' in responder({ ifNoneMatch: 'v7' }, { etag: 'v7', corpo: { id: 1 }, privado: false })",
+            "expected": false
+          },
+          {
+            "name": "etag diferente responde 200 com corpo",
+            "expression": "responder({ ifNoneMatch: 'v6' }, { etag: 'v7', corpo: { id: 1 }, privado: false }).corpo.id",
+            "expected": 1
+          },
+          {
+            "name": "recurso privado nunca é public",
+            "expression": "responder({}, { etag: 'v7', corpo: {}, privado: true }).cacheControl",
+            "expected": "private, no-cache"
+          },
+          {
+            "name": "recurso público pode ter prazo",
+            "expression": "responder({}, { etag: 'v7', corpo: {}, privado: false }).cacheControl",
+            "expected": "public, max-age=300"
+          },
+          {
+            "name": "o 304 também leva o etag",
+            "expression": "responder({ ifNoneMatch: 'v7' }, { etag: 'v7', corpo: {}, privado: false }).etag",
+            "expected": "v7",
+            "hidden": true
+          },
+          {
+            "name": "privado com etag igual continua privado",
+            "expression": "responder({ ifNoneMatch: 'v7' }, { etag: 'v7', corpo: {}, privado: true }).cacheControl",
+            "expected": "private, no-cache",
+            "hidden": true
+          }
+        ],
+        "hints": [
+          "O cabeçalho de cache vale para os dois caminhos: calcule antes de decidir o status.",
+          "O 304 não leva corpo — e o teste verifica a ausência da chave, não um corpo vazio.",
+          "Comparar `requisicao.ifNoneMatch` com `recurso.etag` é a validação inteira."
+        ],
+        "solution": "function responder(requisicao, recurso) {\n  // Vale para os dois caminhos: dado de usuário nunca pode ser public.\n  const cacheControl = recurso.privado ? 'private, no-cache' : 'public, max-age=300'\n\n  // O cliente diz qual versão tem; se for a atual, não há o que enviar.\n  if (requisicao.ifNoneMatch === recurso.etag) {\n    return { status: 304, etag: recurso.etag, cacheControl }\n  }\n\n  return { status: 200, corpo: recurso.corpo, etag: recurso.etag, cacheControl }\n}\n",
+        "solutionNotes": "O 304 economiza a transferência do corpo, não a requisição — por isso ele serve para dado que não tolera ficar velho. O cabeçalho sair nos dois caminhos é o detalhe que costuma escapar: um 304 sem `Cache-Control` deixa o cliente sem instrução para a próxima vez."
+      }
+    },
+    {
       "id": "com-autenticacao-entre-sistemas-01",
       "type": "lesson",
       "title": "Autenticação entre sistemas",
@@ -649,6 +775,128 @@
         "Log",
         "https"
       ]
+    },
+    {
+      "id": "com-jwt-oauth-01",
+      "type": "lesson",
+      "title": "Token: o que o JWT garante e o que o OAuth resolve",
+      "estimatedMinutes": 10,
+      "tags": ["api", "seguranca"],
+      "why": "JWT e OAuth aparecem em toda vaga e quase sempre juntos, como se fossem a mesma coisa. São respostas a perguntas diferentes, e confundir as duas produz decisões ruins de segurança.",
+      "goal": "Ler um JWT, saber o que ele prova e o que não prova, e dizer em uma frase para que serve o OAuth.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "**JWT é um formato de token**: três partes separadas por ponto, em base64, com uma assinatura no fim. O conteúdo não é secreto — qualquer um decodifica. O que a assinatura garante é que ele **não foi alterado** por quem não tem a chave."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// As tres partes de um JWT\nconst [cabecalho, dados, assinatura] = token.split('.')\n\n// O conteudo e legivel por qualquer pessoa. Isto nao e um defeito:\n// o token nao esconde, ele comprova origem.\nconst conteudo = JSON.parse(atob(dados))\n// { \"sub\": \"ana\", \"papel\": \"cliente\", \"exp\": 1772000000 }\n"
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Nunca coloque segredo dentro de um JWT",
+          "text": "O corpo é base64, não criptografia. Quem recebe o token lê tudo que está nele — inclusive a pessoa cujo navegador o carrega. CPF, telefone e endereço não entram ali."
+        },
+        {
+          "kind": "text",
+          "text": "O que o servidor precisa verificar, sempre, nessa ordem: a assinatura confere com a chave dele; o `exp` ainda não passou; e o que o token afirma é o que a rota precisa. Pular o primeiro passo e só ler o corpo é o erro grave — aí qualquer pessoa escreve `\"papel\": \"admin\"` e assina com nada."
+        },
+        {
+          "kind": "text",
+          "text": "**OAuth responde outra pergunta**: como deixar um sistema agir em nome de uma pessoa, num outro sistema, sem ela entregar a senha. Quando você usa \"entrar com o Google\", o que acontece é o Google dizer ao app \"esta pessoa é quem diz ser\" — e o app nunca vê a senha dela."
+        },
+        {
+          "kind": "text",
+          "text": "Os dois aparecem juntos porque o resultado de um fluxo OAuth costuma **ser** um JWT. Mas um é o formato do crachá e o outro é o processo de emiti-lo: dá para usar JWT sem OAuth nenhum, e OAuth entregando token de outro formato."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma API recebe um JWT e confia no campo `\"papel\": \"admin\"` que está dentro dele, sem verificar a assinatura. Qual é a consequência?",
+          "choices": [
+            "Nenhuma: o token veio do servidor de autenticação",
+            "Qualquer pessoa pode montar um token com o papel que quiser e virar admin",
+            "O token expira mais rápido",
+            "O desempenho cai, porque o corpo é maior"
+          ],
+          "answerIndex": 1,
+          "explanation": "Montar um JWT é escrever JSON e codificar em base64 — qualquer um faz, sem chave nenhuma. É a verificação da assinatura que distingue um token emitido pelo seu servidor de um token escrito pela pessoa. Sem ela, o campo `papel` é apenas texto que o cliente mandou.",
+          "topics": ["autorização", "autenticação"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um JWT de exemplo (ou um do seu próprio projeto, de ambiente local) e decodifique a segunda parte. Liste o que está lá dentro e pergunte-se se algum daqueles campos não deveria ser legível.",
+        "expected": "Você vê com os próprios olhos que o corpo não é secreto."
+      },
+      "ifStuck": [
+        "Separe as duas perguntas: \"qual é o formato do crachá?\" é JWT; \"como eu consigo o crachá sem dar minha senha?\" é OAuth."
+      ],
+      "commonErrors": [
+        {
+          "error": "Guardar o JWT em `localStorage` e tratá-lo como segredo.",
+          "why": "Qualquer script na página lê `localStorage`, e o conteúdo do token já era legível de qualquer forma.",
+          "fix": "Cookie `HttpOnly` para o token de sessão, e nada sensível dentro do corpo."
+        }
+      ],
+      "glossary": ["JWT", "Autenticação", "Autorização", "Sessão"],
+      "exercise": {
+        "id": "ex-com-jwt-01",
+        "title": "Aceitar o token só quando ele serve",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Escreva `aceitar(token, agora, papelNecessario)`, que decide se uma requisição passa. O token chega como objeto já decodificado, com `assinaturaValida`, `exp` (em segundos) e `papel`.\n\nDevolva `{ ok: true }` quando tudo serve. Quando não, `{ ok: false, motivo }`, com o motivo sendo `\"assinatura\"`, `\"expirado\"` ou `\"papel\"` — **nessa ordem de verificação**, porque token não assinado não merece nenhuma outra análise.\n\n`exp` exatamente igual a `agora` já conta como expirado.",
+        "starter": "function aceitar(token, agora, papelNecessario) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "token bom passa", "expression": "aceitar({ assinaturaValida: true, exp: 2000, papel: 'admin' }, 1000, 'admin').ok", "expected": true },
+          {
+            "name": "assinatura inválida é recusada",
+            "expression": "aceitar({ assinaturaValida: false, exp: 2000, papel: 'admin' }, 1000, 'admin').motivo",
+            "expected": "assinatura"
+          },
+          {
+            "name": "token expirado é recusado",
+            "expression": "aceitar({ assinaturaValida: true, exp: 500, papel: 'admin' }, 1000, 'admin').motivo",
+            "expected": "expirado"
+          },
+          {
+            "name": "papel insuficiente é recusado",
+            "expression": "aceitar({ assinaturaValida: true, exp: 2000, papel: 'cliente' }, 1000, 'admin').motivo",
+            "expected": "papel"
+          },
+          {
+            "name": "a assinatura é verificada antes de tudo",
+            "expression": "aceitar({ assinaturaValida: false, exp: 1, papel: 'cliente' }, 1000, 'admin').motivo",
+            "expected": "assinatura"
+          },
+          {
+            "name": "exp igual a agora já expirou",
+            "expression": "aceitar({ assinaturaValida: true, exp: 1000, papel: 'admin' }, 1000, 'admin').motivo",
+            "expected": "expirado"
+          },
+          {
+            "name": "expiração vem antes do papel",
+            "expression": "aceitar({ assinaturaValida: true, exp: 1, papel: 'cliente' }, 1000, 'admin').motivo",
+            "expected": "expirado",
+            "hidden": true
+          },
+          {
+            "name": "token sem papel não vira admin",
+            "expression": "aceitar({ assinaturaValida: true, exp: 2000 }, 1000, 'admin').motivo",
+            "expected": "papel",
+            "hidden": true
+          }
+        ],
+        "hints": [
+          "São três verificações em sequência, cada uma devolvendo na hora.",
+          "A ordem é o enunciado inteiro: assinatura, expiração, papel.",
+          "\"Exatamente igual já expirou\" significa `exp <= agora`."
+        ],
+        "solution": "function aceitar(token, agora, papelNecessario) {\n  // Sem assinatura válida, o resto do token é texto que o cliente escreveu:\n  // analisar exp ou papel antes disso seria confiar em dado não verificado.\n  if (!token.assinaturaValida) return { ok: false, motivo: 'assinatura' }\n\n  if (token.exp <= agora) return { ok: false, motivo: 'expirado' }\n\n  if (token.papel !== papelNecessario) return { ok: false, motivo: 'papel' }\n\n  return { ok: true }\n}\n",
+        "solutionNotes": "A ordem não é estética: ela é a diferença entre verificar e confiar. O teste \"a assinatura é verificada antes de tudo\" usa um token vencido E com papel errado, e espera que o motivo seja a assinatura — porque quando ela não confere, nada mais naquele token significa coisa alguma."
+      }
     },
     {
       "id": "com-checkpoint-01",

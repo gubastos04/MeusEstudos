@@ -455,6 +455,110 @@
       "glossary": ["transacao", "condicao-de-corrida"]
     },
     {
+      "id": "bd-isolamento-01",
+      "type": "lesson",
+      "title": "Isolamento: o que a transação NÃO garante sozinha",
+      "estimatedMinutes": 10,
+      "tags": ["banco", "integridade"],
+      "why": "A aula anterior resolveu \"tudo ou nada\". Falta a outra metade: o que acontece quando duas transações mexem no mesmo dado ao mesmo tempo. É aí que mora o bug que só aparece em produção.",
+      "goal": "Reconhecer a atualização perdida e saber as duas formas de impedi-la.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Transação garante que suas operações acontecem por inteiro. Não garante que **outra** transação não mexeu no mesmo dado no meio do caminho — e o padrão da maioria dos bancos permite isso."
+        },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- Duas reservas simultaneas, cada uma na sua transacao:\n\n-- A:  SELECT quantidade FROM estoque WHERE id = 9;   -- le 10\n-- B:  SELECT quantidade FROM estoque WHERE id = 9;   -- le 10 tambem\n-- A:  UPDATE estoque SET quantidade = 9 WHERE id = 9;\n-- B:  UPDATE estoque SET quantidade = 9 WHERE id = 9;\n\n-- Duas saidas, uma unidade descontada. A atualizacao de A se perdeu."
+        },
+        {
+          "kind": "text",
+          "text": "Isso se chama **atualização perdida**, e repare que nenhuma das duas transações fez nada errado. O problema é a janela entre ler e escrever, e ele não aparece em teste manual: só com concorrência real."
+        },
+        { "kind": "text", "text": "Há duas formas de fechar essa janela, e a escolha é sobre quão provável é o conflito." },
+        {
+          "kind": "code",
+          "language": "sql",
+          "code": "-- 1. Nao leia antes: deixe o banco calcular a partir do valor atual.\nUPDATE estoque SET quantidade = quantidade - 1\nWHERE id = 9 AND quantidade >= 1;\n-- Se nenhuma linha for afetada, nao havia estoque. Sem janela nenhuma.\n\n-- 2. Quando precisa mesmo ler antes de decidir, bloqueie a linha:\nBEGIN;\n  SELECT quantidade FROM estoque WHERE id = 9 FOR UPDATE;\n  -- Outra transacao que peca a mesma linha espera aqui.\n  UPDATE estoque SET quantidade = 9 WHERE id = 9;\nCOMMIT;"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Nível de isolamento mais alto não é a primeira resposta",
+          "text": "Subir para `SERIALIZABLE` resolve, e cobra: mais bloqueio, mais transação abortada por conflito, e o código precisa saber repetir. Na maioria dos casos a operação atômica do primeiro exemplo resolve mais barato."
+        },
+        {
+          "kind": "text",
+          "text": "Os nomes dos níveis (`READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE`) variam de banco para banco, e o padrão também — PostgreSQL começa em `READ COMMITTED`. O que não varia é a pergunta: **entre ler e escrever, outra pessoa pode ter mudado isso?**"
+        },
+        {
+          "kind": "quiz",
+          "question": "Um contador de visitas usa `SELECT valor`, soma 1 em código e faz `UPDATE valor = <novo>`. Com tráfego alto, o número cresce menos que o esperado. Qual é a correção mais simples?",
+          "choices": [
+            "Subir o nível de isolamento para SERIALIZABLE",
+            "Fazer `UPDATE valor = valor + 1`, deixando a soma com o banco",
+            "Colocar a operação numa transação",
+            "Criar índice na tabela do contador"
+          ],
+          "answerIndex": 1,
+          "explanation": "A transação sozinha não fecha a janela entre o SELECT e o UPDATE — é exatamente a atualização perdida. Deixar a soma com o banco elimina a leitura prévia e com ela a janela, sem custo de bloqueio e sem precisar repetir transação abortada.",
+          "topics": ["transação", "integridade"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Procure no seu projeto um trecho que leia um valor do banco, calcule algo em código e escreva de volta. Pergunte: se duas requisições fizerem isso ao mesmo tempo, o resultado ainda está certo?",
+        "expected": "Você consegue apontar a janela entre a leitura e a escrita, que é onde o defeito mora."
+      },
+      "ifStuck": ["A pergunta é sempre a mesma: entre o SELECT e o UPDATE, outra transação consegue mudar essa linha?"],
+      "commonErrors": [
+        {
+          "error": "Achar que BEGIN/COMMIT já resolve concorrência.",
+          "why": "Transação trata falha no meio, não leitura simultânea. São problemas diferentes com soluções diferentes.",
+          "fix": "Operação atômica quando dá, bloqueio explícito quando precisa ler antes de decidir."
+        }
+      ],
+      "glossary": ["transacao", "condicao-de-corrida", "indice"],
+      "exercise": {
+        "id": "ex-bd-isolamento-01",
+        "title": "Fechar a janela entre ler e escrever",
+        "kind": "structural",
+        "language": "sql",
+        "estimatedMinutes": 8,
+        "prompt": "A rotina abaixo tem atualização perdida. Reescreva-a de duas formas, uma embaixo da outra:\n\n1. **Sem ler antes**: um `UPDATE` que calcula a partir do valor atual e só afeta a linha se houver saldo.\n2. **Lendo antes, com bloqueio**: a transação com `SELECT ... FOR UPDATE` para o caso em que é preciso decidir antes de escrever.",
+        "starter": "-- rotina com atualizacao perdida:\n--   SELECT quantidade FROM estoque WHERE id = 9;   -- le 10\n--   (decide em codigo: 10 - 1 = 9)\n--   UPDATE estoque SET quantidade = 9 WHERE id = 9;\n\n-- 1. sem ler antes\n\n\n-- 2. lendo antes, com bloqueio\n",
+        "checks": [
+          {
+            "name": "calcula a partir do valor atual",
+            "type": "regex",
+            "value": "quantidade\\s*=\\s*quantidade\\s*-",
+            "hint": "O banco sabe o valor atual: deixe a conta com ele."
+          },
+          {
+            "name": "protege contra saldo negativo",
+            "type": "regex",
+            "value": "quantidade\\s*>=?\\s*\\d",
+            "hint": "Se não houver saldo, nenhuma linha deve ser afetada."
+          },
+          { "name": "usa transação na segunda forma", "type": "regex", "value": "begin", "hint": "Ler e escrever viram uma coisa só." },
+          {
+            "name": "bloqueia a linha ao ler",
+            "type": "regex",
+            "value": "for\\s+update",
+            "hint": "É o que faz a outra transação esperar em vez de ler o mesmo valor."
+          },
+          { "name": "fecha a transação", "type": "regex", "value": "commit", "hint": "Transação aberta segura bloqueio." }
+        ],
+        "hints": [
+          "Na primeira forma, o segredo é que não existe SELECT: o UPDATE faz tudo.",
+          "A condição de saldo entra no WHERE do próprio UPDATE.",
+          "Na segunda, o FOR UPDATE vai no SELECT, dentro da transação."
+        ],
+        "solution": "-- 1. sem ler antes: nao ha janela entre leitura e escrita\nUPDATE estoque\nSET quantidade = quantidade - 1\nWHERE id = 9 AND quantidade >= 1;\n-- Nenhuma linha afetada significa que nao havia saldo.\n\n-- 2. lendo antes, com bloqueio: para quando e preciso decidir em codigo\nBEGIN;\n  SELECT quantidade FROM estoque WHERE id = 9 FOR UPDATE;\n  UPDATE estoque SET quantidade = quantidade - 1 WHERE id = 9;\nCOMMIT;\n",
+        "solutionNotes": "Esta verificação lê o SQL, e aqui isso não é escolha: o SQLite do navegador roda uma transação por vez, então ele não consegue demonstrar duas transações disputando a mesma linha — que é o assunto inteiro da aula. `FOR UPDATE` também é sintaxe de PostgreSQL. Para ver o efeito, abra dois clientes de banco e execute os comandos intercalados."
+      }
+    },
+    {
       "id": "bd-quando-nao-otimizar-01",
       "type": "lesson",
       "title": "Quando otimizar não vale a pena",

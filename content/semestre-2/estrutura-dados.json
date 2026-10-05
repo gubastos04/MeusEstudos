@@ -452,6 +452,106 @@
       ]
     },
     {
+      "id": "ed-recursao-01",
+      "type": "lesson",
+      "title": "Recursão: quando o problema tem a sua própria forma dentro",
+      "estimatedMinutes": 10,
+      "tags": ["estrutura-dados", "fundamentos"],
+      "why": "Dado aninhado — pasta dentro de pasta, categoria dentro de categoria, comentário respondendo comentário — não tem profundidade conhecida. Laço resolve o que tem fim previsível; recursão resolve o que não tem.",
+      "goal": "Escrever uma função recursiva com caso base correto e reconhecer quando a recursão é a escolha simples.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A aula anterior usou pilha para desfazer. Recursão usa a mesma pilha, só que a linguagem a mantém para você: cada chamada que ainda não terminou fica empilhada esperando a de dentro responder."
+        },
+        {
+          "kind": "text",
+          "text": "Toda função recursiva tem duas partes, e esquecer a primeira é o erro clássico: o **caso base**, que para a descida, e a **chamada que caminha em direção a ele**. Sem caso base, a pilha estoura — é literalmente a mesma pilha da aula anterior ficando sem espaço."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// Uma pasta contém arquivos e outras pastas, em profundidade desconhecida.\nfunction tamanhoTotal(no) {\n  // caso base: arquivo não tem filhos\n  if (no.tipo === 'arquivo') return no.tamanho\n\n  // caso recursivo: a pasta é a soma do que há dentro\n  return no.filhos.reduce((soma, filho) => soma + tamanhoTotal(filho), 0)\n}\n"
+        },
+        {
+          "kind": "text",
+          "text": "Repare que o código não sabe quantos níveis existem, e não precisa saber. Com laço, você teria de manter sua própria pilha de pastas pendentes — que é exatamente o que a recursão faz por baixo."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O caso base precisa ser alcançável",
+          "text": "Não basta existir: a chamada tem de caminhar em direção a ele. `f(n)` chamando `f(n)` tem caso base e nunca chega nele. Em dado vindo de fora, ciclo é possível — uma categoria que é pai de si mesma trava a função."
+        },
+        {
+          "kind": "text",
+          "text": "Quando não usar: quando a estrutura é plana. Percorrer uma lista com recursão funciona, não ganha nada em clareza e gasta pilha. A recursão vence quando **o dado já é aninhado**."
+        },
+        {
+          "kind": "quiz",
+          "question": "Uma função recursiva que percorre a árvore de categorias trava com estouro de pilha em produção, e funciona em todos os testes. Qual é a hipótese mais provável?",
+          "choices": [
+            "A árvore de produção é maior e passou do limite de profundidade",
+            "Existe um ciclo nos dados: alguma categoria é ancestral de si mesma",
+            "A linguagem não suporta recursão profunda",
+            "Falta memória no servidor"
+          ],
+          "answerIndex": 1,
+          "explanation": "Profundidade real de categoria raramente passa de dezenas, e a pilha aguenta milhares. Estouro com dado real e não com dado de teste aponta para ciclo — que faz a descida nunca alcançar o caso base. Guardar os ids já visitados resolve.",
+          "topics": ["estruturas"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pense num dado aninhado do seu projeto (menu, categorias, comentários). Escreva em português as duas partes: qual é o caso base e qual é a chamada que caminha até ele.",
+        "expected": "Você consegue nomear as duas partes antes de escrever código — que é onde o erro costuma estar."
+      },
+      "ifStuck": ["Comece pelo caso base: qual é a entrada mais simples possível, aquela em que não há o que descer?"],
+      "commonErrors": [
+        {
+          "error": "Escrever o caso recursivo primeiro e o caso base depois.",
+          "why": "A função fica correta no meio e quebra na ponta, que é justamente onde o teste costuma não olhar.",
+          "fix": "Caso base primeiro, sempre. Ele é a única parte que não depende do resto."
+        }
+      ],
+      "glossary": ["recursao", "Complexidade", "Stack trace"],
+      "exercise": {
+        "id": "ex-ed-recursao-01",
+        "title": "Somar uma árvore de categorias",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Cada categoria tem um nome, uma quantidade de produtos e uma lista de subcategorias, em profundidade desconhecida. Escreva `totalDeProdutos(categoria)`, somando a categoria e tudo que há abaixo dela.\n\nE escreva `profundidade(categoria)`, que devolve quantos níveis existem a partir dela: uma categoria sem filhas tem profundidade 1.",
+        "starter": "const CATALOGO = {\n  nome: 'tudo',\n  produtos: 0,\n  filhas: [\n    { nome: 'livros', produtos: 10, filhas: [{ nome: 'técnicos', produtos: 4, filhas: [] }] },\n    { nome: 'eletrônicos', produtos: 7, filhas: [] },\n  ],\n}\n\nfunction totalDeProdutos(categoria) {\n  // escreva aqui\n}\n\nfunction profundidade(categoria) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "folha sem filhas", "expression": "totalDeProdutos({ nome: 'x', produtos: 3, filhas: [] })", "expected": 3 },
+          { "name": "soma a árvore inteira", "expression": "totalDeProdutos(CATALOGO)", "expected": 21 },
+          { "name": "soma um ramo", "expression": "totalDeProdutos(CATALOGO.filhas[0])", "expected": 14 },
+          { "name": "folha tem profundidade 1", "expression": "profundidade({ nome: 'x', produtos: 0, filhas: [] })", "expected": 1 },
+          { "name": "o catálogo tem três níveis", "expression": "profundidade(CATALOGO)", "expected": 3 },
+          { "name": "ramo mais curto", "expression": "profundidade(CATALOGO.filhas[1])", "expected": 1, "hidden": true },
+          {
+            "name": "categoria com zero produtos e filhas cheias",
+            "expression": "totalDeProdutos({ nome: 'raiz', produtos: 0, filhas: [{ nome: 'a', produtos: 5, filhas: [] }, { nome: 'b', produtos: 5, filhas: [] }] })",
+            "expected": 10,
+            "hidden": true
+          },
+          {
+            "name": "profundidade segue o ramo mais fundo",
+            "expression": "profundidade({ nome: 'r', produtos: 0, filhas: [{ nome: 'a', produtos: 0, filhas: [] }, { nome: 'b', produtos: 0, filhas: [{ nome: 'c', produtos: 0, filhas: [{ nome: 'd', produtos: 0, filhas: [] }] }] }] })",
+            "expected": 4,
+            "hidden": true
+          }
+        ],
+        "hints": [
+          "Escreva o caso base primeiro, nas duas funções: o que acontece quando `filhas` está vazia?",
+          "Em `totalDeProdutos`, a soma é a própria categoria mais a soma de cada filha.",
+          "Em `profundidade`, o resultado é 1 mais a maior profundidade entre as filhas. Sem filhas, é só 1."
+        ],
+        "solution": "const CATALOGO = {\n  nome: 'tudo',\n  produtos: 0,\n  filhas: [\n    { nome: 'livros', produtos: 10, filhas: [{ nome: 'técnicos', produtos: 4, filhas: [] }] },\n    { nome: 'eletrônicos', produtos: 7, filhas: [] },\n  ],\n}\n\nfunction totalDeProdutos(categoria) {\n  // O caso base está embutido: sem filhas, o reduce devolve 0.\n  return categoria.produtos + categoria.filhas.reduce((soma, filha) => soma + totalDeProdutos(filha), 0)\n}\n\nfunction profundidade(categoria) {\n  if (categoria.filhas.length === 0) return 1\n\n  // 1 por este nível, mais o ramo mais fundo abaixo dele.\n  return 1 + Math.max(...categoria.filhas.map(profundidade))\n}\n",
+        "solutionNotes": "Em `totalDeProdutos` o caso base fica implícito: lista vazia faz o `reduce` devolver o valor inicial e a descida para sozinha. Em `profundidade` ele precisa ser explícito, porque `Math.max()` sem argumento devolve `-Infinity` — um caso base ausente que o teste da folha pega."
+      }
+    },
+    {
       "id": "ed-arvores-hierarquia-01",
       "type": "lesson",
       "title": "Árvore: hierarquia e busca ordenada",

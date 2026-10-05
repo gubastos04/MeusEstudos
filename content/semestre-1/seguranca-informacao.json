@@ -305,6 +305,71 @@
       "glossary": ["injecao-sql", "XSS", "CSRF", "variavel-de-ambiente", "HTTPS"]
     },
     {
+      "id": "seg-dado-pessoal-01",
+      "type": "lesson",
+      "title": "Dado pessoal: a obrigação por trás da técnica",
+      "estimatedMinutes": 9,
+      "tags": ["seguranca", "dados"],
+      "why": "As aulas anteriores ensinaram a proteger dado. Falta dizer qual dado a lei trata de forma diferente, porque isso muda decisões de projeto — o que você guarda, por quanto tempo e o que registra no log.",
+      "goal": "Reconhecer o que conta como dado pessoal e decidir o que não coletar, o que não registrar no log e o que precisa poder ser apagado.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "A LGPD trata de **dado pessoal**: qualquer informação que identifique uma pessoa, direta ou indiretamente. Nome e CPF são óbvios; IP, id de dispositivo e geolocalização também são, e esses costumam entrar no sistema sem ninguém decidir que entraram."
+        },
+        { "kind": "text", "text": "Três consequências práticas para quem escreve código, e nenhuma delas depende de advogado:" },
+        {
+          "kind": "list",
+          "items": [
+            "Só colete o que você usa. Campo \"por garantia\" é dado que você precisa proteger, justificar e um dia apagar, sem ter ganho nada com ele.",
+            "Log é armazenamento. Jogar o corpo da requisição no log guarda dado pessoal num lugar que costuma ter mais cópias e menos controle de acesso que o banco.",
+            "Guardar para sempre é uma decisão, mesmo quando ninguém a tomou. Dado tem prazo, e apagar precisa ser possível — o que inclui backup e réplica."
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "python",
+          "code": "# Antes: o corpo inteiro vai para o log, com o que estiver nele.\nlog.info(\"pedido recebido\", extra={\"corpo\": requisicao.json})\n\n# Depois: so o que serve para investigar.\nlog.info(\"pedido recebido\", extra={\n    \"pedido_id\": pedido.id,\n    \"cliente_id\": cliente.id,   # id, nao nome nem email\n    \"itens\": len(pedido.itens),\n})"
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "A pessoa pode pedir os dados dela de volta, e pode pedir para apagar",
+          "text": "Se o sistema não consegue responder \"tudo que temos sobre esta pessoa\" nem apagar sem quebrar referência, isso é problema de modelagem — e fica muito mais caro de resolver depois que os dados estão espalhados por cinco tabelas e três planilhas."
+        },
+        {
+          "kind": "text",
+          "text": "A regra de bolso que resolve a maior parte: **dado que você não guardou não vaza, não precisa ser protegido e não precisa ser apagado.** A decisão mais segura é quase sempre coletar menos."
+        },
+        {
+          "kind": "quiz",
+          "question": "Para investigar erros, o time quer registrar o corpo completo de toda requisição por 90 dias. Qual é a objeção mais forte?",
+          "choices": [
+            "Vai ocupar muito espaço em disco",
+            "O log passa a conter dado pessoal, num lugar com mais cópias e menos controle de acesso que o banco",
+            "O log vai ficar difícil de ler",
+            "Não há objeção: log é interno"
+          ],
+          "answerIndex": 1,
+          "explanation": "Espaço é o menor dos problemas. Log é copiado para ferramenta de busca, para backup e muitas vezes para fora da empresa, com acesso mais amplo que o do banco — e um pedido de exclusão precisaria alcançar todas essas cópias.",
+          "topics": ["segurança", "logs"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste os campos de uma tabela de usuário do seu projeto e marque, para cada um, quem usa e para quê. Os que você não conseguir justificar são candidatos a não existir.",
+        "expected": "Você termina com uma lista curta de campos sem dono — que é onde a redução de risco é mais barata."
+      },
+      "ifStuck": ["Pergunte de cada campo: se ele vazasse amanhã num pastebin, isso seria um problema para a pessoa?"],
+      "commonErrors": [
+        {
+          "error": "Guardar CPF porque \"pode ser útil depois\".",
+          "why": "Dado sem uso definido é só risco: ele precisa ser protegido, justificado e apagável, sem contrapartida.",
+          "fix": "Coletar quando houver o uso, não antes."
+        }
+      ],
+      "glossary": ["Log", "Hash", "Sessão"]
+    },
+    {
       "id": "seg-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

@@ -465,6 +465,100 @@
       "glossary": ["Exceção", "Teste unitário"]
     },
     {
+      "id": "pc-pesquisar-01",
+      "type": "lesson",
+      "title": "Pesquisar e ler documentação sem se perder",
+      "estimatedMinutes": 10,
+      "tags": ["fundamentos", "processo"],
+      "why": "Ninguém sabe tudo de cor, e a diferença entre quem destrava rápido e quem passa a tarde travado quase nunca é memória — é saber o que perguntar e onde.",
+      "goal": "Transformar um problema em uma busca que responde, e ler documentação oficial sem lê-la inteira.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Uma busca que não responde quase sempre tem o mesmo defeito: ela descreve **o seu contexto** em vez do **problema genérico**. \"Meu botão de salvar pedido não funciona\" não é pesquisável; \"React onClick não dispara dentro de form\" é."
+        },
+        { "kind": "text", "text": "Três movimentos que transformam uma na outra:" },
+        {
+          "kind": "list",
+          "items": [
+            "Tire o que é só seu: nomes de variável, do projeto, do cliente. O que sobra é o problema.",
+            "Use a mensagem de erro, sem as partes variáveis. Tire caminho de arquivo, id e número de linha; o resto é o que outras pessoas também viram.",
+            "Diga a tecnologia e a versão. \"ordenar lista\" responde qualquer coisa; \"Python sort lista de dicionários por chave\" responde o seu caso."
+          ]
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "Erro na tela:\n  TypeError: Cannot read properties of undefined (reading 'nome')\n      at montarCartao (/home/ana/projeto/src/pedidos/cartao.js:42:18)\n\nBusca ruim:  \"erro no meu cartao.js linha 42\"\nBusca boa:   \"TypeError Cannot read properties of undefined reading\""
+        },
+        {
+          "kind": "text",
+          "text": "Sobre documentação oficial: ninguém lê de ponta a ponta, e tentar é o que faz as pessoas desistirem dela. A ordem que funciona é **assinatura, exemplo, parâmetros** — e só então o texto em volta, se ainda houver dúvida."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Resposta de fórum tem data",
+          "text": "A resposta mais votada costuma ser de anos atrás, e a API pode ter mudado. Olhe a data e confira na documentação oficial antes de colar. Vale igual para resposta de IA: ela também aprendeu com conteúdo antigo."
+        },
+        {
+          "kind": "text",
+          "text": "E o passo que mais economiza tempo: antes de pesquisar, escreva em uma frase **o que você espera que aconteça e o que acontece**. Metade das vezes a frase já contém a resposta, porque escrever obriga a precisar o que está vago."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você está há 40 minutos num erro e as buscas não respondem. Qual é o próximo movimento mais provável de destravar?",
+          "choices": [
+            "Tentar outras combinações de palavras na busca",
+            "Escrever em uma frase o que você espera e o que acontece, e reduzir o caso ao menor trecho que ainda falha",
+            "Perguntar num fórum e esperar",
+            "Trocar a biblioteca por outra"
+          ],
+          "answerIndex": 1,
+          "explanation": "Busca que não responde depois de 40 minutos geralmente indica que a pergunta ainda está errada, não que falta a palavra certa. Reduzir ao menor caso que falha costuma revelar que o problema é outro — e, se não revelar, produz exatamente o texto que uma boa pergunta precisa ter.",
+          "topics": ["investigação"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue o último erro que te travou. Escreva a busca que você fez e reescreva-a tirando o que era só seu. Depois compare os resultados das duas.",
+        "expected": "Você vê a diferença entre descrever o seu contexto e descrever o problema."
+      },
+      "ifStuck": ["Se não dá para tirar o nome do seu projeto da busca, provavelmente você ainda não sabe qual é o problema."],
+      "commonErrors": [
+        {
+          "error": "Colar a mensagem de erro inteira, com caminho e número de linha.",
+          "why": "As partes variáveis são únicas suas, e fazem a busca não encontrar ninguém que passou pelo mesmo.",
+          "fix": "Manter só a parte genérica da mensagem."
+        }
+      ],
+      "glossary": ["Stack trace", "Debug", "Framework"],
+      "exercise": {
+        "id": "ex-pc-pesquisar-01",
+        "title": "De erro na tela a busca que responde",
+        "kind": "reflection",
+        "language": "text",
+        "estimatedMinutes": 8,
+        "prompt": "Dado este erro:\n\n```\nsqlalchemy.exc.OperationalError: (psycopg2.OperationalError)\nFATAL: remaining connection slots are reserved for non-replication superuser connections\n  [SQL: SELECT pedidos.id FROM pedidos WHERE pedidos.cliente_id = %(id)s]\n  (Background on this error at: https://sqlalche.me/e/20/e3q8)\n```\n\nEscreva: (1) a busca que você faria, (2) o que você espera que aconteça e o que acontece, em uma frase, e (3) qual parte dessa mensagem é só sua e qual é genérica.",
+        "starter": "1. Busca:\n\n\n2. Esperado x acontecido:\n\n\n3. O que é só meu, o que é genérico:\n",
+        "checks": [
+          { "name": "respondeu as três partes", "type": "minLines", "value": "6", "hint": "São três perguntas, cada uma com resposta própria." },
+          {
+            "name": "a busca usa a parte genérica da mensagem",
+            "type": "regex",
+            "value": "connection slots|remaining connection",
+            "hint": "Qual trecho da mensagem outras pessoas também viram?"
+          }
+        ],
+        "hints": [
+          "A consulta SQL e o nome da tabela são seus. A frase do erro não.",
+          "O link no fim da mensagem é documentação oficial da própria biblioteca — vale abrir antes de pesquisar.",
+          "A mensagem diz que acabaram as conexões. Isso aponta para causa de configuração ou de pool, não para a consulta."
+        ],
+        "solution": "1. Busca: `psycopg2 OperationalError remaining connection slots are reserved` — e abrir primeiro o link sqlalche.me que a própria mensagem oferece.\n\n2. Esperado x acontecido: eu esperava que a consulta de pedidos respondesse normalmente, e o banco recusou a conexão por não haver mais slots livres. Ou seja, o problema não é a consulta: é a quantidade de conexões abertas.\n\n3. Só meu: a consulta `SELECT pedidos.id ...`, o nome da tabela e o parâmetro. Genérico: `OperationalError`, `remaining connection slots are reserved for non-replication superuser connections` e o nome da biblioteca. É a parte genérica que vai na busca.",
+        "solutionNotes": "O achado aqui é que a mensagem aponta para longe do SQL que aparece nela. Quem pesquisa pelo nome da tabela procura um problema que não existe; quem pesquisa pela frase do erro encontra pool de conexão em dez minutos. Esta atividade não tem verificação automática além do formato — avaliar uma busca é julgamento."
+      }
+    },
+    {
       "id": "pc-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

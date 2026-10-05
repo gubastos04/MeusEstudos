@@ -208,6 +208,75 @@
       "glossary": ["pull-request", "code-review", "Refatoração", "merge", "branch"]
     },
     {
+      "id": "eng-revisar-codigo-alheio-01",
+      "type": "lesson",
+      "title": "Revisar código que você não escreveu",
+      "estimatedMinutes": 10,
+      "tags": ["processo", "review"],
+      "why": "A aula anterior tratou de abrir um pull request. Esta trata do outro lado, que é onde você vai passar mais tempo: ler código de outra pessoa e decidir se ele pode entrar — venha ele de um colega, de um sistema antigo ou de uma ferramenta de IA.",
+      "goal": "Revisar por ordem de risco em vez de por ordem de linha, e saber o que não é assunto de review.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Revisar lendo de cima para baixo gasta a atenção no começo do arquivo, que raramente é onde está o problema. A ordem que encontra mais em menos tempo é por risco."
+        },
+        {
+          "kind": "list",
+          "items": [
+            "1. O que isso faz com dado de usuário? Autorização, validação de entrada, o que vai para o log.",
+            "2. O que acontece quando dá errado? Erro engolido, `catch` vazio, falha que vira sucesso silencioso.",
+            "3. Quais são os casos de borda? Lista vazia, valor nulo, zero, duas requisições ao mesmo tempo.",
+            "4. O que isso quebra? Mudança de contrato, campo removido, comportamento diferente para quem já usa.",
+            "5. Dá para entender daqui a seis meses? Nome, tamanho da função, comentário que explica o porquê."
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Repare que estilo não está na lista. Indentação, aspas e ordem de import são trabalho de ferramenta — gastar review com isso ocupa o espaço do que só uma pessoa consegue ver."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Código que passa nos testes e está errado",
+          "text": "É o modo de falha mais comum de código gerado por IA, e também o de código copiado de resposta antiga: plausível, rodando, e errado numa regra de negócio que teste nenhum cobria. Revisar é perguntar \"isto faz o que o pedido queria?\", não só \"isto roda?\"."
+        },
+        {
+          "kind": "text",
+          "text": "Sobre como escrever o comentário: pergunte em vez de mandar, e diga o porquê. \"Aqui não trata lista vazia\" é um fato; \"o que acontece quando a lista vem vazia?\" leva a pessoa ao mesmo lugar e deixa espaço para ela saber algo que você não sabe."
+        },
+        {
+          "kind": "text",
+          "text": "E separe o que bloqueia do que não bloqueia. Um review com quinze comentários do mesmo peso paralisa; um que diz \"estes dois precisam mudar, o resto é sugestão\" anda."
+        },
+        {
+          "kind": "quiz",
+          "question": "Você recebe um PR de 600 linhas que reescreve um módulo inteiro. Qual é a resposta mais útil?",
+          "choices": [
+            "Revisar linha por linha até o fim, com cuidado",
+            "Aprovar, porque revisar isso direito é inviável",
+            "Pedir para dividir em partes menores, explicando que acima de certo tamanho a revisão deixa de encontrar problema",
+            "Revisar só a parte que você conhece"
+          ],
+          "answerIndex": 2,
+          "explanation": "Revisão perde eficácia com o tamanho: acima de algumas centenas de linhas, a taxa de defeito encontrado cai bastante. Aprovar sem revisar é pior que não revisar, porque registra uma aprovação que ninguém deu de verdade. Pedir para dividir é o que preserva o valor do processo.",
+          "topics": ["review"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um trecho de código que você não escreveu — de um projeto antigo seu, de um repositório público ou gerado por IA — e aplique a ordem de risco. Escreva o primeiro comentário que você deixaria.",
+        "expected": "Você sai com um comentário que pergunta, aponta risco e não fala de estilo."
+      },
+      "ifStuck": ["Se não achar nada na ordem de risco, comece pelo que o código faz quando a entrada é vazia."],
+      "commonErrors": [
+        {
+          "error": "Aprovar porque \"parece certo\" e os testes passaram.",
+          "why": "Teste cobre o que alguém pensou em cobrir; a regra de negócio errada passa por ele sem ruído.",
+          "fix": "Comparar o código com o pedido, não só com os testes."
+        }
+      ],
+      "glossary": ["Code review", "Pull request", "Debug"]
+    },
+    {
       "id": "eng-ci-01",
       "type": "lesson",
       "title": "CI: o que roda antes de alguém poder juntar",

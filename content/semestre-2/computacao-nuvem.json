@@ -292,6 +292,101 @@
       "glossary": ["deploy", "migration", "versionamento", "Docker"]
     },
     {
+      "id": "nuvem-observabilidade-01",
+      "type": "lesson",
+      "title": "Saber que quebrou antes de o cliente contar",
+      "estimatedMinutes": 10,
+      "tags": ["cloud", "operacao"],
+      "why": "O deploy entregou o sistema; agora alguém precisa saber como ele está. Sem isso, a primeira notícia de um problema é a reclamação — e a investigação começa sem nenhum dado do momento em que aconteceu.",
+      "goal": "Saber quais três sinais acompanhar e por que a média esconde o problema que importa.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "São três sinais, e cada um responde a uma pergunta diferente. **Log** responde \"o que aconteceu nesta requisição\". **Métrica** responde \"como está o conjunto\". **Alerta** responde \"preciso olhar agora?\"."
+        },
+        {
+          "kind": "text",
+          "text": "A métrica mais enganosa é a média. Se 95 requisições levam 50 ms e 5 levam 10 segundos, a média dá 547 ms — um número que não descreve a experiência de ninguém: nem de quem esperou 50 ms, nem de quem esperou 10 segundos."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "50 50 50 ... (95 vezes) ... 50   10000 10000 10000 10000 10000\n\nmedia  = 547 ms   <- ninguem viveu isso\np50    =  50 ms   <- a experiencia tipica\np95    =  50 ms\np99    = 10000 ms <- quem esta sofrendo, e quantos sao"
+        },
+        {
+          "kind": "text",
+          "text": "Percentil responde a pergunta certa: **p95 de 300 ms** significa que 95 de cada 100 requisições terminaram em até 300 ms. O que sobra na cauda não some na conta — e é lá que moram os clientes que estão desistindo."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Alerta que dispara à toa deixa de ser alerta",
+          "text": "Quando o alerta toca toda semana sem haver problema, as pessoas param de olhar — e ele deixa de funcionar justamente no dia em que estiver certo. Alerta bom é raro, acionável e tem alguém que sabe o que fazer ao receber."
+        },
+        {
+          "kind": "text",
+          "text": "O mínimo que vale a pena antes de qualquer ferramenta: log com id de requisição, para agrupar o que é da mesma chamada; contagem de erro por minuto; e latência em percentil, não em média. Os três cabem num painel de três gráficos."
+        },
+        {
+          "kind": "quiz",
+          "question": "A média de resposta da API está estável há meses, e o suporte recebe reclamações de lentidão toda semana. O que mais provavelmente está acontecendo?",
+          "choices": [
+            "As pessoas estão exagerando, porque o número não mudou",
+            "Uma fatia pequena das requisições está muito lenta, e a média dilui isso",
+            "O problema é na rede do cliente",
+            "A média está sendo calculada errado"
+          ],
+          "answerIndex": 1,
+          "explanation": "Média sobrevive a cauda ruim: 5% de requisições muito lentas mal mexem nela e são exatamente as pessoas que reclamam. É por isso que percentil não é refinamento — é a medida que corresponde à experiência.",
+          "topics": ["performance", "investigação"]
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um endpoint seu e responda: hoje, quanto tempo levaria para você descobrir que ele parou de funcionar? Se a resposta depender de alguém avisar, essa é a primeira lacuna.",
+        "expected": "Você consegue nomear o sinal que falta e quem deveria recebê-lo."
+      },
+      "ifStuck": ["Comece pela pergunta, não pela ferramenta: o que você quer saber sem precisar perguntar a ninguém?"],
+      "commonErrors": [
+        {
+          "error": "Acompanhar só a média de latência.",
+          "why": "Ela esconde exatamente a cauda que gera reclamação, e fica estável enquanto a experiência piora.",
+          "fix": "Acompanhar p50 e p95 juntos: a distância entre os dois é o tamanho do problema."
+        }
+      ],
+      "glossary": ["Log", "Latência", "Performance", "Deploy"],
+      "exercise": {
+        "id": "ex-nuvem-percentil-01",
+        "title": "A média mente, o percentil não",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Escreva `resumir(latencias)`, devolvendo `{ media, p50, p95 }` arredondados para inteiro.\n\nO percentil p de uma lista ordenada é o valor na posição `ceil(p/100 * n) - 1`, com `n` sendo a quantidade de medidas. Lista vazia devolve os três zerados — relatório não é lugar para `NaN`.\n\nA entrada não vem ordenada, e **não pode ser alterada**: quem chamou ainda vai usá-la.",
+        "starter": "function resumir(latencias) {\n  // escreva aqui\n}\n",
+        "tests": [
+          { "name": "lista vazia não devolve NaN", "expression": "resumir([]).media", "expected": 0 },
+          { "name": "lista vazia zera os três", "expression": "resumir([]).p95", "expected": 0 },
+          { "name": "uma medida só", "expression": "resumir([42]).p50", "expected": 42 },
+          { "name": "média de valores simples", "expression": "resumir([10, 20, 30]).media", "expected": 20 },
+          { "name": "o caso da aula: a média engana", "expression": "resumir([...Array(95).fill(50), ...Array(5).fill(10000)]).media", "expected": 548 },
+          { "name": "e o p50 conta a verdade", "expression": "resumir([...Array(95).fill(50), ...Array(5).fill(10000)]).p50", "expected": 50 },
+          { "name": "entrada fora de ordem funciona igual", "expression": "resumir([30, 10, 20]).p50", "expected": 20 },
+          {
+            "name": "a lista de quem chamou não é alterada",
+            "expression": "(() => { const original = [30, 10, 20]; resumir(original); return original })()",
+            "expected": [30, 10, 20]
+          },
+          { "name": "p95 pega a cauda", "expression": "resumir([...Array(90).fill(50), ...Array(10).fill(900)]).p95", "expected": 900, "hidden": true }
+        ],
+        "hints": [
+          "Ordenar números em JavaScript exige comparador — e ordenar altera a lista original.",
+          "`Math.ceil(95 / 100 * n) - 1` é o índice do p95 na lista ordenada.",
+          "Trate a lista vazia antes de qualquer conta: é ali que `0/0` viraria NaN."
+        ],
+        "solution": "function resumir(latencias) {\n  // Relatório com NaN contamina tudo em silêncio.\n  if (latencias.length === 0) return { media: 0, p50: 0, p95: 0 }\n\n  // Cópia antes de ordenar: sort altera no lugar, e a lista é de quem chamou.\n  const ordenadas = [...latencias].sort((a, b) => a - b)\n  const n = ordenadas.length\n\n  const percentil = (p) => ordenadas[Math.ceil((p / 100) * n) - 1]\n  const soma = ordenadas.reduce((total, valor) => total + valor, 0)\n\n  return {\n    media: Math.round(soma / n),\n    p50: Math.round(percentil(50)),\n    p95: Math.round(percentil(95)),\n  }\n}\n",
+        "solutionNotes": "Os dois testes do caso da aula, lado a lado, são a lição inteira: média 548 e p50 50, sobre exatamente os mesmos dados. O teste da lista não alterada reaparece aqui de propósito — é o mesmo defeito do desafio de ordenação, e encontrá-lo duas vezes em contextos diferentes é o que forma o hábito de copiar antes de ordenar."
+      }
+    },
+    {
       "id": "nuvem-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",
