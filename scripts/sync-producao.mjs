@@ -25,10 +25,17 @@ import { fileURLToPath } from 'node:url'
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-function rodar(comando, argumentos) {
-  console.log(`\n$ ${comando} ${argumentos.join(' ')}`)
-  const r = spawnSync(comando, argumentos, { cwd: raiz, stdio: 'inherit', shell: true })
-  if (r.status !== 0) throw new Error(`falhou: ${comando} ${argumentos.join(' ')}`)
+/**
+ * O comando vai como uma string so, nao como executavel + argumentos: `npm` e
+ * `npx` sao .cmd no Windows e precisam de shell, e passar `args` junto de
+ * `shell: true` esta deprecado (DEP0190) porque os argumentos nao sao
+ * escapados. Aqui todo comando e literal fixo escrito abaixo, sem nada vindo
+ * de fora, entao nao ha o que escapar.
+ */
+function rodar(comando) {
+  console.log(`\n$ ${comando}`)
+  const r = spawnSync(comando, { cwd: raiz, stdio: 'inherit', shell: true })
+  if (r.status !== 0) throw new Error(`falhou: ${comando}`)
 }
 
 /** Identifica o banco sem imprimir a credencial: so host e nome. */
@@ -88,15 +95,15 @@ if (!(await confirmar('Sincronizar /content neste banco? (s/N) '))) {
 let erro = null
 try {
   // deploy:preparar troca o provider, regenera o client e confere os tres.
-  rodar('npm', ['run', 'deploy:preparar'])
-  rodar('npm', ['run', 'content:sync'])
+  rodar('npm run deploy:preparar')
+  rodar('npm run content:sync')
 } catch (e) {
   erro = e
 } finally {
   console.log('\n--- devolvendo o repositório ao estado local ---')
   try {
-    rodar('npm', ['run', 'db:provider', 'sqlite'])
-    rodar('npx', ['prisma', 'generate'])
+    rodar('npm run db:provider sqlite')
+    rodar('npx prisma generate')
   } catch (e) {
     // Falhar aqui e pior que falhar no sync: deixa um client de PostgreSQL no
     // disco. Dizer exatamente o que rodar a mao.
