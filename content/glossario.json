@@ -906,6 +906,15 @@
       ]
     },
     {
+      "id": "solid",
+      "term": "SOLID",
+      "short": "Sigla para cinco princípios de desenho de código orientado a objetos.",
+      "explanation": "Responsabilidade única (S), aberto/fechado (O), substituição de Liskov (L), segregação de interface (I) e inversão de dependência (D). Não é uma lista para percorrer antes de escrever código: são nomes para problemas que aparecem quando o código cresce, e o valor principal é conversar — dizer \"isso fere o aberto/fechado\" é mais rápido que descrever o problema inteiro em review. Aplicar os cinco preventivamente, antes de existir a segunda variação, produz indireção que se paga em toda leitura e nunca se recebe de volta.",
+      "whereItAppears": ["Code review", "Entrevista técnica", "Discussão de arquitetura"],
+      "related": ["Refatoração", "Dependência", "Teste unitário"],
+      "tags": ["qualidade", "desenho"]
+    },
+    {
       "id": "repositorio",
       "term": "Repositório",
       "short": "Pasta do projeto com todo o histórico do Git.",

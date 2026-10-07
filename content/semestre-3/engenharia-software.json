@@ -743,6 +743,161 @@
       ]
     },
     {
+      "id": "es-solid-01",
+      "type": "lesson",
+      "title": "SOLID: o que você já aplica, e as letras que faltam",
+      "estimatedMinutes": 11,
+      "tags": ["desenho", "qualidade"],
+      "why": "SOLID é citado em review e em entrevista mais do que é entendido, e três das cinco letras você já aplicou neste curso sem usar o nome. O que falta são duas — e uma delas é a origem de um bug que teste de assinatura não pega.",
+      "goal": "Nomear o que você já faz, escrever um contrato como teste para achar uma violação de substituição, e dizer quando aplicar SOLID preventivamente piora o código.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "SOLID são cinco princípios de desenho que ganharam uma sigla. A sigla tem um valor concreto: em review alguém vai dizer \"isso fere o aberto/fechado\", e você precisa saber se é verdade. Mas decorar as cinco letras não melhora código nenhum — então elas vêm aqui na ordem do que você já fez."
+        },
+        {
+          "kind": "table",
+          "headers": ["Letra", "Onde você já fez isso"],
+          "rows": [
+            ["S — responsabilidade única", "Extrair bloco com nome próprio, em \"Refatorar sem quebrar\""],
+            ["O — aberto/fechado", "A tabela de frete: tipo novo entra sem mexer na função"],
+            ["D — inversão de dependência", "Camadas da API em Python, e o repositório em memória dos testes em Java"]
+          ],
+          "caption": "Três das cinco já estão no seu histórico."
+        },
+        {
+          "kind": "text",
+          "text": "Vale uma correção no S, porque é a letra mais mal usada. O critério **não é tamanho**: é quantos motivos a função tem para mudar. Uma função que monta o texto de um aviso e o envia por email tem dois donos — quem muda a redação e quem muda o transporte. Isso justifica separar. Uma função de 40 linhas com um fluxo linear tem um dono só, e separar piora."
+        },
+        {
+          "kind": "text",
+          "text": "**L — substituição de Liskov.** Se duas implementações têm a mesma assinatura, quem chama presume que pode trocar uma pela outra. Liskov é a parte do contrato que a assinatura não diz."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// contrato implicito: devolve o valor com desconto,\n// nunca negativo e nunca maior que o original\nconst politicas = {\n  nenhum: (valor) => valor,\n  metade: (valor) => valor / 2,\n  // mesma assinatura, contrato furado\n  cupom10: (valor) => valor - 10,\n}\n\npoliticas.metade(4)   //  2\npoliticas.cupom10(4)  // -6",
+          "highlight": [7]
+        },
+        {
+          "kind": "text",
+          "text": "As três têm a mesma forma: recebem um número, devolvem um número. Troque `metade` por `cupom10` num carrinho com itens baratos e o total fica menor do que a soma dos itens — às vezes negativo. Nenhum tipo está errado, nenhum teste de formato falha."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "A assinatura não é o contrato",
+          "text": "Quem chama confia em coisas que não estão escritas: a faixa de valores, se pode devolver nulo, se lança ou devolve erro, se altera o que recebeu. Substituir uma implementação por outra que respeita a assinatura e fura essa parte é um dos bugs mais difíceis de achar, porque nada no código parece errado."
+        },
+        {
+          "kind": "text",
+          "text": "**I — segregação de interface.** Em código de quem está começando ela aparece assim: a função recebe o objeto `pedido` inteiro e usa só `pedido.valor`. Quem lê não sabe do que ela depende de verdade, e o teste precisa montar um pedido completo para testar uma multiplicação. Receber só o que usa é a versão útil desta letra."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "As cinco de uma vez produzem o código da aula anterior",
+          "text": "Interface com uma implementação só, uma classe por responsabilidade mínima, fábrica que devolve sempre a mesma coisa: cada uma é indireção que você paga em toda leitura e nunca recebe de volta. O sinal continua sendo a terceira repetição, não a primeira."
+        },
+        {
+          "kind": "text",
+          "text": "O uso honesto de SOLID é como vocabulário de diagnóstico, depois que o problema aparece: dar nome ao desconforto que você já sentiu lendo o código. Não é lista para percorrer antes de escrever."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um colega troca a implementação de `repositorio.buscarPedidos` de uma consulta ao banco para um cache em memória. A assinatura é idêntica e todos os testes passam. Em produção, uma tela que antes mostrava \"não foi possível carregar\" passa a mostrar uma lista vazia. Qual letra foi violada?",
+          "choices": [
+            "S: a implementação de cache faz duas coisas ao mesmo tempo",
+            "L: mesma assinatura, contrato diferente — o que lançava ao falhar agora devolve lista vazia",
+            "O: trocar a implementação exigiu mexer em quem chama",
+            "D: a dependência passou a apontar para o lado errado"
+          ],
+          "answerIndex": 1,
+          "explanation": "O contrato antigo dizia \"lanço quando não consigo responder\"; o novo diz \"devolvo vazio\". Quem chama perdeu a diferença entre \"não existe nenhum pedido\" e \"não consegui saber\" — e mostra lista vazia para um erro. Os testes passaram porque verificavam o formato do retorno, não o contrato."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue duas implementações da mesma interface num projeto seu — ou o repositório de verdade e o em memória que você escreveu para os testes. Escreva o contrato que as duas precisam cumprir: o que acontece quando não encontra nada, se lança ou devolve erro, qual a faixa dos valores de saída.",
+        "expected": "Cada diferença que você achar é um bug esperando o dia em que alguém trocar uma pela outra."
+      },
+      "ifStuck": [
+        "Comece pelo que quem chama presume sem olhar o código: o que acontece quando não encontra nada?",
+        "Se as duas implementações divergem em algo, escreva esse algo como um teste que as duas tenham de passar."
+      ],
+      "commonErrors": [
+        {
+          "error": "Tratar assinatura igual como garantia de que pode trocar.",
+          "why": "Tipo e número de parâmetros são a parte do contrato que a ferramenta vê. Faixa de valores, nulo e erro não aparecem ali.",
+          "fix": "Escrever o contrato como teste que toda implementação da interface precisa passar."
+        },
+        {
+          "error": "Aplicar as cinco letras antes de existir a segunda variação.",
+          "why": "Cada princípio aplicado cedo cobra indireção em toda leitura e não devolve nada enquanto a variação não existe.",
+          "fix": "Esperar a terceira repetição, o mesmo sinal que vale para padrões de projeto."
+        }
+      ],
+      "glossary": ["SOLID", "Refatoração", "Dependência", "Teste unitário"],
+      "exercise": {
+        "id": "ex-solid-contrato-01",
+        "title": "O contrato como código",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 10,
+        "prompt": "Implemente `violacoes(politica, valores)`. `politica` é uma função que recebe um valor e devolve o valor com desconto. O contrato tem três partes: o resultado é um número, nunca é negativo, e nunca é maior que o valor original. Se a política lançar erro para um valor, esse valor também é violação, porque o contrato prometia devolver um número.\n\nDevolva um array com os valores de entrada em que a política fura o contrato, na ordem em que aparecem. Lista de valores vazia devolve array vazio.",
+        "starter": "function violacoes(politica, valores) {\n  // escreva aqui\n}\n",
+        "expectedResult": "Um array com os valores que furam o contrato, na ordem de entrada.",
+        "tests": [
+          {
+            "name": "politica honesta nao tem violacao",
+            "expression": "violacoes((valor) => valor / 2, [10, 20, 0])",
+            "expected": []
+          },
+          {
+            "name": "cupom fixo fura so no valor pequeno",
+            "expression": "violacoes((valor) => valor - 10, [4, 50, 10])",
+            "expected": [4]
+          },
+          {
+            "name": "politica que aumenta o valor fura",
+            "expression": "violacoes((valor) => valor * 2, [5, 1])",
+            "expected": [5, 1]
+          },
+          {
+            "name": "lista vazia devolve lista vazia",
+            "expression": "violacoes((valor) => valor, [])",
+            "expected": []
+          },
+          {
+            "name": "resultado igual ao original nao fura",
+            "expression": "violacoes((valor) => valor, [10, 0])",
+            "expected": []
+          },
+          {
+            "name": "resultado que nao e numero fura",
+            "expression": "violacoes((valor) => (valor > 5 ? valor : null), [3, 10])",
+            "expected": [3]
+          },
+          {
+            "name": "politica que lanca conta como violacao",
+            "expression": "violacoes((valor) => { if (valor === 0) { throw new Error('sem valor') } return valor }, [0, 10])",
+            "expected": [0]
+          },
+          {
+            "name": "mantem a ordem de entrada",
+            "expression": "violacoes((valor) => valor - 5, [100, 1, 200, 2])",
+            "expected": [1, 2]
+          }
+        ],
+        "hints": [
+          "O contrato tem três partes. Verifique as três para cada valor, não só a do negativo.",
+          "Um valor cuja política lança erro nunca chega a devolver número: pegue isso com try/catch.",
+          "`filter` já preserva a ordem de entrada, então não há nada para ordenar no fim."
+        ],
+        "solution": "function violacoes(politica, valores) {\n  return valores.filter((valor) => {\n    let resultado\n    try {\n      resultado = politica(valor)\n    } catch (erro) {\n      return true\n    }\n    return typeof resultado !== 'number' || resultado < 0 || resultado > valor\n  })\n}\n",
+        "solutionNotes": "Isto é a substituição de Liskov virando código que roda: o contrato que a assinatura não diz, escrito como verificação. Serve para o dia em que aparecer uma implementação nova da mesma interface — em vez de confiar que a forma igual basta, você roda o contrato contra ela antes de trocar."
+      }
+    },
+    {
       "id": "sintese-mudanca-01",
       "type": "lesson",
       "title": "Síntese: da tarefa ao que está no ar",
