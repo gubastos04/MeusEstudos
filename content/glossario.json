@@ -906,6 +906,24 @@
       ]
     },
     {
+      "id": "mock",
+      "term": "Mock",
+      "short": "Dublê que verifica se uma função foi chamada, e com quais argumentos.",
+      "explanation": "Mock é um dos tipos de dublê de teste, junto de stub (devolve resposta pronta) e fake (implementação simplificada que funciona). O que distingue o mock é a pergunta que ele responde: não \"qual foi o resultado?\", mas \"o código chamou isto?\". Serve quando o efeito é a própria regra — se o cliente foi notificado, se a cobrança foi enviada — e é a escolha errada quando dá para olhar o resultado, porque um teste de interação continua verde quando o código chama com o argumento errado.",
+      "whereItAppears": ["Teste de serviço que envia email ou cobrança", "Code review de teste", "Entrevista técnica"],
+      "related": ["Teste unitário", "Dependência", "Cobertura de testes"],
+      "tags": ["testes", "qualidade"]
+    },
+    {
+      "id": "cobertura-de-testes",
+      "term": "Cobertura de testes",
+      "short": "Porcentagem das linhas de código executadas enquanto os testes rodam.",
+      "explanation": "A palavra que importa é executadas: a ferramenta conta linha que rodou, não resultado que alguém verificou. Um teste que chama a função e não compara nada conta 100% das linhas que toca. Por isso cobertura funciona como detector de ausência — 40% quase sempre significa que falta teste — e não como medida de qualidade: 95% não diz que os testes são bons. Transformar o número em meta produz o teste que chama tudo e verifica nada, que passa na CI e não pega defeito nenhum.",
+      "whereItAppears": ["Relatório de CI", "Discussão sobre qualidade de teste", "Entrevista técnica"],
+      "related": ["Teste unitário", "Mock", "Code review"],
+      "tags": ["testes", "qualidade"]
+    },
+    {
       "id": "solid",
       "term": "SOLID",
       "short": "Sigla para cinco princípios de desenho de código orientado a objetos.",

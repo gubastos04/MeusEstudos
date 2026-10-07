@@ -898,6 +898,171 @@
       }
     },
     {
+      "id": "es-duble-cobertura-01",
+      "type": "lesson",
+      "title": "Dublê e cobertura: o teste que passa sem provar nada",
+      "estimatedMinutes": 12,
+      "tags": ["testes", "qualidade"],
+      "why": "Você já escreveu dublê à mão, sem usar o nome. Falta saber quando substituir ajuda, quando o teste passa a verificar o próprio dublê, e por que cobertura alta não é notícia boa por si.",
+      "goal": "Escolher o tipo de dublê certo, reconhecer o teste que verifica a chamada em vez do resultado, e ler um número de cobertura sem tirar conclusão errada.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "O `RepositorioEmMemoria` que você escreveu à mão e passou pelo construtor tem nome: é um **dublê**. O nome genérico cobre três coisas diferentes, e a diferença decide o que o seu teste prova."
+        },
+        {
+          "kind": "table",
+          "headers": ["Tipo", "O que faz", "Quando serve"],
+          "rows": [
+            ["Stub", "Devolve uma resposta pronta", "A regra precisa de um dado; de onde ele vem não importa"],
+            [
+              "Fake",
+              "Implementação simplificada que funciona",
+              "Repositório em memória: o teste exercita o fluxo de verdade"
+            ],
+            ["Mock", "Verifica se foi chamado, e como", "O efeito É a regra: \"o cliente foi notificado?\""]
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "A diferença prática está na terceira linha. Stub e fake ajudam a responder perguntas sobre o **resultado**; mock responde pergunta sobre a **interação**. É por isso que mock é o que erra mais fácil: verificar interação é verificar como o código faz, não o que ele entrega."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "// o teste afirma que o servico chamou repositorio.salvar\nconst chamadas = []\nconst repositorio = { salvar: (pedido) => chamadas.push(pedido) }\n\ncriarPedido({ item: 'cafe', valor: 10 }, repositorio)\n\n// verde mesmo se criarPedido salvar o pedido ERRADO\nesperar(chamadas.length === 1)",
+          "highlight": [8]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Verificar que chamou não é verificar que funcionou",
+          "text": "O teste acima continua verde se o serviço salvar valor negativo, item trocado ou data errada. Ele prova que uma função foi chamada, e nada além disso. Quando dá para olhar o resultado — o que a função devolveu, ou o que ficou dentro do fake — olhe o resultado."
+        },
+        {
+          "kind": "text",
+          "text": "Agora a segunda metade. **Cobertura** é a porcentagem das linhas do código que foram executadas enquanto os testes rodavam. Repare na palavra: executadas. Não verificadas."
+        },
+        {
+          "kind": "code",
+          "language": "javascript",
+          "code": "function calcularDesconto(valor, cupom) {\n  if (cupom === 'METADE') return valor / 2\n  return valor\n}\n\n// 100% das linhas executadas, nenhuma afirmacao\nteste('nao quebra', () => {\n  calcularDesconto(100, 'METADE')\n  calcularDesconto(100, null)\n})"
+        },
+        {
+          "kind": "text",
+          "text": "Esse teste cobre o arquivo inteiro e não prova nada. Então cobertura serve como detector de **ausência**, não como medida de qualidade: 40% quase sempre significa que falta teste, e 95% não significa que os testes são bons. O uso honesto é olhar o que ficou descoberto, não a média."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Meta de cobertura produz teste que não serve",
+          "text": "Quando o número vira obrigação, o caminho mais rápido para alcançá-lo é o teste de cima: chama tudo, verifica nada. Ele passa na CI, sobe a média e não pega defeito nenhum — e agora existe um teste a mais para manter."
+        },
+        {
+          "kind": "text",
+          "text": "E se for medir, meça onde importa: cobertura da regra de negócio, não do projeto inteiro. 100% num arquivo de configuração é um número sem assunto."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um módulo de cálculo de comissão tem 96% de cobertura, e um erro de arredondamento chegou em produção. O que esse número permite concluir?",
+          "choices": [
+            "Que os testes são bons e isso foi azar",
+            "Quase nada: cobertura diz que as linhas rodaram, não que alguém verificou o resultado delas",
+            "Que o bug mora nos 4% que faltam",
+            "Que a ferramenta de cobertura está mal configurada"
+          ],
+          "answerIndex": 1,
+          "explanation": "Cobertura mede execução. Um teste que chama a função e não compara o resultado conta 100% naquela linha. E mesmo com afirmação, o caso de arredondamento pode simplesmente não estar entre as entradas testadas: a linha rodou, com outro valor. Por isso os 4% restantes são o palpite menos informado dos quatro."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue um teste seu que usa dublê e responda uma pergunta: ele verifica o resultado, ou verifica que uma função foi chamada? Se for o segundo, veja se dá para olhar o resultado em vez disso.",
+        "expected": "Os testes que só conseguem verificar a chamada são os que vão continuar verdes quando o código quebrar."
+      },
+      "ifStuck": [
+        "A pergunta que separa os dois: se eu trocar o argumento que o código passa, este teste falha?",
+        "Se não dá para olhar o resultado porque o efeito acontece fora do sistema (email, cobrança), aí mock é a escolha certa."
+      ],
+      "commonErrors": [
+        {
+          "error": "Usar mock para verificar que o código chamou o que devia.",
+          "why": "Isso testa como o código faz, não o que ele entrega, e continua verde quando ele chama com o argumento errado.",
+          "fix": "Olhar o resultado: o que a função devolveu, ou o que ficou guardado no fake."
+        },
+        {
+          "error": "Tratar cobertura como nota do projeto.",
+          "why": "O número conta linha executada, e um teste sem nenhuma afirmação conta 100% das linhas que ele toca.",
+          "fix": "Olhar o que está descoberto, nunca transformar a média em meta."
+        }
+      ],
+      "glossary": ["Mock", "Cobertura de testes", "Teste unitário", "Dependência"],
+      "exercise": {
+        "id": "ex-duble-repositorio-01",
+        "title": "Um fake que não mente",
+        "kind": "code",
+        "language": "javascript",
+        "estimatedMinutes": 12,
+        "prompt": "Implemente `criarRepositorioEmMemoria()`, que devolve um objeto com três funções:\n\n- `salvar(item)` guarda o item com um `id` novo, sequencial começando em 1, e devolve o item salvo;\n- `buscar(id)` devolve o item guardado, ou `null` se não existir;\n- `listar()` devolve todos os itens na ordem em que foram salvos.\n\nE o requisito que faz dele um fake honesto: **quem recebe um item não consegue alterar o que está guardado.** Mexer no objeto que saiu de `buscar`, ou no que foi passado para `salvar`, não muda o conteúdo do repositório.",
+        "starter": "function criarRepositorioEmMemoria() {\n  // escreva aqui\n}\n",
+        "expectedResult": "Um repositório que guarda, busca, lista em ordem, e devolve cópias.",
+        "tests": [
+          {
+            "name": "o primeiro item salvo recebe id 1",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); return r.salvar({ nome: 'a' }).id })()",
+            "expected": 1
+          },
+          {
+            "name": "os ids sao sequenciais",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); return [r.salvar({ nome: 'a' }).id, r.salvar({ nome: 'b' }).id] })()",
+            "expected": [1, 2]
+          },
+          {
+            "name": "buscar devolve o item guardado",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); r.salvar({ nome: 'a' }); return r.buscar(1).nome })()",
+            "expected": "a"
+          },
+          {
+            "name": "buscar id inexistente devolve null",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); return r.buscar(99) })()",
+            "expected": null
+          },
+          {
+            "name": "repositorio vazio lista nada",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); return r.listar() })()",
+            "expected": []
+          },
+          {
+            "name": "listar mantem a ordem em que foram salvos",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); r.salvar({ nome: 'a' }); r.salvar({ nome: 'b' }); return r.listar().map((i) => i.nome) })()",
+            "expected": ["a", "b"]
+          },
+          {
+            "name": "alterar o que saiu de buscar nao muda o guardado",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); r.salvar({ nome: 'a' }); const saiu = r.buscar(1); saiu.nome = 'MUDADO'; return r.buscar(1).nome })()",
+            "expected": "a"
+          },
+          {
+            "name": "alterar o item passado para salvar nao muda o guardado",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); const entrada = { nome: 'a' }; r.salvar(entrada); entrada.nome = 'MUDADO'; return r.buscar(1).nome })()",
+            "expected": "a"
+          },
+          {
+            "name": "alterar o que saiu de listar nao muda o guardado",
+            "expression": "(() => { const r = criarRepositorioEmMemoria(); r.salvar({ nome: 'a' }); r.listar()[0].nome = 'MUDADO'; return r.buscar(1).nome })()",
+            "expected": "a"
+          }
+        ],
+        "hints": [
+          "Guarde a lista e o próximo id em variáveis dentro da função: quem chamar não deve alcançar nenhuma das duas.",
+          "Para id que não existe, o contrato pede `null`. `find` devolve `undefined`, que não é a mesma coisa.",
+          "Devolver o objeto guardado deixa quem chamou mexer no que está dentro do repositório. Devolva uma cópia dele.",
+          "Vale copiar também na entrada: guardar o objeto recebido faz o repositório mudar quando quem chamou mexer nele depois."
+        ],
+        "solution": "function criarRepositorioEmMemoria() {\n  const itens = []\n  let proximoId = 1\n\n  const copia = (item) => ({ ...item })\n\n  return {\n    salvar(item) {\n      const salvo = { ...item, id: proximoId }\n      proximoId += 1\n      itens.push(salvo)\n      return copia(salvo)\n    },\n    buscar(id) {\n      const achado = itens.find((item) => item.id === id)\n      return achado ? copia(achado) : null\n    },\n    listar() {\n      return itens.map(copia)\n    },\n  }\n}\n",
+        "solutionNotes": "A cópia é o que separa um fake honesto de um que mente: sem ela, o teste altera o que está \"guardado\" e passa a verificar o próprio objeto que criou. Um detalhe de honestidade: `{ ...item }` é cópia rasa, e dá conta do item plano deste exercício. Com objeto aninhado, mexer no que está dentro continuaria alcançando o repositório."
+      }
+    },
+    {
       "id": "sintese-mudanca-01",
       "type": "lesson",
       "title": "Síntese: da tarefa ao que está no ar",
