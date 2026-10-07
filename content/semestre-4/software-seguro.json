@@ -596,6 +596,77 @@
       ]
     },
     {
+      "id": "sintese-sistema-real-01",
+      "type": "lesson",
+      "title": "Síntese: o mesmo sistema, visto por quem quer quebrá-lo",
+      "estimatedMinutes": 10,
+      "tags": ["sintese", "seguranca"],
+      "why": "Toda aula até aqui olhou o sistema do ponto de vista de quem o constrói. Esta troca o ponto de vista — e as mesmas peças, vistas de fora, revelam decisões que pareciam detalhe.",
+      "goal": "Percorrer um sistema pelas entradas em vez de pelas telas, e reconhecer que quase toda falha de segurança é uma decisão de projeto adiada.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Quem constrói pensa em telas e funcionalidades. Quem ataca pensa em **entradas**: todo lugar por onde um dado de fora entra no sistema. A lista costuma ser maior do que o time imagina."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "ENTRADAS DE UM SISTEMA COMUM\n\n  formulario\n  parametro de URL\n  cabecalho HTTP\n  upload de arquivo\n  nome do arquivo enviado\n  webhook de parceiro\n  importacao de planilha\n  campo de busca\n  token mandado pelo cliente\n  texto colado pela pessoa\n\nNenhuma delas tem dono: todas chegam\nescolhidas por outra pessoa."
+        },
+        { "kind": "text", "text": "Agora observe que as falhas que você estudou são a mesma falha, em entradas diferentes: **confiar no que veio de fora**." },
+        {
+          "kind": "list",
+          "items": [
+            "Injeção de SQL: confiar no valor do filtro, deixando-o virar comando.",
+            "XSS: confiar no texto do usuário, deixando-o virar código na tela de outra pessoa.",
+            "IDOR: confiar no id da URL, deixando-o escolher de quem é o recurso.",
+            "Upload perigoso: confiar no tipo e no nome que o navegador declarou.",
+            "Token não verificado: confiar no conteúdo sem conferir a assinatura."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Quase toda falha é uma decisão adiada, não um descuido",
+          "text": "Guardar CPF \"porque pode ser útil\", aceitar qualquer tamanho de upload \"por enquanto\", logar o corpo inteiro \"para investigar\": nenhuma dessas é desatenção. São decisões tomadas por omissão, numa hora em que ninguém estava pensando em risco."
+        },
+        {
+          "kind": "text",
+          "text": "É por isso que modelagem de ameaças acontece no desenho e não na revisão final: quinze minutos perguntando \"o que pode dar errado aqui?\" antes de construir custa uma conversa. Depois do vazamento, custa o resto."
+        },
+        {
+          "kind": "text",
+          "text": "E quando algo passa — porque vai passar — a pergunta deixa de ser \"como impedir\" e vira **\"quanto tempo até eu saber, e o que consigo reconstruir?\"**. É a mesma dupla das aulas de observabilidade e de log: detectar e responder só funcionam se o registro certo existir antes do incidente."
+        },
+        {
+          "kind": "quiz",
+          "question": "Num sistema que você acabou de conhecer, qual pergunta provavelmente revela mais risco em menos tempo?",
+          "choices": [
+            "Quais bibliotecas estão desatualizadas?",
+            "Por onde entra dado de fora, e o que cada entrada faz com ele?",
+            "As senhas estão com hash?",
+            "O HTTPS está configurado?",
+            "Existe firewall na frente?"
+          ],
+          "answerIndex": 1,
+          "explanation": "As outras são verificações pontuais, importantes e rápidas de responder — e justamente por isso costumam já estar resolvidas. Mapear as entradas é o que revela o que ninguém olhou, porque quase toda falha grave mora numa entrada que o time não lembrava que existia."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste todas as entradas de um projeto seu — não as telas, as entradas. Para cada uma, escreva o que o sistema faz com aquele dado antes de confiar nele.",
+        "expected": "As entradas em que a resposta for \"nada\" são a sua lista de riscos, em ordem."
+      },
+      "ifStuck": ["Procure no código tudo que lê de requisição, arquivo ou mensagem externa. Cada ocorrência é uma entrada."],
+      "commonErrors": [
+        {
+          "error": "Tratar segurança como uma revisão no fim do projeto.",
+          "why": "No fim, as decisões já foram tomadas: o que se guarda, o que se registra, o que se aceita. Mudar isso vira reescrita.",
+          "fix": "Quinze minutos de \"o que pode dar errado?\" no desenho de cada funcionalidade nova."
+        }
+      ],
+      "glossary": ["XSS", "Injeção de SQL", "Autorização", "Log", "Hash"]
+    },
+    {
       "id": "seg2-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

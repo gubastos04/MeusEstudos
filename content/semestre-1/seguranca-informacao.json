@@ -370,6 +370,75 @@
       "glossary": ["Log", "Hash", "Sessão"]
     },
     {
+      "id": "sintese-requisicao-01",
+      "type": "lesson",
+      "title": "Síntese: uma requisição inteira, do clique à resposta",
+      "estimatedMinutes": 10,
+      "tags": ["sintese", "web"],
+      "why": "Até aqui cada assunto veio separado: o HTML numa aula, o fetch em outra, a validação numa terceira. Quem olha só as peças não enxerga onde um problema nasce — e quase todo problema nasce na fronteira entre duas delas.",
+      "goal": "Percorrer o caminho completo de uma requisição e dizer, em cada passo, qual decisão foi tomada e o que acontece se ela faltar.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Alguém clica em \"Buscar\" numa tela de pedidos. Entre esse clique e a lista aparecer, oito coisas acontecem — e você já aprendeu todas, uma por vez."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "NAVEGADOR\n  1. clique no botao\n  2. estado \"carregando\" na tela\n  3. fetch sai com os filtros\n        |\n        v\nSERVIDOR\n  4. metodo, caminho, parametros\n  5. valida a entrada\n  6. confere quem e e o que pode\n  7. consulta parametrizada\n        |\n        v\nNAVEGADOR\n  8. ok | erro | vazio | lista"
+        },
+        { "kind": "text", "text": "Agora a parte que importa: a decisão de cada passo, e o que quebra sem ela." },
+        {
+          "kind": "list",
+          "items": [
+            "2. O estado de carregando existe porque a rede demora. Sem ele, a pessoa clica de novo — e você recebe a mesma requisição duas vezes.",
+            "3. Os filtros viajam na URL. O que viaja na URL aparece em log, em histórico e no Referer: por isso token não vai aí.",
+            "5. A validação é no servidor porque o navegador é da outra pessoa. O `accept` do input e o `required` do campo são conveniência, não defesa.",
+            "6. Autorização vem depois de autenticação e antes da consulta. Filtrar depois de buscar tudo já vazou o que não devia.",
+            "7. Consulta parametrizada separa comando de valor. É o que faz um filtro com aspas ser texto e não instrução.",
+            "8. São quatro estados, não dois. \"Vazio\" não é erro, e tratar os dois iguais faz a pessoa achar que o sistema quebrou."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "O defeito quase nunca mora onde ele aparece",
+          "text": "A tela em branco do passo 8 pode nascer de um 500 no passo 7, de um 403 no passo 6 ou de um parâmetro inválido no passo 5. Por isso investigar começa percorrendo o caminho, não olhando o lugar onde o sintoma apareceu."
+        },
+        {
+          "kind": "text",
+          "text": "Repare numa simetria: os passos 5, 6 e 7 são todos a mesma ideia aplicada a coisas diferentes — **não confie no que veio de fora**. O valor do filtro, a identidade de quem pede e o texto que vai para o banco chegam pelo mesmo caminho e merecem a mesma desconfiança."
+        },
+        {
+          "kind": "quiz",
+          "question": "A tela de pedidos aparece vazia para uma pessoa e cheia para outra, com os mesmos filtros. Em qual passo o problema mais provavelmente nasce?",
+          "choices": [
+            "No passo 8: a tela não está tratando o estado de lista",
+            "No passo 6: a consulta está filtrando por dono, e é isso mesmo — ou está filtrando errado",
+            "No passo 3: o fetch está mandando filtros diferentes",
+            "No passo 5: a validação recusou o parâmetro de uma delas"
+          ],
+          "answerIndex": 1,
+          "explanation": "Resultado que muda com QUEM pede, e não com o que foi pedido, aponta para autorização. Pode ser o comportamento correto (cada um vê o seu) ou um filtro de dono errado — e distinguir os dois é olhar o passo 6, não a tela."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue uma tela de um projeto seu e escreva os oito passos dela, numerados. Depois marque quais você consegue apontar no código e quais você só supõe que existem.",
+        "expected": "Os passos que você só supõe são o mapa do que investigar primeiro quando algo der errado ali."
+      },
+      "ifStuck": [
+        "Comece pelo fetch e vá para os dois lados: o que acontece antes dele na tela, e o que acontece depois dele no servidor."
+      ],
+      "commonErrors": [
+        {
+          "error": "Procurar o defeito no passo em que o sintoma aparece.",
+          "why": "O sintoma aparece no fim do caminho quase sempre, porque é lá que a pessoa olha.",
+          "fix": "Percorrer do começo, confirmando o que cada passo recebeu e devolveu."
+        }
+      ],
+      "glossary": ["Requisição", "Resposta", "Status code", "Autorização", "Injeção de SQL"]
+    },
+    {
       "id": "seg-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

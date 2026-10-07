@@ -743,6 +743,71 @@
       ]
     },
     {
+      "id": "sintese-mudanca-01",
+      "type": "lesson",
+      "title": "Síntese: da tarefa ao que está no ar",
+      "estimatedMinutes": 10,
+      "tags": ["sintese", "processo"],
+      "why": "Você aprendeu Git, pull request, revisão, CI, deploy e depuração em aulas separadas. Elas não são seis assuntos: são seis estações de um caminho só, e cada uma existe para pegar um tipo de erro que a anterior deixou passar.",
+      "goal": "Enxergar o caminho de uma mudança como uma sequência de redes, e saber qual rede falhou quando um defeito chega em produção.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Uma frase chega: \"o relatório precisa filtrar por período\". Entre ela e o código rodando para clientes, há seis estações — e cada uma pega um erro diferente."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "ESTACAO    PEGA QUE TIPO DE ERRO\n\ndemanda    erro de entendimento\nbranch     (isola o trabalho)\ncommit     (guarda o porque)\nPR         erro que so pessoa ve\nCI         erro que teste pega\ndeploy     erro de ambiente\nno ar      erro que ninguem pegou"
+        },
+        {
+          "kind": "text",
+          "text": "A estação mais barata é a primeira. Um mal-entendido corrigido na conversa custa uma frase; o mesmo mal-entendido descoberto em produção custa um incidente, um rollback e a confiança de quem pediu. É por isso que a demanda começa escrevendo **o que está sendo pedido, com suas palavras** — para o erro de entendimento aparecer antes de qualquer linha de código."
+        },
+        {
+          "kind": "text",
+          "text": "E repare na divisão de trabalho entre CI e revisão: **a CI pega o que é verificável por máquina** — teste quebrado, tipo errado, formato fora do padrão. **A revisão pega o que só uma pessoa vê** — a regra de negócio errada, o nome que confunde, o caso que ninguém pensou em testar. Gastar revisão com indentação ocupa o espaço da única coisa que a máquina não consegue fazer."
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "title": "Quando um defeito chega em produção, pergunte qual rede falhou",
+          "text": "Não para achar culpado: para saber onde acrescentar a rede. Defeito que teste pegaria vira teste; defeito de regra de negócio vira pergunta na revisão; defeito de ambiente vira verificação no pipeline. Sem essa pergunta, cada incidente ensina zero."
+        },
+        {
+          "kind": "text",
+          "text": "E quando o defeito aparece mesmo assim, o caminho de volta é o da depuração: reproduzir, observar, hipótese, isolar, corrigir, **regressão** — e a regressão é o que devolve o aprendizado para a estação da CI, fechando o ciclo."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um bug de cálculo de desconto chegou em produção. Os testes passavam, a revisão aprovou, e o deploy foi normal. Qual rede falhou?",
+          "choices": [
+            "A CI, que deveria ter testes mais completos",
+            "A revisão, porque regra de negócio errada é o tipo de coisa que só pessoa vê — e o teste passava porque testava o comportamento errado",
+            "O deploy, que não validou em homologação",
+            "Nenhuma: bug em produção é inevitável"
+          ],
+          "answerIndex": 1,
+          "explanation": "Teste que passa não prova que a regra está certa: ele prova que o código faz o que o teste espera, e o teste foi escrito por quem entendeu a regra do mesmo jeito. Regra de negócio errada atravessa a CI sem ruído, e é exatamente o que a revisão existe para pegar comparando o código com o pedido — não com os testes."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Pegue o último defeito que chegou em produção num projeto seu (ou um que você viu) e responda: qual estação deveria tê-lo pegado, e o que faltava nela?",
+        "expected": "Você sai com uma rede concreta para acrescentar, em vez da conclusão genérica de que \"faltou atenção\"."
+      },
+      "ifStuck": [
+        "Se o defeito seria pego por um teste que ninguém escreveu, a rede é a CI. Se nenhum teste o pegaria, a rede é a revisão."
+      ],
+      "commonErrors": [
+        {
+          "error": "Responder a todo incidente com \"vamos ter mais cuidado\".",
+          "why": "Cuidado não é uma rede: ele não sobrevive ao próximo dia corrido nem à próxima pessoa que entrar no time.",
+          "fix": "Traduzir cada incidente numa verificação que roda sozinha, ou numa pergunta fixa no roteiro de revisão."
+        }
+      ],
+      "glossary": ["Pull request", "Code review", "Branch", "Deploy", "Debug", "Teste unitário"]
+    },
+    {
       "id": "eng-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",

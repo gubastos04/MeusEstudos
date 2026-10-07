@@ -899,6 +899,72 @@
       }
     },
     {
+      "id": "sintese-integracao-01",
+      "type": "lesson",
+      "title": "Síntese: dois sistemas conversando, e tudo que há no meio",
+      "estimatedMinutes": 10,
+      "tags": ["sintese", "integracao"],
+      "why": "Uma requisição dentro do seu sistema você controla inteira. Entre dois sistemas, metade do caminho é de outra pessoa — e é por isso que integração tem uma lista própria de coisas que dão errado.",
+      "goal": "Enxergar as cinco decisões que toda integração precisa tomar, e reconhecer qual delas falta quando algo quebra.",
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "Na síntese anterior, o caminho ia do clique ao banco, tudo dentro de casa. Agora troque o passo do meio por outro sistema: um que você não controla, que pode estar fora do ar, que pode demorar, e que pode mudar sem avisar."
+        },
+        {
+          "kind": "code",
+          "language": "text",
+          "code": "QUANDO VOCE CHAMA\n  contrato     qual versao eu uso?\n  timeout      quanto eu espero?\n  retentativa  repito quantas vezes?\n  token        quem sou eu?\n\nQUANDO VOCE E CHAMADO\n  contrato     o que eu garanto?\n  assinatura   quem e esse mesmo?\n  idempotencia ja recebi isso antes?"
+        },
+        { "kind": "text", "text": "São cinco decisões, e cada uma tem um modo de falha característico quando é esquecida:" },
+        {
+          "kind": "list",
+          "items": [
+            "Contrato: sem versão, mudar um campo quebra quem já integrou — e você só descobre pelo chamado deles.",
+            "Timeout: sem limite, o outro sistema travado trava o seu junto, e a fila de espera cresce até a aplicação parar.",
+            "Retentativa: sem limite e sem espera crescente, a instabilidade do outro vira sobrecarga que impede ele de voltar.",
+            "Token: sem verificar a assinatura, qualquer um escreve o que quiser dentro dele. Sem expiração curta, um vazamento vale para sempre.",
+            "Idempotência: sem ela, a retentativa da decisão anterior cobra duas vezes. As duas andam juntas e quase sempre são esquecidas separadas."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "danger",
+          "title": "Retentativa sem idempotência é pior que não repetir",
+          "text": "Repetir uma chamada que já teve efeito do outro lado cria o segundo pedido, o segundo email, a segunda cobrança. E o caso mais comum é justamente esse: a chamada chegou, o processamento aconteceu, e só a RESPOSTA se perdeu na volta."
+        },
+        {
+          "kind": "text",
+          "text": "A assimetria que organiza tudo: **do seu lado você escolhe quanto esperar e quando desistir; do lado de quem chama você, você escolhe o que prometer e o que aguentar receber duas vezes.** Toda decisão da lista cai num desses dois lados."
+        },
+        {
+          "kind": "quiz",
+          "question": "Um parceiro reclama que seu sistema cobrou duas vezes. Nos seus logs, a chamada dele aparece duas vezes com o mesmo identificador, separadas por 30 segundos. Onde está o problema?",
+          "choices": [
+            "No parceiro, que não deveria repetir a chamada",
+            "No seu sistema, que aceitou o mesmo identificador duas vezes",
+            "Na rede, que duplicou o pacote",
+            "No timeout, que está curto demais"
+          ],
+          "answerIndex": 1,
+          "explanation": "Repetir é comportamento normal de quem chama, e provavelmente foi a resposta que se perdeu na volta, não a chamada. Quem recebe é que precisa reconhecer o identificador repetido e ignorar — a correção é idempotência do seu lado, mesmo que o timeout curto dele também mereça conversa."
+        }
+      ],
+      "tryNow": {
+        "instructions": "Liste as integrações de um projeto seu e marque, para cada uma, quais das cinco decisões estão tomadas explicitamente no código. As que não estiverem são as que estão tomadas por acaso.",
+        "expected": "Você tem uma lista do que falta, em ordem de risco, sem precisar de incidente para descobrir."
+      },
+      "ifStuck": ["Para cada integração, a pergunta mais rápida é: o que acontece se eu chamar isso duas vezes?"],
+      "commonErrors": [
+        {
+          "error": "Acrescentar retentativa para resolver instabilidade, e só isso.",
+          "why": "Sem idempotência do outro lado, a retentativa duplica efeito; sem limite, ela agrava a instabilidade.",
+          "fix": "Retentativa, limite, espera crescente e idempotência entram juntos, ou nenhum entra."
+        }
+      ],
+      "glossary": ["Idempotência", "Retentativa", "Timeout", "JWT"]
+    },
+    {
       "id": "com-checkpoint-01",
       "type": "checkpoint",
       "title": "Onde você está",
