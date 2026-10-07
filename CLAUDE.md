@@ -188,6 +188,37 @@ alguém resolver. Antes de escolher entre `--rolled-back` e `--applied`,
 **confira no banco o que de fato entrou** — se a falha foi no primeiro
 comando, nada foi aplicado e o caso é `--rolled-back`.
 
+**A URL de produção fica na sessão do terminal, nunca no `.env`.** O Prisma lê
+`DATABASE_URL` do ambiente primeiro e só depois do arquivo — a mesma ordem que
+`resolverUrl` em `scripts/db-provider.mjs` usa. Então sincronizar conteúdo em
+produção é definir a variável, rodar, e desfazer:
+
+```powershell
+$env:DATABASE_URL = "<url do Neon>"
+npm run deploy:preparar          # provider postgresql + generate + conferir
+npm run content:sync
+Remove-Item Env:\DATABASE_URL
+npm run db:provider sqlite
+npx prisma generate
+```
+
+Editar o `.env` também funciona, e é pior por um motivo: a edição sobrevive ao
+fechamento do terminal. Quem esquecer de desfazê-la roda o próximo
+`content:sync` achando que é local e escreve em produção, com a mesma mensagem
+de sucesso — o acidente registrado acima. A variável de sessão morre sozinha.
+
+Os dois últimos comandos continuam obrigatórios nos dois fluxos: o client
+gerado fica no disco apontando para PostgreSQL, e é por isso que
+`npm run db:conferir` compara os três (schema, client e `DATABASE_URL`) em vez
+de dois.
+
+**Deploy de código não sincroniza o banco.** Depois de um commit que mexe em
+`/content`, rode o sync — e confira o resultado no banco em vez de confiar na
+saída do comando. Quando o commit inclui exercício novo, isso deixa de ser
+cosmético: `ExerciseAttempt.exerciseId` tem chave estrangeira para `Exercise`,
+a aula aparece na tela porque o texto vem dos arquivos, e a primeira tentativa
+de quem estuda falha parecendo erro dela.
+
 ### Autenticação própria
 
 - Senha: `scrypt` (N=2^16) com salt por usuário, via `node:crypto`. Sem

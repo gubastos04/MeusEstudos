@@ -210,19 +210,52 @@ Não há variável separada para produção.
 
 ### 1. Banco
 
-O banco de produção já está criado e com o marco inicial registrado, então o
-primeiro deploy não precisa deste passo. Ele vale para um ambiente novo:
+A URL de produção fica **na sessão do terminal, nunca no `.env`**. O Prisma lê
+`DATABASE_URL` do ambiente primeiro e só depois do arquivo, então basta
+definir a variável, rodar, e desfazer:
+
+```powershell
+$env:DATABASE_URL = "<url do Neon>"
+npm run deploy:preparar          # provider postgresql + generate + conferir
+npm run content:sync
+Remove-Item Env:\DATABASE_URL
+npm run db:provider sqlite
+npx prisma generate
+```
+
+Em shell POSIX, o prefixo por comando não deixa resíduo nenhum:
+
+```bash
+DATABASE_URL="<url do Neon>" npm run deploy:preparar
+DATABASE_URL="<url do Neon>" npm run content:sync
+npm run db:provider sqlite && npx prisma generate
+```
+
+Editar o `.env` também funciona, e é pior: a edição sobrevive ao fechamento do
+terminal, e quem esquecer de desfazê-la roda o próximo `content:sync` achando
+que é local e escreve em produção, com a mesma mensagem de sucesso. A variável
+de sessão morre sozinha.
+
+Os dois últimos comandos são obrigatórios nos dois fluxos — o client gerado
+fica no disco apontando para PostgreSQL. `npm run db:conferir` compara os três
+(schema, client e `DATABASE_URL`) justamente para pegar esse estado.
+
+Migrations só valem para um ambiente novo: o banco de produção já está criado
+e com o marco inicial registrado.
 
 ```bash
 npm run db:migrate:deploy
 ```
 
-Com `DATABASE_URL` apontando para o PostgreSQL e o provider trocado
-(`npm run deploy:preparar`). Depois, `npm run content:sync` no mesmo banco —
-sem isso o site sobe sem nenhum módulo, porque as tabelas de conteúdo são
-espelho de `/content`.
+O `content:sync` acima não é opcional num ambiente novo — sem ele o site sobe
+sem nenhum módulo, porque as tabelas de conteúdo são espelho de `/content`.
 
-Ao voltar a desenvolver: `npm run db:provider sqlite && npx prisma generate`.
+**Deploy de código não sincroniza o banco.** Todo deploy que mexe em `/content`
+precisa do sync, e vale conferir o resultado no banco em vez de confiar na
+saída do comando. Quando o commit inclui exercício novo, isso deixa de ser
+cosmético: `ExerciseAttempt.exerciseId` tem chave estrangeira para `Exercise`,
+a aula aparece na tela porque o texto vem dos arquivos, e a primeira tentativa
+de quem estuda falha parecendo erro dela.
 
 ### 2. Vercel
 
