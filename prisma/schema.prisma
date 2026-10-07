@@ -272,6 +272,8 @@ model Project {
 model Challenge {
   id         String   @id
   title      String
+  // desafio | laboratorio. Laboratorio e maior (60 a 90 min) e junta varias aulas.
+  format     String   @default("desafio")
   category   String // logica | debugging | backend | frontend | banco | api | seguranca | git | arquitetura | performance
   difficulty String
   minutes    Int      @default(15)
@@ -280,6 +282,7 @@ model Challenge {
   syncedAt   DateTime @default(now())
 
   @@index([category])
+  @@index([format])
 }
 
 model GlossaryTerm {

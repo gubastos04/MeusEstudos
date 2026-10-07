@@ -158,6 +158,7 @@ async function main() {
   for (const challenge of content.challenges) {
     const data = {
       title: challenge.title,
+      format: challenge.format,
       category: challenge.category,
       difficulty: challenge.difficulty,
       minutes: challenge.estimatedMinutes,

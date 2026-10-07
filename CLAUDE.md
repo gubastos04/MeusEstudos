@@ -176,6 +176,18 @@ Não existe `prisma migrate dev` aqui: ele exige que o provider do schema seja
 o mesmo do `migration_lock.toml` e, apontado para produção, pode resetar o
 banco. Em produção é só `migrate deploy`, que aplica e não improvisa.
 
+**O arquivo da migration não pode ter BOM.** `Out-File -Encoding utf8` no
+PowerShell 5.1 grava um `\ufeff` no início, e o Postgres responde `syntax error
+at or near ""` apontando a linha 1 — mensagem que não diz qual é o problema.
+Gere o arquivo com `[System.IO.File]::WriteAllText(caminho, sql, (New-Object
+System.Text.UTF8Encoding $false))`, ou confira os primeiros bytes antes de
+aplicar: `239 187 191` é BOM.
+
+Quando uma migration falha, o Prisma registra a falha e recusa seguir até
+alguém resolver. Antes de escolher entre `--rolled-back` e `--applied`,
+**confira no banco o que de fato entrou** — se a falha foi no primeiro
+comando, nada foi aplicado e o caso é `--rolled-back`.
+
 ### Autenticação própria
 
 - Senha: `scrypt` (N=2^16) com salt por usuário, via `node:crypto`. Sem
