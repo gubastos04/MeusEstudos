@@ -216,19 +216,14 @@ definir a variável, rodar, e desfazer:
 
 ```powershell
 $env:DATABASE_URL = "<url do Neon>"
-npm run deploy:preparar          # provider postgresql + generate + conferir
-npm run content:sync
+npm run sync:producao
 Remove-Item Env:\DATABASE_URL
-npm run db:provider sqlite
-npx prisma generate
 ```
 
 Em shell POSIX, o prefixo por comando não deixa resíduo nenhum:
 
 ```bash
-DATABASE_URL="<url do Neon>" npm run deploy:preparar
-DATABASE_URL="<url do Neon>" npm run content:sync
-npm run db:provider sqlite && npx prisma generate
+DATABASE_URL="<url do Neon>" npm run sync:producao
 ```
 
 Editar o `.env` também funciona, e é pior: a edição sobrevive ao fechamento do
@@ -236,9 +231,24 @@ terminal, e quem esquecer de desfazê-la roda o próximo `content:sync` achando
 que é local e escreve em produção, com a mesma mensagem de sucesso. A variável
 de sessão morre sozinha.
 
-Os dois últimos comandos são obrigatórios nos dois fluxos — o client gerado
-fica no disco apontando para PostgreSQL. `npm run db:conferir` compara os três
-(schema, client e `DATABASE_URL`) justamente para pegar esse estado.
+`npm run sync:producao` mostra o host de destino, pede confirmação, troca o
+provider, sincroniza, e devolve o repositório ao sqlite **mesmo se o sync
+falhar** — é para isso que ele existe. Trocar o provider deixa no disco um
+client gerado para PostgreSQL, e o caminho manual para no erro deixando essa
+sujeira, com o próximo `npm run dev` conectando no banco errado.
+
+À mão são quatro comandos, com os dois últimos obrigatórios mesmo em caso de
+falha:
+
+```bash
+npm run deploy:preparar
+npm run content:sync
+npm run db:provider sqlite
+npx prisma generate
+```
+
+`npm run db:conferir` compara os três (schema, client e `DATABASE_URL`) para
+pegar justamente esse estado pela metade.
 
 Migrations só valem para um ambiente novo: o banco de produção já está criado
 e com o marco inicial registrado.

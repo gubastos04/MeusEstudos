@@ -15,6 +15,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "deploy:preparar": "node scripts/db-provider.mjs postgresql && prisma generate && node scripts/db-provider.mjs --conferir",
+    "sync:producao": "node scripts/sync-producao.mjs",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "content:validate": "tsx scripts/validate-content.ts",

@@ -107,4 +107,10 @@ if (updated === original) {
 
 writeFileSync(schemaPath, updated)
 console.log(`provider alterado para "${target}".`)
-console.log('Próximo passo: ajuste DATABASE_URL no .env e rode `npx prisma generate`.')
+console.log(
+  target === 'postgresql'
+    ? 'Próximo passo: `npx prisma generate`. A URL de produção vai na sessão do\n' +
+        'terminal, não no .env — ou use `npm run sync:producao`, que faz os dois\n' +
+        'lados e devolve o repositório ao sqlite mesmo se falhar no meio.'
+    : 'Próximo passo: `npx prisma generate`.',
+)

@@ -68,10 +68,11 @@ npm run typecheck        # tsc --noEmit
 npm test                 # vitest (244 testes; cria prisma/test-vitest.db do zero)
 npm run content:validate # valida /content sem tocar no banco (use em CI)
 npm run content:sync     # espelha /content nas tabelas do banco
+npm run sync:producao    # o mesmo em produção, e devolve o repositório ao sqlite
 npm run db:push          # aplica o schema no banco de desenvolvimento (SQLite)
 npm run db:provider postgresql   # troca o provider antes do build de produção
+npm run db:conferir      # schema, client gerado e DATABASE_URL combinam?
 npm run db:studio        # inspeciona os dados
-npm run db:provider postgresql   # troca o provider antes do deploy
 ```
 
 ## Estrutura
@@ -195,11 +196,8 @@ produção é definir a variável, rodar, e desfazer:
 
 ```powershell
 $env:DATABASE_URL = "<url do Neon>"
-npm run deploy:preparar          # provider postgresql + generate + conferir
-npm run content:sync
+npm run sync:producao
 Remove-Item Env:\DATABASE_URL
-npm run db:provider sqlite
-npx prisma generate
 ```
 
 Editar o `.env` também funciona, e é pior por um motivo: a edição sobrevive ao
@@ -207,10 +205,20 @@ fechamento do terminal. Quem esquecer de desfazê-la roda o próximo
 `content:sync` achando que é local e escreve em produção, com a mesma mensagem
 de sucesso — o acidente registrado acima. A variável de sessão morre sozinha.
 
-Os dois últimos comandos continuam obrigatórios nos dois fluxos: o client
-gerado fica no disco apontando para PostgreSQL, e é por isso que
-`npm run db:conferir` compara os três (schema, client e `DATABASE_URL`) em vez
-de dois.
+`sync:producao` (`scripts/sync-producao.mjs`) existe por um motivo só: trocar o
+provider deixa no disco um client gerado para PostgreSQL, e a restauração mora
+num `finally`. Se o sync falha no meio — e a primeira coisa que falha é a
+conexão — o caminho manual para no erro e deixa essa sujeira, com o próximo
+`npm run dev` conectando no banco errado. O script **não** recebe a URL por
+argumento nem por arquivo: ela vem do ambiente, porque argumento vai para o
+histórico do shell e arquivo vai para o disco.
+
+Ele recusa `DATABASE_URL` ausente (não cai para o `.env`, senão sincronizaria o
+SQLite local achando que é produção) e recusa URL de SQLite. Quem preferir os
+seis passos à mão continua podendo: são `deploy:preparar`, `content:sync`,
+`db:provider sqlite` e `npx prisma generate`, nessa ordem, com os dois últimos
+obrigatórios mesmo se o sync falhar. É por isso que `npm run db:conferir`
+compara os três (schema, client e `DATABASE_URL`) em vez de dois.
 
 **Deploy de código não sincroniza o banco.** Depois de um commit que mexe em
 `/content`, rode o sync — e confira o resultado no banco em vez de confiar na
