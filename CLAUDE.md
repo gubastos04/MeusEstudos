@@ -227,6 +227,18 @@ cosmético: `ExerciseAttempt.exerciseId` tem chave estrangeira para `Exercise`,
 a aula aparece na tela porque o texto vem dos arquivos, e a primeira tentativa
 de quem estuda falha parecendo erro dela.
 
+**Depois de todo deploy, abra `/api/saude`.** Ela faz uma consulta mínima e
+devolve `{ ok: true }`, ou 503 com o motivo no log do servidor. Existe porque
+nada que roda antes do deploy exercita a credencial do banco: em 07/10/2026 a
+senha foi rotacionada, a `DATABASE_URL` do provedor ficou com a antiga, o build
+passou limpo, as telas públicas responderam normalmente — e produção ficou dois
+dias sem conseguir uma única consulta. `db:conferir` compara dialeto, não senha.
+
+A rota é `force-dynamic` de propósito: ela não lê cookie nem cabeçalho, então
+sem isso o Next pode respondê-la a partir do build, dizendo "ok" para sempre
+inclusive com o banco fora. Healthcheck que mente é pior que healthcheck
+nenhum, e `tests/saude.test.ts` cobre o caminho de falha por isso.
+
 ### Autenticação própria
 
 - Senha: `scrypt` (N=2^16) com salt por usuário, via `node:crypto`. Sem

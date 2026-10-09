@@ -267,6 +267,21 @@ cosmético: `ExerciseAttempt.exerciseId` tem chave estrangeira para `Exercise`,
 a aula aparece na tela porque o texto vem dos arquivos, e a primeira tentativa
 de quem estuda falha parecendo erro dela.
 
+### Depois de todo deploy
+
+Abra `/api/saude`. Ela faz uma consulta mínima ao banco e devolve `{ ok: true }`,
+ou 503 com o motivo no log do servidor.
+
+Esse passo não é cerimônia. Nada que roda antes do deploy exercita a credencial
+do banco: `db:conferir` compara dialeto, não senha, e o build nem conecta. Em
+07/10/2026 a senha foi rotacionada, a `DATABASE_URL` da Vercel ficou com a
+antiga, o build passou limpo, as telas públicas responderam normalmente — e
+produção ficou dois dias sem conseguir uma única consulta, porque nenhuma
+verificação olhava para isso.
+
+Mudar variável de ambiente na Vercel **não** afeta deployments já construídos:
+depois de editar, é Deployments → o mais recente → Redeploy.
+
 ### 2. Vercel
 
 **Build Command:**
